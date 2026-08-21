@@ -1,9 +1,15 @@
 {
-  "trust_schema": "esio-profile-trust-selection/1.0-candidate.1",
+  "trust_schema": "esio-profile-trust-selection/1.0-candidate.2",
   "registry_id": "example-coverage-registry",
   "snapshot_id": "seed-2026-08-21",
   "snapshot_version": "1",
-  "snapshot_digest": "sha256:da9963d7867b9b7a0bc93581a9e2f2543969371fabc1d6d73446664d585af1e5",
+  "snapshot_digest": "sha256:2067207d2ad8b881fdeb77e841f5739750b4f0e3c88c4aeaa40ae8760e551e7f",
+  "selected_profile_reference": {
+    "registry_id": "example-coverage-registry",
+    "profile_id": "github-search-p0",
+    "profile_version": "1.0.0",
+    "profile_digest": "sha256:2f7fee3eb62e5c4dcd798eb475f6b6b2cbe21369a7530f78565c642a6d029a6f"
+  },
   "trusted_snapshot_issuer_ids": [
     "example-registry-publisher"
   ],
@@ -13,5 +19,5 @@
   "trusted_approval_authority_ids": [
     "example-assurance-board"
   ],
-  "trust_selection_digest": "sha256:a941970b4dd661698b2f8925a6e451907bba31b237c2a84f070ee6cf1cc63cde"
+  "trust_selection_digest": "sha256:dcb0a00a947d4d699c114f1aea0b5b4f931f0c8b01952277164f81b656527d13"
 }

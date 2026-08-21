@@ -4,6 +4,12 @@
 **Date:** 2026-08-21  
 **Deciders:** Project owner; architecture maintainer
 
+> **Revision note:** ADR-0011 supersedes the candidate.1/candidate.3
+> selection and verification details in this record. Commit `f7d8bca` is a
+> rejected pre-acceptance checkpoint, not accepted evidence for this ADR. The
+> current local candidate uses an application-selected exact profile reference
+> and staged trust processing under the candidate.2/candidate.4 contracts.
+
 ## Context
 
 ADR-0008 closed the wait-only finality defect by requiring a query-bound

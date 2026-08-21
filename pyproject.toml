@@ -4,9 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "evidence-state-io"
-version = "0.5.0"
+version = "0.6.0"
 description = "Typed evidence-state envelopes and deterministic negative-claim gating"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.14"
 dependencies = []
 authors = [{ name = "Evidence-State I/O contributors" }]
 keywords = ["ai", "evidence", "coverage", "provenance", "tool-protocols"]
@@ -15,6 +15,7 @@ classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Typing :: Typed",
 ]
 

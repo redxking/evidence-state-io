@@ -4,13 +4,20 @@
 **Date:** 2026-08-21  
 **Deciders:** Project owner; architecture maintainer
 
+> **Revision note:** ADR-0011 supersedes the candidate.1 verification and
+> current-reliance details in this record. Commit `e8c3bea` is a rejected
+> pre-acceptance checkpoint, not accepted evidence for this ADR. The current
+> local candidate is candidate.2 and treats the canonical serialized record as
+> immutable; the in-memory Python representation is not claimed to be deeply
+> immutable and is strictly reparsed during verification.
+
 ## Context
 
 The current `GateDecision` is a useful deterministic result but is not a
 complete evidence certificate. It is freely constructible, its historical
 input digest covers only the request, and it does not bind the governed profile
 context, schema, policy digest, evidence origin, certificate format, issuance
-metadata, or every decision field in one immutable object.
+metadata, or every decision field in one mutation-detecting canonical record.
 
 A certificate builder that accepts a caller-created decision would permit a
 real rejection to be repackaged as an apparent permit. A verifier that checks

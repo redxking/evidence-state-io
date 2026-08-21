@@ -63,7 +63,7 @@ class CliTests(unittest.TestCase):
         )
         self.assertEqual(
             payload["certificate"]["implementation"]["package_version"],
-            "0.5.0",
+            "0.6.0",
         )
         expected = json.loads(
             (EXAMPLES / "covered_certificate.json").read_text()
@@ -71,7 +71,7 @@ class CliTests(unittest.TestCase):
         self.assertEqual(payload, expected)
         self.assertEqual(
             payload["certificate_digest"],
-            "sha256:45f66fb5f24b7aad0599aec5e7c06dc729967b6498f293ed00aefc94baf56ce6",
+            "sha256:5f28ba99baf2c45828ffa04bff60c480aa9ccf131e97ad1bb4ed9347b85aff6f",
         )
 
     def test_evaluate_full_request_denies_partial_case(self) -> None:
@@ -83,6 +83,14 @@ class CliTests(unittest.TestCase):
         decision = payload["certificate"]["decision"]
         self.assertFalse(decision["allowed"])
         self.assertIn("COVERAGE_POLICY_NOT_MET", decision["reasons"])
+        self.assertEqual(
+            payload,
+            json.loads((EXAMPLES / "rejected_certificate.json").read_text()),
+        )
+        self.assertEqual(
+            payload["certificate_digest"],
+            "sha256:3224a290e047bce524b307e00342f55e1ccfd3aeafe0a341caa187653dd3c059",
+        )
 
     def test_verify_certificate_reports_replay_and_context_dimensions(self) -> None:
         evaluate_code, certificate_json, _ = self.invoke(
@@ -129,6 +137,89 @@ class CliTests(unittest.TestCase):
         self.assertFalse(report["certificate_digest_integrity"])
         self.assertTrue(report["deterministic_replay"])
         self.assertFalse(report["issuer_authenticated"])
+
+    def test_verify_certificate_expected_digest_mismatch_is_exit_1(self) -> None:
+        code, stdout, stderr = self.invoke(
+            [
+                "verify-certificate",
+                "--input",
+                str(EXAMPLES / "covered_certificate.json"),
+                "--expected-digest",
+                "sha256:" + "0" * 64,
+            ]
+        )
+        self.assertEqual(code, 1)
+        self.assertEqual(stderr, "")
+        report = json.loads(stdout)
+        self.assertFalse(report["expected_certificate_digest_match"])
+        self.assertTrue(report["deterministic_replay"])
+
+    def test_verify_certificate_unsupported_contract_is_exit_1(self) -> None:
+        artifact = json.loads((EXAMPLES / "covered_certificate.json").read_text())
+        artifact["certificate"]["certificate_format"] = (
+            "esio-evidence-certificate/1.0-candidate.999"
+        )
+        code, stdout, stderr = self.invoke(
+            ["verify-certificate", "--input", "-"],
+            json.dumps(artifact),
+        )
+        self.assertEqual(code, 1)
+        self.assertEqual(stderr, "")
+        self.assertFalse(json.loads(stdout)["structural_support"])
+
+    def test_verify_certificate_malformed_json_is_exit_2(self) -> None:
+        code, stdout, stderr = self.invoke(
+            ["verify-certificate", "--input", "-"],
+            "{",
+        )
+        self.assertEqual(code, 2)
+        self.assertEqual(stdout, "")
+        self.assertEqual(json.loads(stderr)["error"]["type"], "JSONDecodeError")
+
+    def test_verify_certificate_duplicate_nested_key_is_exit_2(self) -> None:
+        raw = (EXAMPLES / "covered_certificate.json").read_text()
+        raw = raw.replace(
+            '"allowed": true',
+            '"allowed": true, "allowed": true',
+            1,
+        )
+        code, stdout, stderr = self.invoke(
+            ["verify-certificate", "--input", "-"],
+            raw,
+        )
+        self.assertEqual(code, 2)
+        self.assertEqual(stdout, "")
+        self.assertIn("duplicate JSON object key: allowed", stderr)
+
+    def test_verify_certificate_requires_registry_and_trust_as_a_pair(self) -> None:
+        code, stdout, stderr = self.invoke(
+            [
+                "verify-certificate",
+                "--input",
+                str(EXAMPLES / "covered_certificate.json"),
+                "--registry",
+                str(EXAMPLES / "profile_registry.json"),
+            ]
+        )
+        self.assertEqual(code, 2)
+        self.assertEqual(stdout, "")
+        self.assertIn("must be supplied together", stderr)
+
+    def test_relying_party_time_without_expected_context_is_unestablished(self) -> None:
+        code, stdout, stderr = self.invoke(
+            [
+                "verify-certificate",
+                "--input",
+                str(EXAMPLES / "covered_certificate.json"),
+                "--relying-party-at",
+                "2026-08-21T12:30:00Z",
+            ]
+        )
+        self.assertEqual(code, 0)
+        self.assertEqual(stderr, "")
+        report = json.loads(stdout)
+        self.assertIsNone(report["expected_context_match"])
+        self.assertIsNone(report["current_local_reliance_eligible"])
 
     def test_evaluate_missing_finality_horizon_fails_closed(self) -> None:
         full = json.loads((EXAMPLES / "covered_request.json").read_text())

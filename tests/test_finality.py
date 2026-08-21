@@ -28,7 +28,7 @@ UTC = timezone.utc
 def policy_dict(**changes):
     return {
         "policy_id": "esio-p0-safety-floor",
-        "policy_version": "1.0-candidate.3",
+        "policy_version": "1.0-candidate.4",
         **changes,
     }
 

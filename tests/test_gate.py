@@ -27,7 +27,7 @@ from evidence_state_io.models import datetime_to_json
 def policy_dict(**changes):
     return {
         "policy_id": "esio-p0-safety-floor",
-        "policy_version": "1.0-candidate.3",
+        "policy_version": "1.0-candidate.4",
         **changes,
     }
 
@@ -47,7 +47,7 @@ class NegativeClaimGateTests(unittest.TestCase):
         self.assertTrue(result.allowed)
         self.assertEqual(result.decision, "PERMIT_SCOPED_NEGATIVE")
         self.assertEqual(result.reasons, ())
-        self.assertEqual(result.evaluator_version, "esio-evaluator-1.0-candidate.3")
+        self.assertEqual(result.evaluator_version, "esio-evaluator-1.0-candidate.4")
         self.assertTrue(result.source_accounting.meets_policy)
 
     def test_allowed_text_remains_explicitly_conditional(self) -> None:
@@ -532,7 +532,7 @@ class NegativeClaimGateTests(unittest.TestCase):
         result = decision(
             lambda data: data["envelope"]["source_observations"][0][
                 "descriptor"
-            ].update(adapter_version="other-version")
+            ].update(adapter_version="other-9.9")
         )
         self.assertFalse(result.allowed)
         self.assertIn(GateReason.REQUIRED_SOURCE_ADAPTER_MISMATCH, result.reasons)

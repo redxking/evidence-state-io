@@ -31,6 +31,15 @@ _MAX_INTEGER_VALUE = 10**MAX_INTEGER_DECIMAL_DIGITS - 1
 _SOURCE_ID_PATTERN = re.compile(
     r"^[a-z0-9](?:[a-z0-9._:-]{0,126}[a-z0-9])?$"
 )
+_IMMUTABLE_VERSION_PATTERN = re.compile(
+    r"^(?:"
+    r"(?:[a-z][a-z0-9._:-]*-)?\d+\.\d+(?:\.\d+)*"
+    r"(?:-[a-z0-9]+(?:[._-][a-z0-9]+)*)?"
+    r"|\d+"
+    r"|git:[0-9a-f]{40}"
+    r"|sha256:[0-9a-f]{64}"
+    r")$"
+)
 _SHA256_DIGEST_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 _DECLARATION_PLACEHOLDERS = frozenset({"unknown", "unspecified", "none", "n/a"})
 _UNBOUNDED_DECLARATION_PLACEHOLDERS = frozenset({"*", "all"})
@@ -179,6 +188,49 @@ def _concrete_declaration(
     if result.casefold() in disallowed:
         raise ModelValidationError(
             f"{path} must be a concrete declaration, not a placeholder"
+        )
+    return result
+
+
+def _immutable_version(value: Any, path: str) -> str:
+    """Reject aliases and range expressions where exact version identity is required."""
+
+    result = _concrete_declaration(value, path, reject_unbounded=True)
+    if not result.isascii() or not _SOURCE_ID_PATTERN.fullmatch(result):
+        raise ModelValidationError(
+            f"{path} must identify one immutable version token using lowercase ASCII letters, digits, '.', '_', ':', or '-'"
+        )
+    folded = result.casefold()
+    floating_labels = {
+        "current",
+        "default",
+        "dev",
+        "development",
+        "head",
+        "latest",
+        "lts",
+        "main",
+        "master",
+        "nightly",
+        "prod",
+        "release",
+        "rolling",
+        "stable",
+        "tip",
+        "trunk",
+    }
+    floating_component = any(
+        component in floating_labels | {"x", "snapshot"}
+        for component in re.split(r"[._:-]", folded)
+    )
+    if (
+        folded in floating_labels
+        or floating_component
+        or not _IMMUTABLE_VERSION_PATTERN.fullmatch(result)
+        or any(marker in result for marker in ("*", "<", ">", "^", "~", ","))
+    ):
+        raise ModelValidationError(
+            f"{path} must identify one immutable version, not an alias or range"
         )
     return result
 
@@ -363,7 +415,7 @@ class CoverageProfileReference:
     profile_digest: str
 
     def __post_init__(self) -> None:
-        for name in ("registry_id", "profile_id", "profile_version"):
+        for name in ("registry_id", "profile_id"):
             object.__setattr__(
                 self,
                 name,
@@ -371,6 +423,11 @@ class CoverageProfileReference:
                     getattr(self, name), f"profile_ref.{name}"
                 ),
             )
+        object.__setattr__(
+            self,
+            "profile_version",
+            _immutable_version(self.profile_version, "profile_ref.profile_version"),
+        )
         object.__setattr__(
             self,
             "profile_digest",
@@ -399,7 +456,7 @@ class CoverageProfileReference:
             profile_id=bounded_ascii_identifier(
                 data["profile_id"], f"{path}.profile_id"
             ),
-            profile_version=bounded_ascii_identifier(
+            profile_version=_immutable_version(
                 data["profile_version"], f"{path}.profile_version"
             ),
             profile_digest=_sha256_digest(
@@ -440,7 +497,7 @@ class SourceRequirement:
         )
         if not isinstance(self.role, SourceRole):
             raise ModelValidationError("source_requirement.role must be a SourceRole")
-        for name in ("system", "locator", "adapter_version"):
+        for name in ("system", "locator"):
             object.__setattr__(
                 self,
                 name,
@@ -450,6 +507,13 @@ class SourceRequirement:
                     reject_unbounded=True,
                 ),
             )
+        object.__setattr__(
+            self,
+            "adapter_version",
+            _immutable_version(
+                self.adapter_version, "source_requirement.adapter_version"
+            ),
+        )
         object.__setattr__(
             self,
             "adapter_id",
@@ -569,7 +633,9 @@ class SourceRequirement:
             adapter_id=bounded_ascii_identifier(
                 data["adapter_id"], f"{path}.adapter_id"
             ),
-            adapter_version=_required_string(data, "adapter_version", path),
+            adapter_version=_immutable_version(
+                data["adapter_version"], f"{path}.adapter_version"
+            ),
             authorization_context_id=bounded_ascii_identifier(
                 data["authorization_context_id"],
                 f"{path}.authorization_context_id",
@@ -1112,11 +1178,7 @@ class SourceDescriptor:
         object.__setattr__(
             self,
             "adapter_version",
-            _concrete_declaration(
-                self.adapter_version,
-                "source.adapter_version",
-                reject_unbounded=True,
-            ),
+            _immutable_version(self.adapter_version, "source.adapter_version"),
         )
         if self.index_as_of is not None:
             object.__setattr__(
@@ -1143,7 +1205,9 @@ class SourceDescriptor:
             adapter_id=bounded_ascii_identifier(
                 data.get("adapter_id"), f"{path}.adapter_id"
             ),
-            adapter_version=_required_string(data, "adapter_version", path),
+            adapter_version=_immutable_version(
+                data["adapter_version"], f"{path}.adapter_version"
+            ),
             index_as_of=optional_datetime(data.get("index_as_of"), f"{path}.index_as_of"),
         )
 

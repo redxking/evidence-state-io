@@ -18,7 +18,12 @@ from evidence_state_io.certificates import (
     verify_evidence_certificate,
 )
 from evidence_state_io.gate import NegativeClaimRequest
-from evidence_state_io.models import ClaimMode, ModelValidationError, PopulationBasis
+from evidence_state_io.models import (
+    ClaimMode,
+    CoverageProfileReference,
+    ModelValidationError,
+    PopulationBasis,
+)
 from evidence_state_io.profiles import (
     COVERAGE_FINALITY_PROFILE_SCHEMA,
     FINALITY_METHOD,
@@ -47,7 +52,7 @@ REVISION = "a" * 40
 
 def implementation(
     *,
-    version: str = "0.5.0",
+    version: str = "0.6.0",
     state: WorkingTreeState = WorkingTreeState.CLEAN,
 ) -> ImplementationIdentity:
     return ImplementationIdentity(
@@ -139,6 +144,12 @@ def governed_inputs() -> tuple[NegativeClaimRequest, TrustedProfileContext]:
         snapshot_id=snapshot.snapshot_id,
         snapshot_version=snapshot.snapshot_version,
         snapshot_digest=snapshot.snapshot_digest,
+        selected_profile_reference=CoverageProfileReference(
+            registry_id=snapshot.registry_id,
+            profile_id=profile.profile_id,
+            profile_version=profile.profile_version,
+            profile_digest=profile.profile_digest,
+        ),
         trusted_snapshot_issuer_ids=(snapshot.issuer_id,),
         trusted_profile_issuer_ids=(profile.issuer_id,),
         trusted_approval_authority_ids=(profile.approval_authority_id,),
@@ -161,6 +172,59 @@ def certificate(
         issued_at=issued_at,
         origin=origin,
         implementation=implementation() if identity is None else identity,
+    )
+
+
+def with_profile_age_limits(
+    request: NegativeClaimRequest,
+    context: TrustedProfileContext,
+    *,
+    observation_seconds: int,
+    index_seconds: int,
+) -> tuple[NegativeClaimRequest, TrustedProfileContext]:
+    profile = context.snapshot.records[0].profile
+    constrained_profile = replace(
+        profile,
+        coverage=replace(
+            profile.coverage,
+            max_observation_age_seconds=observation_seconds,
+            max_index_age_seconds=index_seconds,
+        ),
+    )
+    record = ProfileRegistryRecord(
+        profile=constrained_profile,
+        profile_digest=None,
+        status=ProfileRegistryStatus.ACTIVE,
+        revoked_at=None,
+        revocation_effective_at=None,
+        revocation_reason_code=None,
+    )
+    snapshot = replace(
+        context.snapshot,
+        records=(record,),
+        snapshot_digest=None,
+    )
+    assert snapshot.snapshot_digest is not None
+    reference = CoverageProfileReference(
+        registry_id=snapshot.registry_id,
+        profile_id=constrained_profile.profile_id,
+        profile_version=constrained_profile.profile_version,
+        profile_digest=constrained_profile.profile_digest,
+    )
+    trust = replace(
+        context.trust_selection,
+        snapshot_digest=snapshot.snapshot_digest,
+        selected_profile_reference=reference,
+        trust_selection_digest=None,
+    )
+    data = request.to_dict()
+    data["envelope"]["query"]["source_requirements"][0][
+        "profile_ref"
+    ] = reference.to_dict()
+    refresh_query_fingerprints(data)
+    return (
+        NegativeClaimRequest.from_dict(data),
+        TrustedProfileContext(snapshot=snapshot, trust_selection=trust),
     )
 
 
@@ -223,6 +287,48 @@ class EvidenceCertificateTests(unittest.TestCase):
             datetime(2026, 8, 21, 13, 0, tzinfo=UTC),
         )
 
+    def test_effective_boundary_includes_profile_freshness_deadlines(self) -> None:
+        request, context = governed_inputs()
+        request, context = with_profile_age_limits(
+            request,
+            context,
+            observation_seconds=600,
+            index_seconds=600,
+        )
+        artifact = certificate(request=request, context=context)
+        self.assertEqual(
+            artifact.certificate.effective_valid_until_exclusive,
+            datetime(2026, 8, 21, 12, 14, tzinfo=UTC),
+        )
+        before = verify_evidence_certificate(
+            artifact,
+            expected_context=context,
+            relying_party_at=datetime(2026, 8, 21, 12, 13, 59, 999999, tzinfo=UTC),
+        )
+        at_boundary = verify_evidence_certificate(
+            artifact,
+            expected_context=context,
+            relying_party_at=datetime(2026, 8, 21, 12, 14, tzinfo=UTC),
+        )
+        self.assertTrue(before.current_local_reliance_eligible)
+        self.assertFalse(at_boundary.current_local_reliance_eligible)
+
+    def test_effective_boundary_includes_policy_freshness_deadlines(self) -> None:
+        request, context = governed_inputs()
+        request = replace(
+            request,
+            policy=replace(
+                request.policy,
+                max_observation_age_seconds=300,
+                max_index_age_seconds=300,
+            ),
+        )
+        artifact = certificate(request=request, context=context)
+        self.assertEqual(
+            artifact.certificate.effective_valid_until_exclusive,
+            datetime(2026, 8, 21, 12, 9, tzinfo=UTC),
+        )
+
     def test_round_trip_preserves_canonical_bytes(self) -> None:
         artifact = certificate()
         parsed = EvidenceCertificate.from_dict(deepcopy(artifact.to_dict()))
@@ -240,6 +346,60 @@ class EvidenceCertificateTests(unittest.TestCase):
         report = verify_evidence_certificate(parsed)
         self.assertTrue(report.certificate_digest_integrity)
         self.assertTrue(report.deterministic_replay)
+
+    def test_lossy_decimal_cannot_collapse_to_original_certificate_digest(self) -> None:
+        artifact = certificate()
+        data = artifact.to_dict()
+        data["certificate"]["decision"]["coverage"]["lower_bound"] = Decimal(
+            "0.999999999999999999999999999999999999"
+        )
+        report = verify_evidence_certificate(
+            data,
+            expected_certificate_digest=artifact.certificate_digest,
+        )
+        self.assertFalse(report.structural_support)
+        self.assertFalse(report.historical_reproducibility)
+
+    def test_typed_artifact_cannot_bypass_nested_boolean_validation(self) -> None:
+        request, context = governed_inputs()
+        artifact = certificate(request=request, context=context)
+        artifact.certificate.decision["coverage"]["meets_policy"] = 1
+        mutated = EvidenceCertificate(
+            certificate=artifact.certificate,
+            certificate_digest=artifact.recomputed_digest,
+        )
+        report = verify_evidence_certificate(
+            mutated,
+            expected_context=context,
+            relying_party_at=datetime(2026, 8, 21, 12, 30, tzinfo=UTC),
+        )
+        self.assertFalse(report.structural_support)
+        self.assertIsNone(report.current_local_reliance_eligible)
+
+    def test_replay_comparison_is_json_type_strict_for_numeric_values(self) -> None:
+        data = certificate().to_dict()
+        data["certificate"]["decision"]["coverage"]["lower_bound"] = 1
+        data["certificate_digest"] = canonical_digest(data["certificate"])
+        report = verify_evidence_certificate(data)
+        self.assertTrue(report.structural_support)
+        self.assertFalse(report.deterministic_replay)
+
+    def test_coverage_bounds_outside_unit_interval_are_structurally_unsupported(self) -> None:
+        for path, value in (
+            (("lower_bound",), -1.0),
+            (("lower_bound",), 2.0),
+            (("components", 0, "lower_bound"), 1.0000000001),
+        ):
+            with self.subTest(path=path, value=value):
+                data = certificate().to_dict()
+                target = data["certificate"]["decision"]["coverage"]
+                for key in path[:-1]:
+                    target = target[key]
+                target[path[-1]] = value
+                data["certificate_digest"] = canonical_digest(data["certificate"])
+                report = verify_evidence_certificate(data)
+                self.assertFalse(report.structural_support)
+                self.assertFalse(report.historical_reproducibility)
 
     def test_wrong_outer_digest_is_parseable_and_reported_separately(self) -> None:
         data = certificate().to_dict()
@@ -310,8 +470,24 @@ class EvidenceCertificateTests(unittest.TestCase):
         self.assertFalse(report.certificate_digest_integrity)
         self.assertTrue(report.expected_certificate_digest_match)
 
+    def test_known_expected_digest_mismatch_blocks_current_local_reliance(self) -> None:
+        request, context = governed_inputs()
+        artifact = certificate(request=request, context=context)
+        report = verify_evidence_certificate(
+            artifact,
+            expected_context=context,
+            expected_certificate_digest="sha256:" + "0" * 64,
+            relying_party_at=datetime(2026, 8, 21, 12, 30, tzinfo=UTC),
+        )
+        self.assertTrue(report.certificate_digest_integrity)
+        self.assertTrue(report.deterministic_replay)
+        self.assertTrue(report.expected_context_match)
+        self.assertFalse(report.expected_certificate_digest_match)
+        self.assertFalse(report.current_local_reliance_eligible)
+
     def test_different_but_sufficient_context_is_not_expected_context(self) -> None:
         request, context = governed_inputs()
+        original_artifact = certificate(request=request, context=context)
         different_trust = replace(
             context.trust_selection,
             trusted_profile_issuer_ids=(
@@ -328,9 +504,21 @@ class EvidenceCertificateTests(unittest.TestCase):
         report = verify_evidence_certificate(
             artifact,
             expected_context=context,
+            relying_party_at=datetime(2026, 8, 21, 12, 30, tzinfo=UTC),
         )
+        self.assertNotEqual(context.context_digest, different_context.context_digest)
+        self.assertNotEqual(
+            original_artifact.certificate_digest,
+            artifact.certificate_digest,
+        )
+        self.assertEqual(
+            artifact.certificate.context_binding.context_digest,
+            different_context.context_digest,
+        )
+        self.assertTrue(report.embedded_digest_integrity)
         self.assertTrue(report.deterministic_replay)
         self.assertFalse(report.expected_context_match)
+        self.assertFalse(report.current_local_reliance_eligible)
 
     def test_current_local_reliance_requires_external_context_and_time(self) -> None:
         request, context = governed_inputs()
@@ -404,6 +592,121 @@ class EvidenceCertificateTests(unittest.TestCase):
                 baseline.certificate_digest,
                 variant.certificate_digest,
             )
+
+    def test_every_certificate_payload_leaf_is_digest_bound(self) -> None:
+        payload = certificate().certificate.to_dict()
+        baseline = canonical_digest(payload)
+
+        def leaf_paths(value, prefix=()):
+            if isinstance(value, dict):
+                if not value:
+                    yield prefix
+                for key, item in value.items():
+                    yield from leaf_paths(item, (*prefix, key))
+            elif isinstance(value, list):
+                if not value:
+                    yield prefix
+                for index, item in enumerate(value):
+                    yield from leaf_paths(item, (*prefix, index))
+            else:
+                yield prefix
+
+        def replacement(value):
+            if value is None:
+                return "digest-mutation"
+            if isinstance(value, bool):
+                return not value
+            if isinstance(value, int):
+                return value + 1
+            if isinstance(value, float):
+                return value + 0.125
+            if isinstance(value, str):
+                return value + "x"
+            if isinstance(value, list):
+                return ["digest-mutation"]
+            if isinstance(value, dict):
+                return {"digest-mutation": True}
+            self.fail(f"unhandled certificate leaf type: {type(value)!r}")
+
+        paths = tuple(leaf_paths(payload))
+        self.assertGreater(len(paths), 100)
+        for path in paths:
+            with self.subTest(path=path):
+                mutated = deepcopy(payload)
+                target = mutated
+                for key in path[:-1]:
+                    target = target[key]
+                key = path[-1]
+                target[key] = replacement(target[key])
+                self.assertNotEqual(canonical_digest(mutated), baseline)
+
+    def test_unknown_and_downgraded_contract_identifiers_never_fallback(self) -> None:
+        mutations = (
+            (("certificate_format",), "esio-evidence-certificate/1.0-candidate.1"),
+            (("certificate_format",), "esio-evidence-certificate/1.0-candidate.999"),
+            (("wire_schema_version",), "0.1"),
+            (("wire_schema_version",), "2.0"),
+            (("evaluation_input_schema",), "esio-evaluation-input/1.0-candidate.1"),
+            (("evaluation_input_schema",), "esio-evaluation-input/1.0-candidate.999"),
+            (("policy_id",), "other-policy"),
+            (("policy_version",), "1.0-candidate.3"),
+            (("policy_version",), "1.0-candidate.999"),
+            (("evaluator_version",), "esio-evaluator-1.0-candidate.3"),
+            (("evaluator_version",), "esio-evaluator-1.0-candidate.999"),
+            (("canonicalization_profile",), "esio-canonical-json-0.0"),
+            (("digest_algorithm",), "sha512"),
+            (
+                ("trusted_profile_context", "registry_snapshot", "snapshot", "snapshot_schema"),
+                "esio-profile-registry-snapshot/1.0-candidate.1",
+            ),
+            (
+                ("trusted_profile_context", "registry_snapshot", "snapshot", "snapshot_schema"),
+                "esio-profile-registry-snapshot/1.0-candidate.999",
+            ),
+            (
+                (
+                    "trusted_profile_context",
+                    "registry_snapshot",
+                    "snapshot",
+                    "records",
+                    0,
+                    "profile",
+                    "profile_schema",
+                ),
+                "esio-coverage-finality-profile/1.0-candidate.1",
+            ),
+            (
+                (
+                    "trusted_profile_context",
+                    "registry_snapshot",
+                    "snapshot",
+                    "records",
+                    0,
+                    "profile",
+                    "profile_schema",
+                ),
+                "esio-coverage-finality-profile/1.0-candidate.999",
+            ),
+            (
+                ("trusted_profile_context", "trust_selection", "trust_schema"),
+                "esio-profile-trust-selection/1.0-candidate.1",
+            ),
+            (
+                ("trusted_profile_context", "trust_selection", "trust_schema"),
+                "esio-profile-trust-selection/1.0-candidate.999",
+            ),
+        )
+        for path, value in mutations:
+            with self.subTest(path=path, value=value):
+                data = certificate().to_dict()
+                target = data["certificate"]
+                for key in path[:-1]:
+                    target = target[key]
+                target[path[-1]] = value
+                data["certificate_digest"] = canonical_digest(data["certificate"])
+                report = verify_evidence_certificate(data)
+                self.assertFalse(report.structural_support)
+                self.assertFalse(report.historical_reproducibility)
 
     def test_origin_and_issued_time_are_explicit_strict_inputs(self) -> None:
         request, context = governed_inputs()

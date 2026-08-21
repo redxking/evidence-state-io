@@ -36,7 +36,7 @@ from .profiles import (
 MAX_INPUT_BYTES = 1_048_576
 MAX_JSON_DEPTH = 128
 MAX_JSON_NUMBER_TOKEN_CHARS = MAX_INTEGER_DECIMAL_DIGITS
-PACKAGE_VERSION = "0.5.0"
+PACKAGE_VERSION = "0.6.0"
 
 
 def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:

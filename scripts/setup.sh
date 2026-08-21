@@ -12,13 +12,13 @@ fail() {
 }
 
 command -v "${PYTHON_BIN}" >/dev/null 2>&1 \
-  || fail "${PYTHON_BIN} was not found; set PYTHON_BIN to Python 3.11 or newer"
+  || fail "${PYTHON_BIN} was not found; set PYTHON_BIN to Python 3.11, 3.12, or 3.13"
 
 "${PYTHON_BIN}" - <<'PY' \
-  || fail "Python 3.11 or newer is required"
+  || fail "Python 3.11, 3.12, or 3.13 is required"
 import sys
 
-if sys.version_info < (3, 11):
+if not ((3, 11) <= sys.version_info < (3, 14)):
     raise SystemExit(1)
 PY
 
@@ -37,10 +37,10 @@ else
 fi
 
 "${VENV_DIR}/bin/python" - <<'PY' \
-  || fail "the existing .venv uses Python older than 3.11; move it aside and rerun setup"
+  || fail "the existing .venv is not Python 3.11, 3.12, or 3.13; move it aside and rerun setup"
 import sys
 
-if sys.version_info < (3, 11):
+if not ((3, 11) <= sys.version_info < (3, 14)):
     raise SystemExit(1)
 PY
 

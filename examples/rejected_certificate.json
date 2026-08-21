@@ -19,18 +19,18 @@
       "trust_selection_digest": "sha256:dcb0a00a947d4d699c114f1aea0b5b4f931f0c8b01952277164f81b656527d13"
     },
     "decision": {
-      "allowed": true,
+      "allowed": false,
       "canonicalization_profile": "esio-canonical-json-0.1",
       "coverage": {
         "components": [
           {
             "basis": "examined_units / exact_population_units",
-            "lower_bound": 1.0,
+            "lower_bound": 0.6,
             "name": "population"
           },
           {
             "basis": "pages_examined / pages_expected",
-            "lower_bound": 1.0,
+            "lower_bound": 0.6,
             "name": "pages"
           },
           {
@@ -39,14 +39,18 @@
             "name": "partitions"
           }
         ],
-        "issues": [],
-        "lower_bound": 1.0,
-        "meets_policy": true
+        "issues": [
+          "BELOW_MINIMUM",
+          "PAGINATION_INCOMPLETE",
+          "CONTINUATION_PRESENT"
+        ],
+        "lower_bound": 0.6,
+        "meets_policy": false
       },
-      "decision": "PERMIT_SCOPED_NEGATIVE",
+      "decision": "REJECT_NEGATIVE",
       "digest_algorithm": "sha256",
       "evaluator_version": "esio-evaluator-1.0-candidate.4",
-      "input_digest": "sha256:09546af5525333081591bdce7e0c1cee5c9d18bc2eb446d3e73d57abb67ca986",
+      "input_digest": "sha256:01ba529295a492c68798fbcacf379f78101ae9b71688ad1365a8c90d9eb97e7a",
       "limitations": [
         "The decision is conditional on source-declared evidence and a separately supplied, locally governed profile registry snapshot.",
         "ABSENT_WITHIN_SCOPE never proves global or absolute absence.",
@@ -70,8 +74,11 @@
         ],
         "trust_selection_digest": "sha256:dcb0a00a947d4d699c114f1aea0b5b4f931f0c8b01952277164f81b656527d13"
       },
-      "qualified_claim": "The subject \"repositories matching the query\" had zero observed matches within the declared query scope (target=\"GitHub repository search\", predicate=\"topic:evidence-state language:Python\", authorization=\"public repositories visible to the adapter token\", authorization_context=\"public-search-adapter-context\", from=2026-08-21T00:00:00Z, through=2026-08-21T12:00:00Z, excluding=[\"deleted repositories\",\"unindexed content\"], sources=[{\"source_id\":\"github-public-repositories\",\"role\":\"REQUIRED\",\"system\":\"github-search\",\"locator\":\"repositories/search\",\"adapter_id\":\"github-search-adapter\",\"adapter_version\":\"example-0.4\",\"authorization_context_id\":\"public-search-adapter-context\",\"accessible_population\":\"public-repositories-visible-to-adapter\",\"detection_assumptions\":[\"repository is indexed by the declared search endpoint\"],\"finality_horizon\":\"2026-08-21T12:04:00Z\",\"profile_ref\":{\"registry_id\":\"example-coverage-registry\",\"profile_id\":\"github-search-p0\",\"profile_version\":\"1.0.0\",\"profile_digest\":\"sha256:2f7fee3eb62e5c4dcd798eb475f6b6b2cbe21369a7530f78565c642a6d029a6f\"}}]) as observed at 2026-08-21T12:04:00Z, with coverage at least 100.000%. The declared required-source set was [{\"accessible_population\":\"public-repositories-visible-to-adapter\",\"adapter_id\":\"github-search-adapter\",\"adapter_version\":\"example-0.4\",\"authorization_context_id\":\"public-search-adapter-context\",\"detection_assumptions\":[\"repository is indexed by the declared search endpoint\"],\"finality_horizon\":\"2026-08-21T12:04:00Z\",\"locator\":\"repositories/search\",\"profile_ref\":{\"profile_digest\":\"sha256:2f7fee3eb62e5c4dcd798eb475f6b6b2cbe21369a7530f78565c642a6d029a6f\",\"profile_id\":\"github-search-p0\",\"profile_version\":\"1.0.0\",\"registry_id\":\"example-coverage-registry\"},\"role\":\"REQUIRED\",\"source_id\":\"github-public-repositories\",\"system\":\"github-search\"}]. The claim was evaluated at 2026-08-21T12:05:00Z and the source-declared envelope boundary is 2026-08-21T13:00:00Z; governed observation or index freshness may expire earlier and requires reevaluation. The source reported an index state at 2026-08-21T12:04:00Z, which reached the declared finality horizon 2026-08-21T12:04:00Z. This conclusion is conditional on the declared scope, coverage, source state, and validity window; it is not proof of absence outside that scope. The finality horizon was derived from the exact locally governed profile pinned by the query. That configuration binding does not authenticate the profile assertions or prove ingestion completeness.",
-      "reasons": [],
+      "qualified_claim": null,
+      "reasons": [
+        "STATE_NOT_ABSENT_WITHIN_SCOPE",
+        "COVERAGE_POLICY_NOT_MET"
+      ],
       "source_accounting": {
         "complete_source_ids": [
           "github-public-repositories"
@@ -89,7 +96,7 @@
     "digest_algorithm": "sha256",
     "effective_valid_until_exclusive": "2026-08-21T13:00:00Z",
     "evaluated_at": "2026-08-21T12:05:00Z",
-    "evaluation_input_digest": "sha256:09546af5525333081591bdce7e0c1cee5c9d18bc2eb446d3e73d57abb67ca986",
+    "evaluation_input_digest": "sha256:01ba529295a492c68798fbcacf379f78101ae9b71688ad1365a8c90d9eb97e7a",
     "evaluation_input_schema": "esio-evaluation-input/1.0-candidate.2",
     "evaluator_version": "esio-evaluator-1.0-candidate.4",
     "evidence_origin": "SYNTHETIC",
@@ -106,13 +113,13 @@
     "request": {
       "envelope": {
         "coverage": {
-          "continuation_token_present": false,
+          "continuation_token_present": true,
           "declared_lower_bound": null,
-          "examined_units": 100,
+          "examined_units": 60,
           "interrupted": false,
-          "pages_examined": 5,
+          "pages_examined": 3,
           "pages_expected": 5,
-          "pagination_complete": true,
+          "pagination_complete": false,
           "partitions_complete": true,
           "partitions_examined": 2,
           "partitions_expected": 2,
@@ -181,7 +188,7 @@
             "status": "OBSERVED"
           }
         ],
-        "state": "ABSENT_WITHIN_SCOPE",
+        "state": "PARTIAL",
         "valid_until": "2026-08-21T13:00:00Z"
       },
       "evaluated_at": "2026-08-21T12:05:00Z",
@@ -304,5 +311,5 @@
     },
     "wire_schema_version": "1.0"
   },
-  "certificate_digest": "sha256:5f28ba99baf2c45828ffa04bff60c480aa9ccf131e97ad1bb4ed9347b85aff6f"
+  "certificate_digest": "sha256:3224a290e047bce524b307e00342f55e1ccfd3aeafe0a341caa187653dd3c059"
 }

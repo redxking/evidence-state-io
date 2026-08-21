@@ -7,6 +7,7 @@ from typing import Any, Iterable, Mapping, Sequence
 
 from .gate import GateDecision, GateReason, NegativeClaimRequest, evaluate_negative_claim
 from .models import (
+    CoverageProfileReference,
     ModelValidationError,
     PopulationBasis,
     QueryScope,
@@ -439,6 +440,12 @@ def seed_profile_context() -> TrustedProfileContext:
         snapshot_id=snapshot.snapshot_id,
         snapshot_version=snapshot.snapshot_version,
         snapshot_digest=snapshot.snapshot_digest,
+        selected_profile_reference=CoverageProfileReference(
+            registry_id=snapshot.registry_id,
+            profile_id=profile.profile_id,
+            profile_version=profile.profile_version,
+            profile_digest=profile.profile_digest,
+        ),
         trusted_snapshot_issuer_ids=(snapshot.issuer_id,),
         trusted_profile_issuer_ids=(profile.issuer_id,),
         trusted_approval_authority_ids=(profile.approval_authority_id,),
@@ -538,7 +545,7 @@ def _request_dict(
         "evaluated_at": "2026-08-21T12:05:00Z",
         "policy": {
             "policy_id": "esio-p0-safety-floor",
-            "policy_version": "1.0-candidate.3",
+            "policy_version": "1.0-candidate.4",
             **dict({} if policy is None else policy),
         },
         "envelope": {

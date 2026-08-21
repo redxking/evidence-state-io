@@ -40,9 +40,9 @@ from .profiles import (
 
 MAX_SUBJECT_LENGTH = 160
 DEFAULT_POLICY_ID = "esio-p0-safety-floor"
-DEFAULT_POLICY_VERSION = "1.0-candidate.3"
-EVALUATOR_VERSION = "esio-evaluator-1.0-candidate.3"
-EVALUATION_INPUT_SCHEMA = "esio-evaluation-input/1.0-candidate.1"
+DEFAULT_POLICY_VERSION = "1.0-candidate.4"
+EVALUATOR_VERSION = "esio-evaluator-1.0-candidate.4"
+EVALUATION_INPUT_SCHEMA = "esio-evaluation-input/1.0-candidate.2"
 _ABSOLUTE_SUBJECT_PATTERN = re.compile(
     r"\b(?:nothing|none|anywhere|everywhere|always|never)\b"
     r"|\bno\b.{0,80}\bexists?\b"
@@ -53,6 +53,7 @@ _ABSOLUTE_SUBJECT_PATTERN = re.compile(
 
 class GateReason(str, Enum):
     PROFILE_REFERENCE_UNDECLARED = "PROFILE_REFERENCE_UNDECLARED"
+    PROFILE_TRUST_SELECTION_MISMATCH = "PROFILE_TRUST_SELECTION_MISMATCH"
     REGISTRY_SNAPSHOT_UNDECLARED = "REGISTRY_SNAPSHOT_UNDECLARED"
     REGISTRY_SNAPSHOT_IDENTITY_MISMATCH = "REGISTRY_SNAPSHOT_IDENTITY_MISMATCH"
     REGISTRY_SNAPSHOT_DIGEST_MISMATCH = "REGISTRY_SNAPSHOT_DIGEST_MISMATCH"
@@ -60,7 +61,6 @@ class GateReason(str, Enum):
     REGISTRY_SNAPSHOT_NOT_YET_EFFECTIVE = "REGISTRY_SNAPSHOT_NOT_YET_EFFECTIVE"
     REGISTRY_SNAPSHOT_EXPIRED = "REGISTRY_SNAPSHOT_EXPIRED"
     PROFILE_NOT_FOUND = "PROFILE_NOT_FOUND"
-    PROFILE_RESOLUTION_AMBIGUOUS = "PROFILE_RESOLUTION_AMBIGUOUS"
     PROFILE_DIGEST_MISMATCH = "PROFILE_DIGEST_MISMATCH"
     PROFILE_ISSUER_UNTRUSTED = "PROFILE_ISSUER_UNTRUSTED"
     PROFILE_AUTHORITY_UNTRUSTED = "PROFILE_AUTHORITY_UNTRUSTED"
@@ -417,8 +417,9 @@ def _qualified_claim(
     validity_text = "."
     if envelope.valid_until:
         validity_text = (
-            " and the evidence is declared valid through "
-            f"{datetime_to_json(envelope.valid_until)}."
+            " and the source-declared envelope boundary is "
+            f"{datetime_to_json(envelope.valid_until)}; governed observation "
+            "or index freshness may expire earlier and requires reevaluation."
         )
     required_sources = [
         requirement.to_dict()

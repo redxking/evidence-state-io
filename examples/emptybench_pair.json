@@ -25,7 +25,7 @@
             "query_errors": [],
             "timed_out": false
           },
-          "coverage_query_fingerprint": "sha256:62d483bdc8708b3515bc9fe0f3340d547ddc14403026cf6b198afb40aa2f39ca",
+          "coverage_query_fingerprint": "sha256:dea92255f10151ece5b120a8491bdf53f7c1f483103fb1038d6e0e349d498d77",
           "errors": [],
           "matched_count": 0,
           "notes": [
@@ -52,7 +52,7 @@
                 "finality_horizon": "2026-08-21T12:04:00Z",
                 "locator": "repositories/search",
                 "profile_ref": {
-                  "profile_digest": "sha256:efe225188e96018fd77192b185a5013ed4f55774d3db379320467e85c1dbdc23",
+                  "profile_digest": "sha256:2f7fee3eb62e5c4dcd798eb475f6b6b2cbe21369a7530f78565c642a6d029a6f",
                   "profile_id": "github-search-p0",
                   "profile_version": "1.0.0",
                   "registry_id": "example-coverage-registry"
@@ -79,7 +79,7 @@
                 "system": "github-search"
               },
               "errors": [],
-              "query_fingerprint": "sha256:62d483bdc8708b3515bc9fe0f3340d547ddc14403026cf6b198afb40aa2f39ca",
+              "query_fingerprint": "sha256:dea92255f10151ece5b120a8491bdf53f7c1f483103fb1038d6e0e349d498d77",
               "source_id": "github-public-repositories",
               "status": "OBSERVED"
             }
@@ -91,7 +91,7 @@
         "mode": "SCOPED",
         "policy": {
           "policy_id": "esio-p0-safety-floor",
-          "policy_version": "1.0-candidate.3"
+          "policy_version": "1.0-candidate.4"
         },
         "subject": "repositories matching the query"
       },
@@ -125,7 +125,7 @@
             "query_errors": [],
             "timed_out": false
           },
-          "coverage_query_fingerprint": "sha256:62d483bdc8708b3515bc9fe0f3340d547ddc14403026cf6b198afb40aa2f39ca",
+          "coverage_query_fingerprint": "sha256:dea92255f10151ece5b120a8491bdf53f7c1f483103fb1038d6e0e349d498d77",
           "errors": [],
           "matched_count": 0,
           "notes": [
@@ -152,7 +152,7 @@
                 "finality_horizon": "2026-08-21T12:04:00Z",
                 "locator": "repositories/search",
                 "profile_ref": {
-                  "profile_digest": "sha256:efe225188e96018fd77192b185a5013ed4f55774d3db379320467e85c1dbdc23",
+                  "profile_digest": "sha256:2f7fee3eb62e5c4dcd798eb475f6b6b2cbe21369a7530f78565c642a6d029a6f",
                   "profile_id": "github-search-p0",
                   "profile_version": "1.0.0",
                   "registry_id": "example-coverage-registry"
@@ -179,7 +179,7 @@
                 "system": "github-search"
               },
               "errors": [],
-              "query_fingerprint": "sha256:62d483bdc8708b3515bc9fe0f3340d547ddc14403026cf6b198afb40aa2f39ca",
+              "query_fingerprint": "sha256:dea92255f10151ece5b120a8491bdf53f7c1f483103fb1038d6e0e349d498d77",
               "source_id": "github-public-repositories",
               "status": "OBSERVED"
             }
@@ -191,7 +191,7 @@
         "mode": "SCOPED",
         "policy": {
           "policy_id": "esio-p0-safety-floor",
-          "policy_version": "1.0-candidate.3"
+          "policy_version": "1.0-candidate.4"
         },
         "subject": "repositories matching the query"
       },

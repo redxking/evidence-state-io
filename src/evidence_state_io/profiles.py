@@ -25,6 +25,7 @@ from .models import (
     SourceObservationStatus,
     _concrete_declaration,
     _mapping,
+    _immutable_version,
     _nonnegative_int,
     _reject_unknown,
     _require_fields,
@@ -39,13 +40,13 @@ from .models import (
 
 
 COVERAGE_FINALITY_PROFILE_SCHEMA = (
-    "esio-coverage-finality-profile/1.0-candidate.1"
+    "esio-coverage-finality-profile/1.0-candidate.2"
 )
 PROFILE_REGISTRY_SNAPSHOT_SCHEMA = (
-    "esio-profile-registry-snapshot/1.0-candidate.1"
+    "esio-profile-registry-snapshot/1.0-candidate.2"
 )
 PROFILE_TRUST_SELECTION_SCHEMA = (
-    "esio-profile-trust-selection/1.0-candidate.1"
+    "esio-profile-trust-selection/1.0-candidate.2"
 )
 FINALITY_METHOD = "QUERY_END_PLUS_MAX_DELAY"
 
@@ -178,7 +179,9 @@ class ProfileSource:
         object.__setattr__(
             self,
             "adapter_version",
-            _declaration(self.adapter_version, "profile.source.adapter_version"),
+            _immutable_version(
+                self.adapter_version, "profile.source.adapter_version"
+            ),
         )
         object.__setattr__(
             self,
@@ -215,7 +218,7 @@ class ProfileSource:
             system=_declaration(data["system"], f"{path}.system"),
             locator=_declaration(data["locator"], f"{path}.locator"),
             adapter_id=_identifier(data["adapter_id"], f"{path}.adapter_id"),
-            adapter_version=_declaration(
+            adapter_version=_immutable_version(
                 data["adapter_version"], f"{path}.adapter_version"
             ),
             authorization_context_id=_identifier(
@@ -532,7 +535,6 @@ class CoverageFinalityProfile:
             )
         for name in (
             "profile_id",
-            "profile_version",
             "source_owner_id",
             "approval_authority_id",
             "issuer_id",
@@ -540,6 +542,11 @@ class CoverageFinalityProfile:
             object.__setattr__(
                 self, name, _identifier(getattr(self, name), f"profile.{name}")
             )
+        object.__setattr__(
+            self,
+            "profile_version",
+            _immutable_version(self.profile_version, "profile.profile_version"),
+        )
         object.__setattr__(
             self, "issued_at", _validate_aware_datetime(self.issued_at, "profile.issued_at")
         )
@@ -596,7 +603,7 @@ class CoverageFinalityProfile:
         return cls(
             profile_schema=schema,
             profile_id=_identifier(data["profile_id"], f"{path}.profile_id"),
-            profile_version=_identifier(
+            profile_version=_immutable_version(
                 data["profile_version"], f"{path}.profile_version"
             ),
             source_owner_id=_identifier(
@@ -808,15 +815,15 @@ class ProfileRegistrySnapshot:
             raise ModelValidationError(
                 "snapshot.snapshot_schema must identify the supported snapshot contract"
             )
-        for name in (
-            "registry_id",
-            "snapshot_id",
-            "snapshot_version",
-            "issuer_id",
-        ):
+        for name in ("registry_id", "snapshot_id", "issuer_id"):
             object.__setattr__(
                 self, name, _identifier(getattr(self, name), f"snapshot.{name}")
             )
+        object.__setattr__(
+            self,
+            "snapshot_version",
+            _immutable_version(self.snapshot_version, "snapshot.snapshot_version"),
+        )
         object.__setattr__(
             self, "as_of", _validate_aware_datetime(self.as_of, "snapshot.as_of")
         )
@@ -848,6 +855,10 @@ class ProfileRegistrySnapshot:
                 "snapshot.records must map each profile_id/profile_version exactly once"
             )
         for record in records:
+            if record.profile.issued_at > self.as_of:
+                raise ModelValidationError(
+                    "registry records require profile.issued_at <= snapshot.as_of"
+                )
             if (
                 record.status is ProfileRegistryStatus.REVOKED
                 and record.revoked_at is not None
@@ -922,7 +933,7 @@ class ProfileRegistrySnapshot:
             snapshot_id=_identifier(
                 data["snapshot_id"], "registry_snapshot.snapshot.snapshot_id"
             ),
-            snapshot_version=_identifier(
+            snapshot_version=_immutable_version(
                 data["snapshot_version"],
                 "registry_snapshot.snapshot.snapshot_version",
             ),
@@ -972,6 +983,7 @@ class ProfileTrustSelection:
     snapshot_id: str
     snapshot_version: str
     snapshot_digest: str
+    selected_profile_reference: CoverageProfileReference
     trusted_snapshot_issuer_ids: tuple[str, ...]
     trusted_profile_issuer_ids: tuple[str, ...]
     trusted_approval_authority_ids: tuple[str, ...]
@@ -982,7 +994,7 @@ class ProfileTrustSelection:
             raise ModelValidationError(
                 "trust_selection.trust_schema must identify the supported trust contract"
             )
-        for name in ("registry_id", "snapshot_id", "snapshot_version"):
+        for name in ("registry_id", "snapshot_id"):
             object.__setattr__(
                 self,
                 name,
@@ -990,11 +1002,28 @@ class ProfileTrustSelection:
             )
         object.__setattr__(
             self,
+            "snapshot_version",
+            _immutable_version(
+                self.snapshot_version, "trust_selection.snapshot_version"
+            ),
+        )
+        object.__setattr__(
+            self,
             "snapshot_digest",
             _sha256_digest(
                 self.snapshot_digest, "trust_selection.snapshot_digest"
             ),
         )
+        if not isinstance(
+            self.selected_profile_reference, CoverageProfileReference
+        ):
+            raise ModelValidationError(
+                "trust_selection.selected_profile_reference must be a CoverageProfileReference"
+            )
+        if self.selected_profile_reference.registry_id != self.registry_id:
+            raise ModelValidationError(
+                "trust_selection.selected_profile_reference.registry_id must match registry_id"
+            )
         for name in (
             "trusted_snapshot_issuer_ids",
             "trusted_profile_issuer_ids",
@@ -1030,6 +1059,7 @@ class ProfileTrustSelection:
             "snapshot_id",
             "snapshot_version",
             "snapshot_digest",
+            "selected_profile_reference",
             "trusted_snapshot_issuer_ids",
             "trusted_profile_issuer_ids",
             "trusted_approval_authority_ids",
@@ -1050,11 +1080,15 @@ class ProfileTrustSelection:
             snapshot_id=_identifier(
                 data["snapshot_id"], "trust_selection.snapshot_id"
             ),
-            snapshot_version=_identifier(
+            snapshot_version=_immutable_version(
                 data["snapshot_version"], "trust_selection.snapshot_version"
             ),
             snapshot_digest=_sha256_digest(
                 data["snapshot_digest"], "trust_selection.snapshot_digest"
+            ),
+            selected_profile_reference=CoverageProfileReference.from_dict(
+                data["selected_profile_reference"],
+                "trust_selection.selected_profile_reference",
             ),
             trusted_snapshot_issuer_ids=_required_identifier_tuple(
                 data["trusted_snapshot_issuer_ids"],
@@ -1081,6 +1115,7 @@ class ProfileTrustSelection:
             "snapshot_id": self.snapshot_id,
             "snapshot_version": self.snapshot_version,
             "snapshot_digest": self.snapshot_digest,
+            "selected_profile_reference": self.selected_profile_reference.to_dict(),
             "trusted_snapshot_issuer_ids": list(self.trusted_snapshot_issuer_ids),
             "trusted_profile_issuer_ids": list(self.trusted_profile_issuer_ids),
             "trusted_approval_authority_ids": list(
@@ -1137,6 +1172,7 @@ class TrustedProfileContext:
 
 class ProfileIssueCode(str, Enum):
     PROFILE_REFERENCE_UNDECLARED = "PROFILE_REFERENCE_UNDECLARED"
+    PROFILE_TRUST_SELECTION_MISMATCH = "PROFILE_TRUST_SELECTION_MISMATCH"
     REGISTRY_SNAPSHOT_UNDECLARED = "REGISTRY_SNAPSHOT_UNDECLARED"
     REGISTRY_SNAPSHOT_IDENTITY_MISMATCH = "REGISTRY_SNAPSHOT_IDENTITY_MISMATCH"
     REGISTRY_SNAPSHOT_DIGEST_MISMATCH = "REGISTRY_SNAPSHOT_DIGEST_MISMATCH"
@@ -1144,7 +1180,6 @@ class ProfileIssueCode(str, Enum):
     REGISTRY_SNAPSHOT_NOT_YET_EFFECTIVE = "REGISTRY_SNAPSHOT_NOT_YET_EFFECTIVE"
     REGISTRY_SNAPSHOT_EXPIRED = "REGISTRY_SNAPSHOT_EXPIRED"
     PROFILE_NOT_FOUND = "PROFILE_NOT_FOUND"
-    PROFILE_RESOLUTION_AMBIGUOUS = "PROFILE_RESOLUTION_AMBIGUOUS"
     PROFILE_DIGEST_MISMATCH = "PROFILE_DIGEST_MISMATCH"
     PROFILE_ISSUER_UNTRUSTED = "PROFILE_ISSUER_UNTRUSTED"
     PROFILE_AUTHORITY_UNTRUSTED = "PROFILE_AUTHORITY_UNTRUSTED"
@@ -1363,6 +1398,19 @@ def evaluate_profile_governance(
             "The registry snapshot is outside its closed-open validity interval.",
         )
 
+    # The snapshot is the trust boundary for every contained profile.  A
+    # digest-, identity-, issuer-, or time-invalid snapshot may still be
+    # parseable, but none of its records may influence resolution,
+    # applicability, freshness, or a derived finality horizon.
+    if issues:
+        return ProfileAssessment(
+            meets_policy=False,
+            issues=tuple(issues),
+            resolved_profile_references=(),
+            registry_snapshot_digest=snapshot_digest,
+            trust_selection_digest=trust_digest,
+        )
+
     observations_by_id = {
         observation.source_id: observation
         for observation in envelope.source_observations
@@ -1377,6 +1425,14 @@ def evaluate_profile_governance(
                 ProfileIssueCode.PROFILE_REFERENCE_UNDECLARED,
                 "The required source does not pin an immutable coverage profile.",
                 source_id=requirement.source_id,
+            )
+            continue
+        if reference != trust.selected_profile_reference:
+            add_issue(
+                ProfileIssueCode.PROFILE_TRUST_SELECTION_MISMATCH,
+                "The producer-selected profile reference does not match the exact application-selected profile reference.",
+                source_id=requirement.source_id,
+                profile_id=reference.profile_id,
             )
             continue
         if reference.registry_id != snapshot.registry_id:
@@ -1401,14 +1457,6 @@ def evaluate_profile_governance(
                 profile_id=reference.profile_id,
             )
             continue
-        if len(matches) != 1:
-            add_issue(
-                ProfileIssueCode.PROFILE_RESOLUTION_AMBIGUOUS,
-                "More than one registry record matches the exact profile identifier and version.",
-                source_id=requirement.source_id,
-                profile_id=reference.profile_id,
-            )
-            continue
         record = matches[0]
         assert record.profile_digest is not None
         if not compare_digest(reference.profile_digest, record.profile_digest):
@@ -1419,9 +1467,9 @@ def evaluate_profile_governance(
                 profile_id=reference.profile_id,
             )
             continue
-        resolved.append(reference)
         profile = record.profile
 
+        profile_is_trusted = True
         if profile.issuer_id not in trust.trusted_profile_issuer_ids:
             add_issue(
                 ProfileIssueCode.PROFILE_ISSUER_UNTRUSTED,
@@ -1429,6 +1477,7 @@ def evaluate_profile_governance(
                 source_id=requirement.source_id,
                 profile_id=profile.profile_id,
             )
+            profile_is_trusted = False
         if (
             profile.approval_authority_id
             not in trust.trusted_approval_authority_ids
@@ -1439,6 +1488,7 @@ def evaluate_profile_governance(
                 source_id=requirement.source_id,
                 profile_id=profile.profile_id,
             )
+            profile_is_trusted = False
         if evaluation_time < profile.effective_at:
             add_issue(
                 ProfileIssueCode.PROFILE_NOT_YET_EFFECTIVE,
@@ -1446,6 +1496,7 @@ def evaluate_profile_governance(
                 source_id=requirement.source_id,
                 profile_id=profile.profile_id,
             )
+            profile_is_trusted = False
         if evaluation_time >= profile.expires_at:
             add_issue(
                 ProfileIssueCode.PROFILE_EXPIRED,
@@ -1453,6 +1504,7 @@ def evaluate_profile_governance(
                 source_id=requirement.source_id,
                 profile_id=profile.profile_id,
             )
+            profile_is_trusted = False
         if (
             record.status is ProfileRegistryStatus.REVOKED
             and record.revocation_effective_at is not None
@@ -1464,6 +1516,16 @@ def evaluate_profile_governance(
                 source_id=requirement.source_id,
                 profile_id=profile.profile_id,
             )
+            profile_is_trusted = False
+
+        # Profile-controlled semantics are only usable after exact digest
+        # resolution and every profile-level trust/time/revocation check.
+        # Returning to the next requirement here prevents an untrusted profile
+        # from manufacturing secondary applicability or finality diagnostics.
+        if not profile_is_trusted:
+            continue
+
+        resolved.append(reference)
 
         profile_source = profile.source
         if (

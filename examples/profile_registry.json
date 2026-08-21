@@ -1,6 +1,6 @@
 {
   "snapshot": {
-    "snapshot_schema": "esio-profile-registry-snapshot/1.0-candidate.1",
+    "snapshot_schema": "esio-profile-registry-snapshot/1.0-candidate.2",
     "registry_id": "example-coverage-registry",
     "snapshot_id": "seed-2026-08-21",
     "snapshot_version": "1",
@@ -10,7 +10,7 @@
     "records": [
       {
         "profile": {
-          "profile_schema": "esio-coverage-finality-profile/1.0-candidate.1",
+          "profile_schema": "esio-coverage-finality-profile/1.0-candidate.2",
           "profile_id": "github-search-p0",
           "profile_version": "1.0.0",
           "source_owner_id": "example-source-owner",
@@ -57,7 +57,7 @@
             "reopen_bound_seconds": 0
           }
         },
-        "profile_digest": "sha256:efe225188e96018fd77192b185a5013ed4f55774d3db379320467e85c1dbdc23",
+        "profile_digest": "sha256:2f7fee3eb62e5c4dcd798eb475f6b6b2cbe21369a7530f78565c642a6d029a6f",
         "status": "ACTIVE",
         "revoked_at": null,
         "revocation_effective_at": null,
@@ -65,5 +65,5 @@
       }
     ]
   },
-  "snapshot_digest": "sha256:da9963d7867b9b7a0bc93581a9e2f2543969371fabc1d6d73446664d585af1e5"
+  "snapshot_digest": "sha256:2067207d2ad8b881fdeb77e841f5739750b4f0e3c88c4aeaa40ae8760e551e7f"
 }

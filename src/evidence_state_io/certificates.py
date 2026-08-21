@@ -10,11 +10,12 @@ or wall-clock reads.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from enum import Enum
 from hmac import compare_digest
 import json
+import math
 import re
 from typing import Any, Mapping, Sequence
 
@@ -38,6 +39,7 @@ from .gate import (
 from .models import (
     CoverageProfileReference,
     ModelValidationError,
+    SourceObservationStatus,
     _mapping,
     _reject_unknown,
     _require_fields,
@@ -52,7 +54,7 @@ from .profiles import ProfileIssueCode, TrustedProfileContext
 from .sources import SourceIssueCode
 
 
-CERTIFICATE_FORMAT = "esio-evidence-certificate/1.0-candidate.1"
+CERTIFICATE_FORMAT = "esio-evidence-certificate/1.0-candidate.2"
 WIRE_SCHEMA_VERSION = "1.0"
 IMPLEMENTATION_PACKAGE_NAME = "evidence-state-io"
 
@@ -303,13 +305,42 @@ def _string_array(value: Any, path: str) -> list[str]:
     return result
 
 
+def _unit_interval_number(
+    value: Any,
+    path: str,
+    *,
+    allow_none: bool,
+) -> None:
+    if value is None and allow_none:
+        return
+    if isinstance(value, bool) or not isinstance(value, (int, float, Decimal)):
+        suffix = " or null" if allow_none else ""
+        raise ModelValidationError(f"{path} must be a number{suffix}")
+    try:
+        exact = value if isinstance(value, Decimal) else Decimal(str(value))
+    except (ValueError, ArithmeticError) as exc:
+        raise ModelValidationError(f"{path} must be a finite number in [0,1]") from exc
+    if not exact.is_finite() or not Decimal(0) <= exact <= Decimal(1):
+        raise ModelValidationError(f"{path} must be a finite number in [0,1]")
+
+
 def _normalized_json_copy(value: Any, path: str = "decision") -> Any:
-    """Copy parsed JSON and normalize strict-decoder ``Decimal`` fractions."""
+    """Copy JSON while rejecting Decimal-to-float precision collapse."""
 
     if isinstance(value, Decimal):
         if not value.is_finite():
             raise ModelValidationError(f"{path} contains a nonfinite number")
-        return float(value)
+        try:
+            normalized = float(value)
+        except (OverflowError, ValueError) as exc:
+            raise ModelValidationError(
+                f"{path} contains a number outside the supported binary64 range"
+            ) from exc
+        if not math.isfinite(normalized) or Decimal(str(normalized)) != value:
+            raise ModelValidationError(
+                f"{path} contains a number that is not exactly preserved by the certificate JSON model"
+            )
+        return normalized
     if isinstance(value, Mapping):
         return {
             key: _normalized_json_copy(item, f"{path}.{key}")
@@ -328,13 +359,11 @@ def _validate_coverage_assessment(value: Any) -> None:
     allowed = {"lower_bound", "meets_policy", "issues", "components"}
     _reject_unknown(data, allowed, "decision.coverage")
     _require_fields(data, allowed, "decision.coverage")
-    if data["lower_bound"] is not None and (
-        isinstance(data["lower_bound"], bool)
-        or not isinstance(data["lower_bound"], (int, float, Decimal))
-    ):
-        raise ModelValidationError(
-            "decision.coverage.lower_bound must be a number or null"
-        )
+    _unit_interval_number(
+        data["lower_bound"],
+        "decision.coverage.lower_bound",
+        allow_none=True,
+    )
     if not isinstance(data["meets_policy"], bool):
         raise ModelValidationError("decision.coverage.meets_policy must be boolean")
     issues = _string_array(data["issues"], "decision.coverage.issues")
@@ -356,12 +385,11 @@ def _validate_coverage_assessment(value: Any) -> None:
             raise ModelValidationError(
                 "decision coverage component name and basis must be strings"
             )
-        if isinstance(component["lower_bound"], bool) or not isinstance(
-            component["lower_bound"], (int, float, Decimal)
-        ):
-            raise ModelValidationError(
-                "decision coverage component lower_bound must be numeric"
-            )
+        _unit_interval_number(
+            component["lower_bound"],
+            f"decision.coverage.components[{index}].lower_bound",
+            allow_none=False,
+        )
 
 
 def _validate_source_assessment(value: Any) -> None:
@@ -785,10 +813,37 @@ def _effective_valid_until_exclusive(
     decision: GateDecision,
 ) -> datetime:
     candidates = [context.snapshot.next_update_at]
+
+    def add_age_deadline(base: datetime, seconds: int | None) -> None:
+        if seconds is None:
+            return
+        try:
+            candidates.append(base + timedelta(seconds=seconds))
+        except OverflowError:
+            # A deadline beyond datetime.max cannot constrain any representable
+            # relying-party time and is therefore nonbinding.
+            return
+
     if request.envelope.valid_until is not None:
         # Evidence validity is inclusive in the envelope.  Reusing that same
         # instant as an exclusive certificate boundary is conservative.
         candidates.append(request.envelope.valid_until)
+    add_age_deadline(
+        request.envelope.observed_at,
+        request.policy.max_observation_age_seconds,
+    )
+    observations_by_id = {
+        observation.source_id: observation
+        for observation in request.envelope.source_observations
+        if observation.status is SourceObservationStatus.OBSERVED
+    }
+    for requirement in request.envelope.query.source_requirements:
+        observation = observations_by_id.get(requirement.source_id)
+        if observation is not None and observation.descriptor.index_as_of is not None:
+            add_age_deadline(
+                observation.descriptor.index_as_of,
+                request.policy.max_index_age_seconds,
+            )
     resolved = {
         (
             reference.registry_id,
@@ -807,6 +862,18 @@ def _effective_valid_until_exclusive(
         )
         if key in resolved:
             candidates.append(record.profile.expires_at)
+            if record.revocation_effective_at is not None:
+                candidates.append(record.revocation_effective_at)
+            add_age_deadline(
+                request.envelope.observed_at,
+                record.profile.coverage.max_observation_age_seconds,
+            )
+            observation = observations_by_id.get(record.profile.source.source_id)
+            if observation is not None and observation.descriptor.index_as_of is not None:
+                add_age_deadline(
+                    observation.descriptor.index_as_of,
+                    record.profile.coverage.max_index_age_seconds,
+                )
     return min(candidates)
 
 
@@ -1002,10 +1069,11 @@ def verify_evidence_certificate(
             relying_party_at, "relying_party_at"
         )
     try:
-        artifact = (
-            value
-            if isinstance(value, EvidenceCertificate)
-            else EvidenceCertificate.from_dict(value)
+        # Typed artifacts contain a nested mapping.  Reparse their public form
+        # so mutable nested values cannot bypass the same strict structural and
+        # numeric checks applied to JSON-derived mappings.
+        artifact = EvidenceCertificate.from_dict(
+            value.to_dict() if isinstance(value, EvidenceCertificate) else value
         )
     except (ModelValidationError, TypeError, ValueError) as exc:
         return _unsupported_verification(str(exc))
@@ -1022,7 +1090,9 @@ def verify_evidence_certificate(
         replayed = evaluate_negative_claim(
             payload.request, payload.trusted_profile_context
         )
-        deterministic_replay = replayed.to_dict() == payload.decision
+        deterministic_replay = canonical_json_bytes(
+            replayed.to_dict()
+        ) == canonical_json_bytes(payload.decision)
     except (ModelValidationError, KeyError, TypeError, ValueError):
         deterministic_replay = False
 
@@ -1064,6 +1134,7 @@ def verify_evidence_certificate(
             and embedded_integrity
             and deterministic_replay
             and context_match
+            and expected_digest_match is not False
             and payload.decision["allowed"] is True
             and payload.issued_at
             <= reliance_time
