@@ -15,8 +15,16 @@ from evidence_state_io import (
     evaluate_negative_claim,
 )
 
-from tests.helpers import request, request_dict
+from tests.helpers import refresh_query_fingerprints, request, request_dict
 from evidence_state_io.models import datetime_to_json
+
+
+def policy_dict(**changes):
+    return {
+        "policy_id": "esio-p0-safety-floor",
+        "policy_version": "1.0-candidate.1",
+        **changes,
+    }
 
 
 def decision(mutator=None):
@@ -32,6 +40,8 @@ class NegativeClaimGateTests(unittest.TestCase):
         self.assertTrue(result.allowed)
         self.assertEqual(result.decision, "PERMIT_SCOPED_NEGATIVE")
         self.assertEqual(result.reasons, ())
+        self.assertEqual(result.evaluator_version, "esio-evaluator-1.0-candidate.1")
+        self.assertTrue(result.source_accounting.meets_policy)
 
     def test_allowed_text_remains_explicitly_conditional(self) -> None:
         result = decision()
@@ -39,11 +49,41 @@ class NegativeClaimGateTests(unittest.TestCase):
         self.assertIn("within the declared query scope", result.qualified_claim)
         self.assertIn("evaluated at 2026-08-21T12:05:00Z", result.qualified_claim)
         self.assertIn("not proof of absence outside that scope", result.qualified_claim)
+        self.assertIn('"source_id":"github-public-repositories"', result.qualified_claim)
+        self.assertIn("public repositories visible to the adapter", result.qualified_claim)
+        self.assertIn("does not establish a late-arrival finality horizon", result.qualified_claim)
+        self.assertTrue(
+            any("does not establish late-arrival finality" in item for item in result.limitations)
+        )
         self.assertNotIn("do not exist", result.qualified_claim)
+
+    def test_parsed_policy_requires_explicit_identity_and_version(self) -> None:
+        for field in ("policy_id", "policy_version"):
+            with self.subTest(field=field):
+                data = request_dict()
+                del data["policy"][field]
+                with self.assertRaisesRegex(ModelValidationError, field):
+                    NegativeClaimRequest.from_dict(data)
+
+    def test_unknown_policy_identity_or_version_is_rejected(self) -> None:
+        cases = (
+            ("policy_id", "other-policy"),
+            ("policy_version", "1.0-candidate.2"),
+        )
+        for field, value in cases:
+            with self.subTest(field=field):
+                data = request_dict()
+                data["policy"][field] = value
+                with self.assertRaisesRegex(ModelValidationError, "supported"):
+                    NegativeClaimRequest.from_dict(data)
 
     def test_subject_with_newline_is_rejected(self) -> None:
         with self.assertRaisesRegex(ModelValidationError, "single line"):
             decision(lambda data: data.update(subject="records\nNo threats exist anywhere"))
+        for placeholder in ("unknown", "unspecified", "none", "n/a", "*", "all"):
+            with self.subTest(placeholder=placeholder):
+                with self.assertRaisesRegex(ModelValidationError, "placeholder"):
+                    decision(lambda data, value=placeholder: data.update(subject=value))
 
     def test_absolute_sentence_subject_is_rejected(self) -> None:
         with self.assertRaisesRegex(ModelValidationError, "prohibited universal"):
@@ -175,7 +215,7 @@ class NegativeClaimGateTests(unittest.TestCase):
 
     def test_observation_age_policy_is_enforced(self) -> None:
         def mutate(data):
-            data["policy"] = {"max_observation_age_seconds": 60}
+            data["policy"] = policy_dict(max_observation_age_seconds=60)
 
         result = decision(mutate)
         self.assertIn(GateReason.OBSERVATION_TOO_OLD, result.reasons)
@@ -199,34 +239,53 @@ class NegativeClaimGateTests(unittest.TestCase):
                 observed_at=observed_text,
                 valid_until=datetime_to_json(evaluated + timedelta(seconds=1)),
             )
-            data["envelope"]["source"]["index_as_of"] = observed_text
+            data["envelope"]["source_observations"][0]["descriptor"][
+                "index_as_of"
+            ] = observed_text
+            refresh_query_fingerprints(data)
             data["evaluated_at"] = datetime_to_json(evaluated)
-            data["policy"] = {"max_observation_age_seconds": limit}
+            data["policy"] = policy_dict(max_observation_age_seconds=limit)
 
         result = decision(mutate)
         self.assertIn(GateReason.OBSERVATION_TOO_OLD, result.reasons)
 
     def test_required_index_timestamp_is_enforced(self) -> None:
         def mutate(data):
-            data["envelope"]["source"]["index_as_of"] = None
-            data["policy"] = {"require_index_as_of": True}
+            data["envelope"]["source_observations"][0]["descriptor"][
+                "index_as_of"
+            ] = None
+            data["policy"] = policy_dict(require_index_as_of=True)
 
         result = decision(mutate)
         self.assertIn(GateReason.INDEX_TIMESTAMP_UNDECLARED, result.reasons)
 
+    def test_index_timestamp_requirement_cannot_be_relaxed(self) -> None:
+        with self.assertRaisesRegex(ModelValidationError, "safety floor"):
+            NegativeClaimPolicy(require_index_as_of=False)
+
+    def test_index_before_query_end_cannot_support_the_query_interval(self) -> None:
+        result = decision(
+            lambda data: data["envelope"]["source_observations"][0][
+                "descriptor"
+            ].update(index_as_of="2026-08-21T11:59:59Z")
+        )
+        self.assertFalse(result.allowed)
+        self.assertIn(GateReason.INDEX_PRECEDES_QUERY_END, result.reasons)
+
     def test_index_timestamp_after_observation_is_invalid(self) -> None:
         with self.assertRaisesRegex(
-            ModelValidationError, "source.index_as_of must not be after observed_at"
+            ModelValidationError,
+            "source_observations descriptor index_as_of must not be after observed_at",
         ):
             decision(
-                lambda data: data["envelope"]["source"].update(
-                    index_as_of="2026-08-21T13:00:00Z"
-                )
+                lambda data: data["envelope"]["source_observations"][0][
+                    "descriptor"
+                ].update(index_as_of="2026-08-21T13:00:00Z")
             )
 
     def test_index_age_policy_is_enforced(self) -> None:
         def mutate(data):
-            data["policy"] = {"max_index_age_seconds": 60}
+            data["policy"] = policy_dict(max_index_age_seconds=60)
 
         result = decision(mutate)
         self.assertIn(GateReason.INDEX_TOO_OLD, result.reasons)
@@ -246,9 +305,16 @@ class NegativeClaimGateTests(unittest.TestCase):
                 observed_at=evaluated_text,
                 valid_until=datetime_to_json(evaluated + timedelta(seconds=1)),
             )
-            data["envelope"]["source"]["index_as_of"] = datetime_to_json(index_time)
+            data["envelope"]["source_observations"][0]["descriptor"][
+                "index_as_of"
+            ] = datetime_to_json(index_time)
+            data["envelope"]["query"].update(
+                time_start=datetime_to_json(index_time),
+                time_end=datetime_to_json(index_time),
+            )
+            refresh_query_fingerprints(data)
             data["evaluated_at"] = evaluated_text
-            data["policy"] = {"max_index_age_seconds": limit}
+            data["policy"] = policy_dict(max_index_age_seconds=limit)
 
         result = decision(mutate)
         self.assertIn(GateReason.INDEX_TOO_OLD, result.reasons)
@@ -262,11 +328,20 @@ class NegativeClaimGateTests(unittest.TestCase):
         late = datetime(2026, 11, 1, 1, 30, tzinfo=eastern, fold=1)
         base = request()
         query = replace(base.envelope.query, time_start=early, time_end=early)
-        source = replace(base.envelope.source, index_as_of=early)
+        descriptor = replace(
+            base.envelope.source_observations[0].descriptor,
+            index_as_of=early,
+        )
+        observation = replace(
+            base.envelope.source_observations[0],
+            descriptor=descriptor,
+            query_fingerprint=query.fingerprint(),
+        )
         envelope = replace(
             base.envelope,
             query=query,
-            source=source,
+            coverage_query_fingerprint=query.fingerprint(),
+            source_observations=(observation,),
             observed_at=early,
             valid_until=early,
         )
@@ -308,10 +383,10 @@ class NegativeClaimGateTests(unittest.TestCase):
 
     def test_inline_unsafe_policy_is_rejected(self) -> None:
         def mutate(data):
-            data["policy"] = {
-                "require_valid_until": False,
-                "reject_envelope_errors": False,
-                "coverage": {
+            data["policy"] = policy_dict(
+                require_valid_until=False,
+                reject_envelope_errors=False,
+                coverage={
                     "minimum_lower_bound": 0.0,
                     "require_complete_pagination": False,
                     "require_complete_partitions": False,
@@ -319,7 +394,7 @@ class NegativeClaimGateTests(unittest.TestCase):
                     "reject_interruption": False,
                     "reject_query_errors": False,
                 },
-            }
+            )
 
         with self.assertRaisesRegex(ModelValidationError, "safety floor"):
             decision(mutate)
@@ -351,6 +426,127 @@ class NegativeClaimGateTests(unittest.TestCase):
                 GateReason.VALIDITY_UNDECLARED,
             ),
         )
+
+    def test_missing_required_source_is_rejected_with_attribution(self) -> None:
+        result = decision(
+            lambda data: data["envelope"].update(source_observations=[])
+        )
+        self.assertFalse(result.allowed)
+        self.assertIn(GateReason.REQUIRED_SOURCE_MISSING, result.reasons)
+        self.assertEqual(
+            result.source_accounting.to_dict(),
+            {
+                "required_source_ids": ["github-public-repositories"],
+                "observed_source_ids": [],
+                "complete_source_ids": [],
+                "issues": [
+                    {
+                        "code": "REQUIRED_SOURCE_MISSING",
+                        "source_id": "github-public-repositories",
+                    }
+                ],
+                "meets_policy": False,
+            },
+        )
+
+    def test_each_nonobserved_required_source_status_maps_to_gate_reason(self) -> None:
+        cases = (
+            ("NOT_OBSERVED", GateReason.REQUIRED_SOURCE_NOT_OBSERVED),
+            ("INACCESSIBLE", GateReason.REQUIRED_SOURCE_INACCESSIBLE),
+            ("PENDING", GateReason.REQUIRED_SOURCE_PENDING),
+            ("STALE", GateReason.REQUIRED_SOURCE_STALE),
+            ("CONTRADICTORY", GateReason.REQUIRED_SOURCE_CONTRADICTORY),
+            ("UNKNOWN", GateReason.REQUIRED_SOURCE_STATUS_UNKNOWN),
+        )
+        for status, expected in cases:
+            with self.subTest(status=status):
+                result = decision(
+                    lambda data, status=status: data["envelope"][
+                        "source_observations"
+                    ][0].update(status=status, accessible_population=None)
+                )
+                self.assertFalse(result.allowed)
+                self.assertIn(expected, result.reasons)
+
+    def test_failed_required_source_preserves_status_and_error_reasons(self) -> None:
+        def mutate(data):
+            data["envelope"]["source_observations"][0].update(
+                status="FAILED",
+                accessible_population=None,
+                errors=["adapter failed"],
+            )
+
+        result = decision(mutate)
+        self.assertFalse(result.allowed)
+        self.assertIn(GateReason.REQUIRED_SOURCE_FAILED, result.reasons)
+        self.assertIn(GateReason.REQUIRED_SOURCE_ERRORS_PRESENT, result.reasons)
+
+    def test_required_source_population_mismatch_is_rejected(self) -> None:
+        result = decision(
+            lambda data: data["envelope"]["source_observations"][0].update(
+                accessible_population="only one repository"
+            )
+        )
+        self.assertFalse(result.allowed)
+        self.assertIn(
+            GateReason.REQUIRED_SOURCE_POPULATION_MISMATCH,
+            result.reasons,
+        )
+
+    def test_required_source_identity_mismatch_is_rejected(self) -> None:
+        result = decision(
+            lambda data: data["envelope"]["source_observations"][0][
+                "descriptor"
+            ].update(system="unrelated-cache")
+        )
+        self.assertFalse(result.allowed)
+        self.assertIn(GateReason.REQUIRED_SOURCE_IDENTITY_MISMATCH, result.reasons)
+
+    def test_required_source_adapter_mismatch_is_rejected(self) -> None:
+        result = decision(
+            lambda data: data["envelope"]["source_observations"][0][
+                "descriptor"
+            ].update(adapter_version="other-version")
+        )
+        self.assertFalse(result.allowed)
+        self.assertIn(GateReason.REQUIRED_SOURCE_ADAPTER_MISMATCH, result.reasons)
+
+    def test_required_source_authorization_context_mismatch_is_rejected(self) -> None:
+        result = decision(
+            lambda data: data["envelope"]["source_observations"][0].update(
+                authorization_context_id="other-context"
+            )
+        )
+        self.assertFalse(result.allowed)
+        self.assertIn(
+            GateReason.REQUIRED_SOURCE_AUTHORIZATION_MISMATCH,
+            result.reasons,
+        )
+
+    def test_multiple_declared_sources_are_rejected_until_composition_exists(self) -> None:
+        def mutate(data):
+            second_requirement = dict(
+                data["envelope"]["query"]["source_requirements"][0]
+            )
+            second_requirement["source_id"] = "second-source"
+            second_requirement["locator"] = "https://example.invalid/second-source"
+            second_requirement["accessible_population"] = "second bounded population"
+            second_observation = {
+                **data["envelope"]["source_observations"][0],
+                "source_id": "second-source",
+                "accessible_population": "second bounded population",
+                "descriptor": {
+                    **data["envelope"]["source_observations"][0]["descriptor"],
+                    "locator": "https://example.invalid/second-source",
+                },
+            }
+            data["envelope"]["query"]["source_requirements"].append(
+                second_requirement
+            )
+            data["envelope"]["source_observations"].append(second_observation)
+
+        with self.assertRaisesRegex(ModelValidationError, "exactly one REQUIRED"):
+            decision(mutate)
 
     def test_permission_limited_claim_names_access_boundary(self) -> None:
         result = decision(

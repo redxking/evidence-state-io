@@ -62,6 +62,8 @@ The core package deliberately has no required network, model, database, or conta
 - JSON decoding is strict and rejects unknown evidence-bearing fields unless a versioned compatibility rule explicitly allows them.
 - `evaluation_time` is supplied, normalized, and certificate-bound.
 - Collections that are semantically unordered have deterministic ordering.
+- Schema `1.0` candidate requests declare exactly one `REQUIRED` source; do not add optional or multi-source behavior without a new composition decision.
+- Source identity, adapter identity/version, authorization context, and accessible population must match; observations and aggregate coverage bind to the normalized query fingerprint.
 - Adapters implement narrow read-only ports and expose pagination, partitions, access limits, finality, freshness, and errors.
 - Explanatory prose cannot upgrade or override the structured gate decision.
 - Diagnostics go to stderr; machine-readable results go to stdout.
@@ -115,6 +117,7 @@ Tests should cover:
 - all normative state meanings and gate mappings;
 - invalid state/schema/policy versions;
 - zero, null, unknown, empty, duplicate, and non-finite values;
+- wrong source/adapter/auth context, stale query fingerprints, and optional/multi-source downgrade attempts;
 - coverage/freshness/finality values below, at, and above thresholds;
 - input key and semantically unordered collection reordering;
 - deterministic replay and one-field certificate mutation;

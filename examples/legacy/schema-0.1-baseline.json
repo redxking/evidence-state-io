@@ -1,0 +1,23 @@
+{
+  "artifact_type": "historical-local-replay-baseline",
+  "status": "HISTORICAL_LOCAL_REPLAY_ONLY",
+  "schema_version": "0.1",
+  "fixture": "schema-0.1-covered-request.json",
+  "frozen_implementation": {
+    "commit": "b6fac8706fc3496ceb46003c0d5b836a3dc23096",
+    "source_path": "examples/covered_request.json"
+  },
+  "canonicalization_profile": "esio-canonical-json-0.1",
+  "raw_fixture_digest": "sha256:c265c5f2c1b5054cb3a37a88ae833ac781daa196edef04d8074a13dd0864a189",
+  "expected_decision": {
+    "allowed": true,
+    "decision": "PERMIT_SCOPED_NEGATIVE",
+    "reasons": [],
+    "input_digest": "sha256:da688bad283bb84fd88ef6bfba35893f61266d61cf01f07ac9bf852b0255b554"
+  },
+  "limitations": [
+    "This is historical local replay evidence only; the active schema 1.0 parser must reject this payload.",
+    "This record is not a current permit, certificate, signature, external validation, or production authorization.",
+    "Reproducing the recorded decision requires the evaluator at the pinned commit; changing only schema_version is not a migration."
+  ]
+}

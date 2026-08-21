@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum
 from fractions import Fraction
+from hashlib import sha256
 import json
 from math import isfinite, nextafter
 import re
@@ -24,7 +25,15 @@ import unicodedata
 MAX_EVIDENCE_STRING_LENGTH = 512
 MAX_FRACTION_DECIMAL_PLACES = 12
 MAX_INTEGER_DECIMAL_DIGITS = 512
+MAX_SOURCE_ACCOUNTING_ENTRIES = 64
+MAX_SOURCE_ID_LENGTH = 128
 _MAX_INTEGER_VALUE = 10**MAX_INTEGER_DECIMAL_DIGITS - 1
+_SOURCE_ID_PATTERN = re.compile(
+    r"^[a-z0-9](?:[a-z0-9._:-]{0,126}[a-z0-9])?$"
+)
+_SHA256_DIGEST_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
+_DECLARATION_PLACEHOLDERS = frozenset({"unknown", "unspecified", "none", "n/a"})
+_UNBOUNDED_DECLARATION_PLACEHOLDERS = frozenset({"*", "all"})
 _TIMESTAMP_PATTERN = re.compile(
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}"
     r"(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$"
@@ -60,6 +69,30 @@ class ClaimMode(str, Enum):
 
     SCOPED = "SCOPED"
     ABSOLUTE = "ABSOLUTE"
+
+
+class SourceRole(str, Enum):
+    """The P0 role of the single source declared for a query."""
+
+    REQUIRED = "REQUIRED"
+
+
+class SourceObservationStatus(str, Enum):
+    """Runtime status of one declared source.
+
+    ``OBSERVED`` means that the source produced an observation.  It does not
+    imply sufficient coverage, freshness, finality, or error-free execution;
+    those facts remain independently evaluated.
+    """
+
+    OBSERVED = "OBSERVED"
+    NOT_OBSERVED = "NOT_OBSERVED"
+    INACCESSIBLE = "INACCESSIBLE"
+    PENDING = "PENDING"
+    STALE = "STALE"
+    FAILED = "FAILED"
+    CONTRADICTORY = "CONTRADICTORY"
+    UNKNOWN = "UNKNOWN"
 
 
 def _mapping(value: Any, path: str) -> Mapping[str, Any]:
@@ -98,6 +131,60 @@ def bounded_single_line(
     ):
         raise ModelValidationError(f"{path} must be a single line without control characters")
     return result
+
+
+def bounded_ascii_identifier(
+    value: Any,
+    path: str,
+    *,
+    max_length: int = MAX_SOURCE_ID_LENGTH,
+) -> str:
+    """Return one canonical, bounded identifier suitable for set matching.
+
+    Source identifiers are intentionally narrower than descriptive strings.
+    Lowercase ASCII prevents case folding, Unicode normalization, and visually
+    confusable spellings from creating two wire identities for one source.
+    """
+
+    result = bounded_single_line(value, path, max_length=max_length)
+    if not result.isascii() or not _SOURCE_ID_PATTERN.fullmatch(result):
+        raise ModelValidationError(
+            f"{path} must be a lowercase ASCII identifier using letters, digits, '.', '_', ':', or '-'"
+        )
+    if result.casefold() in (
+        _DECLARATION_PLACEHOLDERS | _UNBOUNDED_DECLARATION_PLACEHOLDERS
+    ):
+        raise ModelValidationError(f"{path} must not use a placeholder identifier")
+    return result
+
+
+def _sha256_digest(value: Any, path: str) -> str:
+    if not isinstance(value, str) or not _SHA256_DIGEST_PATTERN.fullmatch(value):
+        raise ModelValidationError(
+            f"{path} must be a lowercase sha256 digest"
+        )
+    return value
+
+
+def _concrete_declaration(
+    value: Any,
+    path: str,
+    *,
+    reject_unbounded: bool = False,
+) -> str:
+    result = bounded_single_line(value, path)
+    disallowed = _DECLARATION_PLACEHOLDERS
+    if reject_unbounded:
+        disallowed = disallowed | _UNBOUNDED_DECLARATION_PLACEHOLDERS
+    if result.casefold() in disallowed:
+        raise ModelValidationError(
+            f"{path} must be a concrete declaration, not a placeholder"
+        )
+    return result
+
+
+def _declared_population(value: Any, path: str) -> str:
+    return _concrete_declaration(value, path, reject_unbounded=True)
 
 
 def _required_string(data: Mapping[str, Any], key: str, path: str) -> str:
@@ -267,34 +354,203 @@ def datetime_to_json(value: datetime) -> str:
 
 
 @dataclass(frozen=True, slots=True)
+class SourceRequirement:
+    """A versioned declaration of one source's role and accessible scope."""
+
+    source_id: str
+    role: SourceRole
+    system: str
+    locator: str
+    adapter_id: str
+    adapter_version: str
+    authorization_context_id: str
+    accessible_population: str
+    detection_assumptions: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "source_id",
+            bounded_ascii_identifier(self.source_id, "source_requirement.source_id"),
+        )
+        if not isinstance(self.role, SourceRole):
+            raise ModelValidationError("source_requirement.role must be a SourceRole")
+        for name in ("system", "locator", "adapter_version"):
+            object.__setattr__(
+                self,
+                name,
+                _concrete_declaration(
+                    getattr(self, name),
+                    f"source_requirement.{name}",
+                    reject_unbounded=True,
+                ),
+            )
+        object.__setattr__(
+            self,
+            "adapter_id",
+            bounded_ascii_identifier(
+                self.adapter_id, "source_requirement.adapter_id"
+            ),
+        )
+        object.__setattr__(
+            self,
+            "authorization_context_id",
+            bounded_ascii_identifier(
+                self.authorization_context_id,
+                "source_requirement.authorization_context_id",
+            ),
+        )
+        object.__setattr__(
+            self,
+            "accessible_population",
+            _declared_population(
+                self.accessible_population,
+                "source_requirement.accessible_population",
+            ),
+        )
+        if self.detection_assumptions is None:
+            raise ModelValidationError(
+                "source_requirement.detection_assumptions must be an array, not null"
+            )
+        object.__setattr__(
+            self,
+            "detection_assumptions",
+            _string_tuple(
+                self.detection_assumptions,
+                "source_requirement.detection_assumptions",
+            ),
+        )
+        if not self.detection_assumptions:
+            raise ModelValidationError(
+                "required source_requirement.detection_assumptions must not be empty"
+            )
+        object.__setattr__(
+            self,
+            "detection_assumptions",
+            tuple(
+                _concrete_declaration(
+                    item,
+                    f"source_requirement.detection_assumptions[{index}]",
+                    reject_unbounded=True,
+                )
+                for index, item in enumerate(self.detection_assumptions)
+            ),
+        )
+        if len(set(self.detection_assumptions)) != len(self.detection_assumptions):
+            raise ModelValidationError(
+                "source_requirement.detection_assumptions must not contain duplicates"
+            )
+        object.__setattr__(
+            self,
+            "detection_assumptions",
+            tuple(sorted(self.detection_assumptions)),
+        )
+
+    @classmethod
+    def from_dict(
+        cls,
+        value: Any,
+        path: str = "source_requirement",
+    ) -> "SourceRequirement":
+        data = _mapping(value, path)
+        allowed = {
+            "source_id",
+            "role",
+            "system",
+            "locator",
+            "adapter_id",
+            "adapter_version",
+            "authorization_context_id",
+            "accessible_population",
+            "detection_assumptions",
+        }
+        _reject_unknown(data, allowed, path)
+        _require_fields(data, allowed, path)
+        try:
+            role = SourceRole(data["role"])
+        except (TypeError, ValueError) as exc:
+            raise ModelValidationError(
+                f"{path}.role must be REQUIRED"
+            ) from exc
+        assumptions = data["detection_assumptions"]
+        if assumptions is None:
+            raise ModelValidationError(
+                f"{path}.detection_assumptions must be an array, not null"
+            )
+        return cls(
+            source_id=bounded_ascii_identifier(
+                data["source_id"], f"{path}.source_id"
+            ),
+            role=role,
+            system=_required_string(data, "system", path),
+            locator=_required_string(data, "locator", path),
+            adapter_id=bounded_ascii_identifier(
+                data["adapter_id"], f"{path}.adapter_id"
+            ),
+            adapter_version=_required_string(data, "adapter_version", path),
+            authorization_context_id=bounded_ascii_identifier(
+                data["authorization_context_id"],
+                f"{path}.authorization_context_id",
+            ),
+            accessible_population=_declared_population(
+                data["accessible_population"],
+                f"{path}.accessible_population",
+            ),
+            detection_assumptions=_string_tuple(
+                assumptions,
+                f"{path}.detection_assumptions",
+            ),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "source_id": self.source_id,
+            "role": self.role.value,
+            "system": self.system,
+            "locator": self.locator,
+            "adapter_id": self.adapter_id,
+            "adapter_version": self.adapter_version,
+            "authorization_context_id": self.authorization_context_id,
+            "accessible_population": self.accessible_population,
+            "detection_assumptions": sorted(self.detection_assumptions),
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class QueryScope:
     """The exact population and predicate a query attempted to inspect."""
 
     target: str
     predicate: str
     authorization_boundary: str
+    authorization_context_id: str
     time_start: datetime
     time_end: datetime
     exclusions: tuple[str, ...]
+    source_requirements: tuple[SourceRequirement, ...]
 
     def __post_init__(self) -> None:
-        for name in ("target", "predicate", "authorization_boundary"):
+        for name in ("target", "predicate"):
             object.__setattr__(
                 self,
                 name,
-                bounded_single_line(getattr(self, name), f"query.{name}"),
+                _concrete_declaration(getattr(self, name), f"query.{name}"),
             )
-        if self.authorization_boundary.casefold() in {
-            "unknown",
-            "unspecified",
-            "none",
-            "n/a",
-            "*",
-            "all",
-        }:
-            raise ModelValidationError(
-                "query.authorization_boundary must identify the accessible population"
-            )
+        object.__setattr__(
+            self,
+            "authorization_boundary",
+            _declared_population(
+                self.authorization_boundary,
+                "query.authorization_boundary",
+            ),
+        )
+        object.__setattr__(
+            self,
+            "authorization_context_id",
+            bounded_ascii_identifier(
+                self.authorization_context_id, "query.authorization_context_id"
+            ),
+        )
         object.__setattr__(
             self,
             "time_start",
@@ -312,6 +568,70 @@ class QueryScope:
         object.__setattr__(
             self, "exclusions", _string_tuple(self.exclusions, "query.exclusions")
         )
+        object.__setattr__(
+            self,
+            "exclusions",
+            tuple(
+                _concrete_declaration(
+                    item,
+                    f"query.exclusions[{index}]",
+                    reject_unbounded=True,
+                )
+                for index, item in enumerate(self.exclusions)
+            ),
+        )
+        if self.source_requirements is None:
+            raise ModelValidationError(
+                "query.source_requirements must be an array, not null"
+            )
+        if isinstance(self.source_requirements, (str, bytes)) or not isinstance(
+            self.source_requirements, Sequence
+        ):
+            raise ModelValidationError("query.source_requirements must be an array")
+        requirements = tuple(self.source_requirements)
+        if not requirements:
+            raise ModelValidationError(
+                "query.source_requirements must contain at least one source"
+            )
+        if len(requirements) > MAX_SOURCE_ACCOUNTING_ENTRIES:
+            raise ModelValidationError(
+                "query.source_requirements exceeds the "
+                f"{MAX_SOURCE_ACCOUNTING_ENTRIES}-entry limit"
+            )
+        if any(not isinstance(item, SourceRequirement) for item in requirements):
+            raise ModelValidationError(
+                "query.source_requirements must contain only SourceRequirement values"
+            )
+        source_ids = [item.source_id for item in requirements]
+        duplicate_ids = sorted(
+            source_id for source_id in set(source_ids) if source_ids.count(source_id) > 1
+        )
+        if duplicate_ids:
+            raise ModelValidationError(
+                "query.source_requirements contains duplicate source_id values: "
+                + ", ".join(duplicate_ids)
+            )
+        if len(requirements) != 1 or requirements[0].role is not SourceRole.REQUIRED:
+            raise ModelValidationError(
+                "query.source_requirements must contain exactly one REQUIRED source "
+                "in the schema 1.0 candidate"
+            )
+        context_mismatches = sorted(
+            item.source_id
+            for item in requirements
+            if item.authorization_context_id != self.authorization_context_id
+        )
+        if context_mismatches:
+            raise ModelValidationError(
+                "query.source_requirements authorization_context_id must match "
+                "query.authorization_context_id for: "
+                + ", ".join(context_mismatches)
+            )
+        object.__setattr__(
+            self,
+            "source_requirements",
+            tuple(sorted(requirements, key=lambda item: item.source_id)),
+        )
 
     @classmethod
     def from_dict(cls, value: Any) -> "QueryScope":
@@ -322,9 +642,11 @@ class QueryScope:
                 "target",
                 "predicate",
                 "authorization_boundary",
+                "authorization_context_id",
                 "time_start",
                 "time_end",
                 "exclusions",
+                "source_requirements",
             },
             "query",
         )
@@ -334,19 +656,37 @@ class QueryScope:
                 "target",
                 "predicate",
                 "authorization_boundary",
+                "authorization_context_id",
                 "time_start",
                 "time_end",
                 "exclusions",
+                "source_requirements",
             },
             "query",
         )
+        raw_requirements = data["source_requirements"]
+        if isinstance(raw_requirements, (str, bytes)) or not isinstance(
+            raw_requirements, Sequence
+        ):
+            raise ModelValidationError("query.source_requirements must be an array")
         return cls(
             target=_required_string(data, "target", "query"),
             predicate=_required_string(data, "predicate", "query"),
             authorization_boundary=_required_string(data, "authorization_boundary", "query"),
+            authorization_context_id=bounded_ascii_identifier(
+                data["authorization_context_id"],
+                "query.authorization_context_id",
+            ),
             time_start=parse_datetime(data["time_start"], "query.time_start"),
             time_end=parse_datetime(data["time_end"], "query.time_end"),
             exclusions=_required_string_tuple(data, "exclusions", "query"),
+            source_requirements=tuple(
+                SourceRequirement.from_dict(
+                    item,
+                    f"query.source_requirements[{index}]",
+                )
+                for index, item in enumerate(raw_requirements)
+            ),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -354,16 +694,31 @@ class QueryScope:
             "target": self.target,
             "predicate": self.predicate,
             "authorization_boundary": self.authorization_boundary,
+            "authorization_context_id": self.authorization_context_id,
             "time_start": datetime_to_json(self.time_start),
             "time_end": datetime_to_json(self.time_end),
             "exclusions": sorted(self.exclusions),
+            "source_requirements": [
+                requirement.to_dict() for requirement in self.source_requirements
+            ],
         }
+
+    def fingerprint(self) -> str:
+        payload = json.dumps(
+            self.to_dict(),
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+            allow_nan=False,
+        ).encode("utf-8")
+        return f"sha256:{sha256(payload).hexdigest()}"
 
     def qualification(self) -> str:
         parts = [
             f"target={json.dumps(self.target, ensure_ascii=False)}",
             f"predicate={json.dumps(self.predicate, ensure_ascii=False)}",
             f"authorization={json.dumps(self.authorization_boundary, ensure_ascii=False)}",
+            f"authorization_context={json.dumps(self.authorization_context_id)}",
             f"from={datetime_to_json(self.time_start)}",
             f"through={datetime_to_json(self.time_end)}",
         ]
@@ -372,6 +727,14 @@ class QueryScope:
                 "excluding="
                 + json.dumps(sorted(self.exclusions), ensure_ascii=False, separators=(",", ":"))
             )
+        parts.append(
+            "sources="
+            + json.dumps(
+                [requirement.to_dict() for requirement in self.source_requirements],
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
+        )
         return ", ".join(parts)
 
 
@@ -616,7 +979,8 @@ class SourceDescriptor:
 
     system: str
     locator: str
-    adapter_version: str | None = None
+    adapter_id: str
+    adapter_version: str
     index_as_of: datetime | None = None
 
     def __post_init__(self) -> None:
@@ -624,20 +988,26 @@ class SourceDescriptor:
             object.__setattr__(
                 self,
                 name,
-                bounded_single_line(getattr(self, name), f"source.{name}"),
-            )
-        if self.adapter_version is not None and (
-            not isinstance(self.adapter_version, str)
-        ):
-            raise ModelValidationError("source.adapter_version must be a non-empty string or null")
-        if self.adapter_version is not None:
-            object.__setattr__(
-                self,
-                "adapter_version",
-                bounded_single_line(
-                    self.adapter_version, "source.adapter_version"
+                _concrete_declaration(
+                    getattr(self, name),
+                    f"source.{name}",
+                    reject_unbounded=True,
                 ),
             )
+        object.__setattr__(
+            self,
+            "adapter_id",
+            bounded_ascii_identifier(self.adapter_id, "source.adapter_id"),
+        )
+        object.__setattr__(
+            self,
+            "adapter_version",
+            _concrete_declaration(
+                self.adapter_version,
+                "source.adapter_version",
+                reject_unbounded=True,
+            ),
+        )
         if self.index_as_of is not None:
             object.__setattr__(
                 self,
@@ -646,24 +1016,170 @@ class SourceDescriptor:
             )
 
     @classmethod
-    def from_dict(cls, value: Any) -> "SourceDescriptor":
-        data = _mapping(value, "source")
+    def from_dict(
+        cls,
+        value: Any,
+        path: str = "source",
+    ) -> "SourceDescriptor":
+        data = _mapping(value, path)
         _reject_unknown(
-            data, {"system", "locator", "adapter_version", "index_as_of"}, "source"
+            data,
+            {"system", "locator", "adapter_id", "adapter_version", "index_as_of"},
+            path,
         )
         return cls(
-            system=_required_string(data, "system", "source"),
-            locator=_required_string(data, "locator", "source"),
-            adapter_version=_optional_string(data, "adapter_version", "source"),
-            index_as_of=optional_datetime(data.get("index_as_of"), "source.index_as_of"),
+            system=_required_string(data, "system", path),
+            locator=_required_string(data, "locator", path),
+            adapter_id=bounded_ascii_identifier(
+                data.get("adapter_id"), f"{path}.adapter_id"
+            ),
+            adapter_version=_required_string(data, "adapter_version", path),
+            index_as_of=optional_datetime(data.get("index_as_of"), f"{path}.index_as_of"),
         )
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "system": self.system,
             "locator": self.locator,
+            "adapter_id": self.adapter_id,
             "adapter_version": self.adapter_version,
             "index_as_of": datetime_to_json(self.index_as_of) if self.index_as_of else None,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class SourceObservation:
+    """Runtime accounting record for one source declared by the query."""
+
+    source_id: str
+    status: SourceObservationStatus
+    descriptor: SourceDescriptor
+    authorization_context_id: str
+    query_fingerprint: str
+    accessible_population: str | None
+    errors: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "source_id",
+            bounded_ascii_identifier(self.source_id, "source_observation.source_id"),
+        )
+        if not isinstance(self.status, SourceObservationStatus):
+            raise ModelValidationError(
+                "source_observation.status must be a SourceObservationStatus"
+            )
+        if not isinstance(self.descriptor, SourceDescriptor):
+            raise ModelValidationError(
+                "source_observation.descriptor must be a SourceDescriptor"
+            )
+        object.__setattr__(
+            self,
+            "authorization_context_id",
+            bounded_ascii_identifier(
+                self.authorization_context_id,
+                "source_observation.authorization_context_id",
+            ),
+        )
+        object.__setattr__(
+            self,
+            "query_fingerprint",
+            _sha256_digest(
+                self.query_fingerprint,
+                "source_observation.query_fingerprint",
+            ),
+        )
+        if self.accessible_population is not None:
+            object.__setattr__(
+                self,
+                "accessible_population",
+                _declared_population(
+                    self.accessible_population,
+                    "source_observation.accessible_population",
+                ),
+            )
+        if self.status is SourceObservationStatus.OBSERVED and (
+            self.accessible_population is None
+        ):
+            raise ModelValidationError(
+                "source_observation.accessible_population is required when status is OBSERVED"
+            )
+        if self.errors is None:
+            raise ModelValidationError(
+                "source_observation.errors must be an array, not null"
+            )
+        object.__setattr__(
+            self,
+            "errors",
+            _string_tuple(self.errors, "source_observation.errors"),
+        )
+        if self.status is SourceObservationStatus.FAILED and not self.errors:
+            raise ModelValidationError(
+                "source_observation.errors must contain at least one error when status is FAILED"
+            )
+
+    @classmethod
+    def from_dict(
+        cls,
+        value: Any,
+        path: str = "source_observation",
+    ) -> "SourceObservation":
+        data = _mapping(value, path)
+        allowed = {
+            "source_id",
+            "status",
+            "descriptor",
+            "authorization_context_id",
+            "query_fingerprint",
+            "accessible_population",
+            "errors",
+        }
+        _reject_unknown(data, allowed, path)
+        _require_fields(data, allowed, path)
+        try:
+            status = SourceObservationStatus(data["status"])
+        except (TypeError, ValueError) as exc:
+            raise ModelValidationError(
+                f"{path}.status must be OBSERVED, NOT_OBSERVED, INACCESSIBLE, "
+                "PENDING, STALE, FAILED, CONTRADICTORY, or UNKNOWN"
+            ) from exc
+        accessible_population = data["accessible_population"]
+        if accessible_population is not None:
+            accessible_population = _declared_population(
+                accessible_population,
+                f"{path}.accessible_population",
+            )
+        raw_errors = data["errors"]
+        if raw_errors is None:
+            raise ModelValidationError(f"{path}.errors must be an array, not null")
+        return cls(
+            source_id=bounded_ascii_identifier(
+                data["source_id"], f"{path}.source_id"
+            ),
+            status=status,
+            descriptor=SourceDescriptor.from_dict(
+                data["descriptor"], f"{path}.descriptor"
+            ),
+            authorization_context_id=bounded_ascii_identifier(
+                data["authorization_context_id"],
+                f"{path}.authorization_context_id",
+            ),
+            query_fingerprint=_sha256_digest(
+                data["query_fingerprint"], f"{path}.query_fingerprint"
+            ),
+            accessible_population=accessible_population,
+            errors=_string_tuple(raw_errors, f"{path}.errors"),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "source_id": self.source_id,
+            "status": self.status.value,
+            "descriptor": self.descriptor.to_dict(),
+            "authorization_context_id": self.authorization_context_id,
+            "query_fingerprint": self.query_fingerprint,
+            "accessible_population": self.accessible_population,
+            "errors": sorted(self.errors),
         }
 
 
@@ -675,9 +1191,10 @@ class EvidenceEnvelope:
     state: EvidenceState
     query: QueryScope
     coverage: CoverageEvidence
+    coverage_query_fingerprint: str
     matched_count: int
     observed_at: datetime
-    source: SourceDescriptor
+    source_observations: tuple[SourceObservation, ...]
     errors: tuple[str, ...]
     valid_until: datetime | None = None
     notes: tuple[str, ...] = field(default_factory=tuple)
@@ -689,27 +1206,84 @@ class EvidenceEnvelope:
             raise ModelValidationError("query must be a QueryScope")
         if not isinstance(self.coverage, CoverageEvidence):
             raise ModelValidationError("coverage must be CoverageEvidence")
-        if not isinstance(self.source, SourceDescriptor):
-            raise ModelValidationError("source must be a SourceDescriptor")
-        _nonnegative_int(self.matched_count, "matched_count")
-        if self.state is EvidenceState.PRESENT and self.matched_count == 0:
-            raise ModelValidationError("PRESENT requires matched_count greater than zero")
-        if self.state is EvidenceState.ABSENT_WITHIN_SCOPE and self.matched_count != 0:
-            raise ModelValidationError("ABSENT_WITHIN_SCOPE requires matched_count equal to zero")
         object.__setattr__(
             self,
             "observed_at",
             _validate_aware_datetime(self.observed_at, "observed_at"),
         )
-        if (
-            self.source.index_as_of is not None
-            and self.source.index_as_of > self.observed_at
-        ):
-            raise ModelValidationError(
-                "source.index_as_of must not be after observed_at"
-            )
         if self.query.time_end > self.observed_at:
             raise ModelValidationError("query.time_end must not be after observed_at")
+        object.__setattr__(
+            self,
+            "coverage_query_fingerprint",
+            _sha256_digest(
+                self.coverage_query_fingerprint,
+                "coverage_query_fingerprint",
+            ),
+        )
+        expected_query_fingerprint = self.query.fingerprint()
+        if self.coverage_query_fingerprint != expected_query_fingerprint:
+            raise ModelValidationError(
+                "coverage_query_fingerprint must match the canonical query fingerprint"
+            )
+        _nonnegative_int(self.matched_count, "matched_count")
+        if self.state is EvidenceState.PRESENT and self.matched_count == 0:
+            raise ModelValidationError("PRESENT requires matched_count greater than zero")
+        if self.state is EvidenceState.ABSENT_WITHIN_SCOPE and self.matched_count != 0:
+            raise ModelValidationError("ABSENT_WITHIN_SCOPE requires matched_count equal to zero")
+        if self.source_observations is None:
+            raise ModelValidationError(
+                "source_observations must be an array, not null"
+            )
+        if isinstance(self.source_observations, (str, bytes)) or not isinstance(
+            self.source_observations, Sequence
+        ):
+            raise ModelValidationError("source_observations must be an array")
+        observations = tuple(self.source_observations)
+        if len(observations) > MAX_SOURCE_ACCOUNTING_ENTRIES:
+            raise ModelValidationError(
+                "source_observations exceeds the "
+                f"{MAX_SOURCE_ACCOUNTING_ENTRIES}-entry limit"
+            )
+        if any(not isinstance(item, SourceObservation) for item in observations):
+            raise ModelValidationError(
+                "source_observations must contain only SourceObservation values"
+            )
+        observation_ids = [item.source_id for item in observations]
+        duplicate_observation_ids = sorted(
+            source_id
+            for source_id in set(observation_ids)
+            if observation_ids.count(source_id) > 1
+        )
+        if duplicate_observation_ids:
+            raise ModelValidationError(
+                "source_observations contains duplicate source_id values: "
+                + ", ".join(duplicate_observation_ids)
+            )
+        declared_source_ids = {
+            requirement.source_id for requirement in self.query.source_requirements
+        }
+        undeclared_source_ids = sorted(set(observation_ids) - declared_source_ids)
+        if undeclared_source_ids:
+            raise ModelValidationError(
+                "source_observations contains undeclared source_id values: "
+                + ", ".join(undeclared_source_ids)
+            )
+        for observation in observations:
+            if observation.query_fingerprint != expected_query_fingerprint:
+                raise ModelValidationError(
+                    "source_observation.query_fingerprint must match the canonical query fingerprint"
+                )
+            index_as_of = observation.descriptor.index_as_of
+            if index_as_of is not None and index_as_of > self.observed_at:
+                raise ModelValidationError(
+                    "source_observations descriptor index_as_of must not be after observed_at"
+                )
+        object.__setattr__(
+            self,
+            "source_observations",
+            tuple(sorted(observations, key=lambda item: item.source_id)),
+        )
         if self.valid_until is not None:
             object.__setattr__(
                 self,
@@ -722,26 +1296,44 @@ class EvidenceEnvelope:
             raise ModelValidationError("errors must be an array, not null")
         object.__setattr__(self, "errors", _string_tuple(self.errors, "errors"))
         object.__setattr__(self, "notes", _string_tuple(self.notes, "notes"))
-        if self.schema_version != "0.1":
-            raise ModelValidationError("schema_version must be the supported string value '0.1'")
+        if self.schema_version != "1.0":
+            raise ModelValidationError("schema_version must be the supported string value '1.0'")
 
     @classmethod
     def from_dict(cls, value: Any) -> "EvidenceEnvelope":
         data = _mapping(value, "envelope")
+        _require_fields(data, {"schema_version"}, "envelope")
+        schema_version = data["schema_version"]
+        if not isinstance(schema_version, str):
+            raise ModelValidationError("envelope.schema_version must be the string '1.0'")
+        if schema_version != "1.0":
+            raise ModelValidationError(
+                "envelope.schema_version must be the supported string value '1.0'"
+            )
         allowed = {
             "state",
             "query",
             "coverage",
+            "coverage_query_fingerprint",
             "matched_count",
             "observed_at",
             "valid_until",
-            "source",
+            "source_observations",
             "errors",
             "notes",
             "schema_version",
         }
         _reject_unknown(data, allowed, "envelope")
-        _require_fields(data, {"schema_version", "errors"}, "envelope")
+        _require_fields(
+            data,
+            {
+                "schema_version",
+                "coverage_query_fingerprint",
+                "source_observations",
+                "errors",
+            },
+            "envelope",
+        )
         try:
             state = EvidenceState(data.get("state"))
         except (TypeError, ValueError) as exc:
@@ -750,17 +1342,29 @@ class EvidenceEnvelope:
             ) from exc
         if "matched_count" not in data:
             raise ModelValidationError("envelope.matched_count is required")
-        schema_version = data["schema_version"]
-        if not isinstance(schema_version, str):
-            raise ModelValidationError("envelope.schema_version must be the string '0.1'")
+        raw_observations = data["source_observations"]
+        if isinstance(raw_observations, (str, bytes)) or not isinstance(
+            raw_observations, Sequence
+        ):
+            raise ModelValidationError("envelope.source_observations must be an array")
         return cls(
             state=state,
             query=QueryScope.from_dict(data.get("query")),
             coverage=CoverageEvidence.from_dict(data.get("coverage")),
+            coverage_query_fingerprint=_sha256_digest(
+                data["coverage_query_fingerprint"],
+                "envelope.coverage_query_fingerprint",
+            ),
             matched_count=_nonnegative_int(data.get("matched_count"), "envelope.matched_count"),
             observed_at=parse_datetime(data.get("observed_at"), "envelope.observed_at"),
             valid_until=optional_datetime(data.get("valid_until"), "envelope.valid_until"),
-            source=SourceDescriptor.from_dict(data.get("source")),
+            source_observations=tuple(
+                SourceObservation.from_dict(
+                    item,
+                    f"envelope.source_observations[{index}]",
+                )
+                for index, item in enumerate(raw_observations)
+            ),
             errors=_required_string_tuple(data, "errors", "envelope"),
             notes=_string_tuple(data.get("notes"), "envelope.notes"),
             schema_version=schema_version,
@@ -772,10 +1376,13 @@ class EvidenceEnvelope:
             "state": self.state.value,
             "query": self.query.to_dict(),
             "coverage": self.coverage.to_dict(),
+            "coverage_query_fingerprint": self.coverage_query_fingerprint,
             "matched_count": self.matched_count,
             "observed_at": datetime_to_json(self.observed_at),
             "valid_until": datetime_to_json(self.valid_until) if self.valid_until else None,
-            "source": self.source.to_dict(),
+            "source_observations": [
+                observation.to_dict() for observation in self.source_observations
+            ],
             "errors": sorted(self.errors),
             "notes": sorted(self.notes),
         }

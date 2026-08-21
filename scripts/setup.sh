@@ -48,6 +48,30 @@ export PIP_DISABLE_PIP_VERSION_CHECK=1
 export PIP_NO_CACHE_DIR=1
 "${VENV_DIR}/bin/python" -m pip install --upgrade "${REPO_ROOT}[dev]"
 
+"${VENV_DIR}/bin/python" - "${REPO_ROOT}/pyproject.toml" <<'PY' \
+  || fail "installed package code and metadata do not match pyproject.toml; recreate .venv"
+from importlib.metadata import version
+from pathlib import Path
+import sys
+import tomllib
+
+import evidence_state_io
+
+
+expected = tomllib.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))["project"][
+    "version"
+]
+observed = {
+    "module": evidence_state_io.__version__,
+    "metadata": version("evidence-state-io"),
+}
+if set(observed.values()) != {expected}:
+    raise SystemExit(
+        f"expected {expected!r}, observed module={observed['module']!r} "
+        f"metadata={observed['metadata']!r}"
+    )
+PY
+
 [[ -x "${VENV_DIR}/bin/evidence-state" ]] \
   || fail "installation completed without the evidence-state console entry point"
 

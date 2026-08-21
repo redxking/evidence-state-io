@@ -166,3 +166,91 @@ the query interval end remains part of the explicit finality gap.
 The internal independent review is not an external security assessment,
 independent evidence custody, or production-readiness determination. The local
 commit makes the snapshot recoverable; it does not authenticate its claims.
+
+## 2026-08-21 — Schema 1.0 source-accounting candidate review
+
+**Review disposition:** initial proposal rejected; repaired increment accepted
+as a local candidate checkpoint only
+**Evidence class:** local, synthetic, self-authored implementation; independent
+read-only adversarial review within the project team
+
+### Rejected 215-test proposal
+
+The first green schema `1.0` implementation separated declared source
+requirements from runtime observations, but its enforcement was not sufficient
+to support a bounded negative. Adversarial mutations reproduced unsafe permits
+or admitted structurally ambiguous evidence when:
+
+1. The observation named the required source ID but supplied a different
+   system or locator.
+2. Adapter identity/version was absent or mismatched.
+3. The observation used an authorization context inconsistent with the query
+   and declared requirement.
+4. Detection assumptions were empty.
+5. An optional-source failure could be hidden behind favorable aggregate
+   coverage.
+6. Aggregate coverage or source observations came from a different query but
+   were not cryptographically bound to the normalized query scope.
+7. `index_as_of` was absent or preceded the end of the requested interval.
+
+The proposed 215-test state was rejected. It must not be described as a
+baseline, schema freeze, or source-accounting completion point.
+
+### Remediation
+
+- The P0 candidate now permits exactly one declared source and requires its
+  role to be `REQUIRED`; optional and multi-source input reject until coverage
+  can be modeled per source and composed explicitly.
+- Requirement/observation matching covers source ID, system, locator, adapter
+  ID/version, authorization context, and accessible population. Detection
+  assumptions are explicit, nonempty, unique, and canonical.
+- Query scope has a canonical SHA-256 fingerprint. Both aggregate coverage and
+  every source observation must carry the matching fingerprint.
+- Missing sources, all non-observed statuses, mismatches, and observation
+  errors produce source-attributed rejection reasons.
+- Observed sources require `index_as_of`; it must be at or after the query end
+  and no later than `observed_at`. This closes the reproduced chronology permit
+  but remains only a necessary currentness test, not a finality proof.
+- Active requests require exact policy ID/version, and decisions expose the
+  evaluator version. Complete certificate binding remains open.
+- Schema `0.1` is retained only as a hash-bound fixture and historical replay
+  instruction pinned to `b6fac87`; active schema `1.0` parsing rejects legacy,
+  relabeled, downgraded, numeric, and unknown versions without migration.
+- Installation review found stale `0.1.0` distribution metadata beside the
+  `0.2.0` package. The stale directory was moved recoverably to
+  `/private/tmp/evidence-state-io-stale-0.1.0.dist-info`, the package was
+  reinstalled, and `scripts/setup.sh` now fails unless project, module, and
+  installed-distribution versions agree.
+- Final candidate review found that self-consistent literal placeholders such
+  as `unknown` could still occupy the subject, query, exclusion, source,
+  adapter, authorization-context, and detection-assumption fields and reach a
+  permit. Concrete-declaration validation now rejects those values. This is a
+  narrow syntactic safety control, not proof that a plausible-looking
+  declaration is semantically correct.
+- A finality-limitation output edit briefly made the installed package stale
+  relative to source. Parity review caught the drift before commit; the package
+  was reinstalled and source/installed output was rechecked.
+
+### Repaired-candidate verification
+
+- Source suite on Python 3.13: 224/224.
+- Installed suite with `PYTHONPATH` unset on Python 3.13: 224/224.
+- Python 3.11 source-overlay unittest discovery: 224/224.
+- Source and installed package-file snapshots matched.
+- The Python 3.11 source and Python 3.13 installed built-in seed runs passed
+  12/12 and were byte-identical.
+- Operator demonstration passed 2/2; the custom example passed 2/2 with
+  `EmptyBench-custom` provenance.
+- Static checks, local-link checks, shell syntax, optional Compose validation,
+  installed CLI evaluation, and package-version consistency checks passed.
+- The reproduced source identity, adapter, authorization, assumption, optional
+  source, query binding, placeholder-declaration, and index chronology paths
+  are regression-tested.
+
+Acceptance is deliberately narrow: this is a recoverable, locally tested
+schema `1.0` **candidate source-accounting checkpoint**. It is not a schema or
+benchmark freeze, a finality/completeness proof, a complete certificate, an
+independent oracle, an authenticated adapter, external reproduction, an
+operational evaluation, or a production-readiness determination. The gateway
+still evaluates producer-supplied state and facts; it does not independently
+establish their truth.

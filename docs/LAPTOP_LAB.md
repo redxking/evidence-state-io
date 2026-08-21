@@ -11,11 +11,11 @@ with different coverage and pagination sufficiency for one declared source:
 
 The core demonstration uses local synthetic JSON only. Docker, network access, API keys, and a model are not required.
 
-Required-versus-observed source accounting and an explicit finality horizon are
-target behaviors in the fault matrix below, not facts established by the
-checked-in pair. Other seed pairs exercise selected declared staleness, unknown
-coverage, permission-limit, and timeout conditions, but the seed is not yet the
-complete frozen P0 corpus.
+The schema `1.0` candidate now implements single required-versus-observed source
+accounting, query binding, and a missing-source seed pair. The checked-in
+operator pair still changes pagination only. An explicit finality horizon,
+independent oracle, and the remaining identity/adapter/auth/finality benchmark
+families are target behavior, not a frozen-corpus claim.
 
 ## Safety boundary
 
@@ -114,6 +114,7 @@ Each disqualifying case needs a covered control with the same visible result.
 | Fault | Evidence change | Required result |
 |---|---|---|
 | Missing required source | Required source absent or unknown | Preserve partial/indeterminate state; reject negative |
+| Wrong source/query binding | Identity, adapter, authorization context, population, or query fingerprint differs | reject or invalidate before negative evaluation |
 | Truncated pagination | Incomplete pages or continuation remains | `PARTIAL`; reject negative |
 | Missing partition | One required partition incomplete | `PARTIAL`; reject negative |
 | Stale evidence | Freshness limit exceeded at supplied evaluation time | `STALE`; reject negative |

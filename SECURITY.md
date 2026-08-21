@@ -38,9 +38,10 @@ The local operator can replace code, policy, fixtures, outputs, and digests. The
 ## Target security invariants
 
 These are required end-state properties. Current implementation status and
-known gaps are recorded in `docs/TRACEABILITY.md`; in particular,
-required-source accounting, credential-like-field detection, finality
-derivation, and independent source attestation are not yet complete.
+known gaps are recorded in `docs/TRACEABILITY.md`. The schema `1.0` candidate
+now performs bounded single-source accounting and query binding; credential-like
+field detection, explicit finality, profile governance, independent source
+attestation, and multi-source composition are not complete.
 
 1. Unknown or malformed evidence-bearing input is rejected, not coerced.
 2. No disqualifying state permits `PERMIT_SCOPED_NEGATIVE`.
@@ -74,6 +75,7 @@ It does not claim to withstand a privileged attacker controlling the host, inter
 |---|---|---|---|
 | Scope omission | Caller omits a tenant or time range | Strict required fields; scoped renderer; missing-field rejection | A declared scope can still be misleading or semantically wrong |
 | Completion spoofing | Adapter hides continuation token or failed shard | Independent completion fields, consistency checks, adapter contract tests | A malicious adapter can lie unless corroborated |
+| Wrong-observation substitution | Coverage or an observation from another query/source is relabeled for the current query | Exact source/adapter/auth/population matching and canonical query fingerprints on coverage and observation | A malicious producer can still forge a self-consistent envelope without independent attestation |
 | Permission laundering | Empty accessible subset is described as the whole population | Explicit authorization/access boundary and policy | Registry owner may overstate accessible population |
 | Staleness/finality bypass | Caller supplies favorable current time or omits late-arrival horizon | Explicit evaluation time and policy; boundary tests; certificate binding | Trusted time is not established in P0 |
 | State confusion | Unknown state coerced to success or generic empty | Closed enums, unsupported-version rejection, invariant tests | Future compatibility requires careful versioning |
@@ -90,7 +92,7 @@ It does not claim to withstand a privileged attacker controlling the host, inter
 ## Input handling requirements
 
 - The current CLI rejects inputs above 1 MiB and nesting deeper than 128; retain boundary tests for both.
-- Reject non-finite numbers, duplicate identifiers, unsupported fields/versions, invalid timestamp offsets, and inconsistent completion facts.
+- Reject non-finite numbers, duplicate identifiers, optional/multi-source candidate declarations, unsupported fields/versions, literal placeholder scope/identity declarations, invalid query fingerprints or timestamp offsets, and inconsistent completion facts.
 - Bound numeric tokens, collection length, string length, and reason-code count; string bounds are partial and comprehensive collection/reason bounds remain backlog work.
 - Do not deserialize pickle or execute caller-provided code, templates, expressions, regular expressions, SQL, or shell fragments.
 - Treat a filename as an operator-selected local input, never as a destination derived from envelope content.

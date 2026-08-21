@@ -158,6 +158,12 @@ An envelope shall identify the subject or query, population or resource universe
 - The schema distinguishes “not applicable,” “unknown,” zero, and an empty collection; these values are not silently collapsed.
 - Secret credentials and raw tokens are rejected from fields intended for authorization-context identifiers.
 
+**Current candidate note:** Schema `1.0` implements one required source with a
+source ID, system, locator, adapter ID/version, stable non-secret authorization
+context, accessible population, and nonempty detection assumptions. The
+requirement and observation are matched exactly. Credential-like-content
+detection and richer field/projection semantics remain open.
+
 #### ESIO-P0-003: Coverage and completion facts
 
 An envelope shall represent a coverage lower bound and derivation, required/observed sources, page and partition completion, continuation status, finality horizon, freshness interval, exclusions, and structured errors.
@@ -167,6 +173,11 @@ An envelope shall represent a coverage lower bound and derivation, required/obse
 - Coverage is constrained to `[0, 1]`; invalid numeric values, NaN, and infinity are rejected.
 - Any unresolved continuation token, incomplete required partition, unknown required-source status, or disqualifying error prevents `ABSENT_WITHIN_SCOPE`.
 - A claimed coverage lower bound cannot exceed a deterministic bound computed from declared required and completed units under the P0 coverage method.
+
+**Current candidate note:** Aggregate coverage and the single source observation
+must match the canonical normalized-query fingerprint. Optional and multi-source
+declarations are rejected until coverage can be represented and composed per
+source. Explicit finality remains open.
 
 #### ESIO-P0-004: Fail-closed envelope validation
 
@@ -364,7 +375,7 @@ Thresholds are frozen before the corresponding evaluation. They may be changed o
 
 ### Phase 0 — 0 to 30 days: falsifiable core
 
-- Freeze schema `0.1`, state invariants, policy format, reason-code taxonomy, and seed EmptyBench oracle.
+- Preserve the accepted local schema `0.1` replay baseline; harden and later freeze the breaking schema `1.0` candidate, state invariants, policy format, reason-code taxonomy, and seed EmptyBench oracle under ADR-0007.
 - Implement the dependency-light library, CLI, deterministic gate, canonical certificate, and fault tests.
 - Establish naive, prompt-only, and always-block baselines.
 

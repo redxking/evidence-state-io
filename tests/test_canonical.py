@@ -13,7 +13,7 @@ from evidence_state_io import (
 )
 from evidence_state_io.gate import NegativeClaimRequest, evaluate_negative_claim
 
-from tests.helpers import request_dict
+from tests.helpers import refresh_query_fingerprints, request_dict
 
 
 class CanonicalDigestTests(unittest.TestCase):
@@ -32,11 +32,66 @@ class CanonicalDigestTests(unittest.TestCase):
         self.assertEqual(first_decision.input_digest, second_decision.input_digest)
         self.assertEqual(first_decision.to_dict(), second_decision.to_dict())
 
+    def test_semantically_unordered_detection_assumptions_do_not_change_digest(self) -> None:
+        first = request_dict()
+        first["envelope"]["query"]["source_requirements"][0][
+            "detection_assumptions"
+        ] = ["assumption-b", "assumption-a"]
+        second = deepcopy(first)
+        second["envelope"]["query"]["source_requirements"][0][
+            "detection_assumptions"
+        ].reverse()
+        refresh_query_fingerprints(first)
+        refresh_query_fingerprints(second)
+
+        first_decision = evaluate_negative_claim(NegativeClaimRequest.from_dict(first))
+        second_decision = evaluate_negative_claim(NegativeClaimRequest.from_dict(second))
+
+        self.assertEqual(first_decision.input_digest, second_decision.input_digest)
+        self.assertEqual(first_decision.to_dict(), second_decision.to_dict())
+
     def test_one_field_mutation_changes_digest(self) -> None:
         original = request_dict()
         mutated = deepcopy(original)
         mutated["envelope"]["query"]["predicate"] = "topic:other"
         self.assertNotEqual(canonical_digest(original), canonical_digest(mutated))
+
+    def test_valid_query_mutation_rebinds_and_changes_decision_digest(self) -> None:
+        original = request_dict()
+        mutated = deepcopy(original)
+        mutated["envelope"]["query"]["predicate"] = "topic:other"
+        refresh_query_fingerprints(mutated)
+
+        first = evaluate_negative_claim(NegativeClaimRequest.from_dict(original))
+        second = evaluate_negative_claim(NegativeClaimRequest.from_dict(mutated))
+
+        self.assertTrue(first.allowed)
+        self.assertTrue(second.allowed)
+        self.assertNotEqual(first.input_digest, second.input_digest)
+        self.assertNotEqual(
+            original["envelope"]["coverage_query_fingerprint"],
+            mutated["envelope"]["coverage_query_fingerprint"],
+        )
+
+    def test_source_status_mutation_changes_decision_digest(self) -> None:
+        original = request_dict()
+        mutated = deepcopy(original)
+        mutated["envelope"]["source_observations"][0]["status"] = "UNKNOWN"
+        first = evaluate_negative_claim(NegativeClaimRequest.from_dict(original))
+        second = evaluate_negative_claim(NegativeClaimRequest.from_dict(mutated))
+        self.assertNotEqual(first.input_digest, second.input_digest)
+        self.assertTrue(first.allowed)
+        self.assertFalse(second.allowed)
+
+    def test_policy_configuration_is_bound_into_request_digest(self) -> None:
+        first = request_dict()
+        second = deepcopy(first)
+        second["policy"]["max_observation_age_seconds"] = 300
+        first_decision = evaluate_negative_claim(NegativeClaimRequest.from_dict(first))
+        second_decision = evaluate_negative_claim(NegativeClaimRequest.from_dict(second))
+        self.assertTrue(first_decision.allowed)
+        self.assertTrue(second_decision.allowed)
+        self.assertNotEqual(first_decision.input_digest, second_decision.input_digest)
 
     def test_distinct_accepted_decimal_bounds_have_distinct_digests(self) -> None:
         first = request_dict()

@@ -11,17 +11,34 @@
         "subject": "repositories matching the query",
         "mode": "SCOPED",
         "evaluated_at": "2026-08-21T12:05:00Z",
-        "policy": {},
+        "policy": {
+          "policy_id": "esio-p0-safety-floor",
+          "policy_version": "1.0-candidate.1"
+        },
         "envelope": {
-          "schema_version": "0.1",
+          "schema_version": "1.0",
           "state": "ABSENT_WITHIN_SCOPE",
           "query": {
             "target": "GitHub repository search",
             "predicate": "topic:evidence-state language:Python",
             "authorization_boundary": "public repositories visible to the adapter token",
+            "authorization_context_id": "public-search-adapter-context",
             "time_start": "2026-08-21T00:00:00Z",
             "time_end": "2026-08-21T12:00:00Z",
-            "exclusions": ["deleted repositories", "unindexed content"]
+            "exclusions": ["deleted repositories", "unindexed content"],
+            "source_requirements": [
+              {
+                "source_id": "github-public-repositories",
+                "role": "REQUIRED",
+                "system": "github-search",
+                "locator": "repositories/search",
+                "adapter_id": "github-search-adapter",
+                "adapter_version": "example-0.2",
+                "authorization_context_id": "public-search-adapter-context",
+                "accessible_population": "public-repositories-visible-to-adapter",
+                "detection_assumptions": ["repository is indexed by the declared search endpoint"]
+              }
+            ]
           },
           "coverage": {
             "examined_units": 100,
@@ -40,15 +57,27 @@
             "permission_limited": false,
             "query_errors": []
           },
+          "coverage_query_fingerprint": "sha256:8b058cd455be9b3fe33c8a9cbf8fa7e7f1954ae8a6c360b816997702530060ac",
           "matched_count": 0,
           "observed_at": "2026-08-21T12:00:00Z",
           "valid_until": "2026-08-21T13:00:00Z",
-          "source": {
-            "system": "github-search",
-            "locator": "repositories/search",
-            "adapter_version": "example-0.1",
-            "index_as_of": "2026-08-21T11:59:00Z"
-          },
+          "source_observations": [
+            {
+              "source_id": "github-public-repositories",
+              "status": "OBSERVED",
+              "authorization_context_id": "public-search-adapter-context",
+              "query_fingerprint": "sha256:8b058cd455be9b3fe33c8a9cbf8fa7e7f1954ae8a6c360b816997702530060ac",
+              "accessible_population": "public-repositories-visible-to-adapter",
+              "descriptor": {
+                "system": "github-search",
+                "locator": "repositories/search",
+                "adapter_id": "github-search-adapter",
+                "adapter_version": "example-0.2",
+                "index_as_of": "2026-08-21T12:00:00Z"
+              },
+              "errors": []
+            }
+          ],
           "errors": [],
           "notes": ["Synthetic example; not an external observation."]
         }
@@ -68,17 +97,34 @@
         "subject": "repositories matching the query",
         "mode": "SCOPED",
         "evaluated_at": "2026-08-21T12:05:00Z",
-        "policy": {},
+        "policy": {
+          "policy_id": "esio-p0-safety-floor",
+          "policy_version": "1.0-candidate.1"
+        },
         "envelope": {
-          "schema_version": "0.1",
+          "schema_version": "1.0",
           "state": "PARTIAL",
           "query": {
             "target": "GitHub repository search",
             "predicate": "topic:evidence-state language:Python",
             "authorization_boundary": "public repositories visible to the adapter token",
+            "authorization_context_id": "public-search-adapter-context",
             "time_start": "2026-08-21T00:00:00Z",
             "time_end": "2026-08-21T12:00:00Z",
-            "exclusions": ["deleted repositories", "unindexed content"]
+            "exclusions": ["deleted repositories", "unindexed content"],
+            "source_requirements": [
+              {
+                "source_id": "github-public-repositories",
+                "role": "REQUIRED",
+                "system": "github-search",
+                "locator": "repositories/search",
+                "adapter_id": "github-search-adapter",
+                "adapter_version": "example-0.2",
+                "authorization_context_id": "public-search-adapter-context",
+                "accessible_population": "public-repositories-visible-to-adapter",
+                "detection_assumptions": ["repository is indexed by the declared search endpoint"]
+              }
+            ]
           },
           "coverage": {
             "examined_units": 60,
@@ -97,15 +143,27 @@
             "permission_limited": false,
             "query_errors": []
           },
+          "coverage_query_fingerprint": "sha256:8b058cd455be9b3fe33c8a9cbf8fa7e7f1954ae8a6c360b816997702530060ac",
           "matched_count": 0,
           "observed_at": "2026-08-21T12:00:00Z",
           "valid_until": "2026-08-21T13:00:00Z",
-          "source": {
-            "system": "github-search",
-            "locator": "repositories/search",
-            "adapter_version": "example-0.1",
-            "index_as_of": "2026-08-21T11:59:00Z"
-          },
+          "source_observations": [
+            {
+              "source_id": "github-public-repositories",
+              "status": "OBSERVED",
+              "authorization_context_id": "public-search-adapter-context",
+              "query_fingerprint": "sha256:8b058cd455be9b3fe33c8a9cbf8fa7e7f1954ae8a6c360b816997702530060ac",
+              "accessible_population": "public-repositories-visible-to-adapter",
+              "descriptor": {
+                "system": "github-search",
+                "locator": "repositories/search",
+                "adapter_id": "github-search-adapter",
+                "adapter_version": "example-0.2",
+                "index_as_of": "2026-08-21T12:00:00Z"
+              },
+              "errors": []
+            }
+          ],
           "errors": [],
           "notes": ["Synthetic example; not an external observation."]
         }

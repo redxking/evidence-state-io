@@ -8,9 +8,14 @@ The project defines a machine-readable evidence envelope, a deterministic negati
 
 ## Current status
 
-**Stage:** pre-alpha research prototype and implementation handoff
+**Stage:** pre-alpha research prototype and implementation handoff; schema `1.0` candidate
 **Intended use:** local research, synthetic evaluation, adapter development, and design-partner discovery
 **Not established:** production readiness, operational effectiveness, legal sufficiency, universal query completeness, market demand, protocol adoption, or independent validation
+
+The active package is `0.2.0`. It accepts only the schema `1.0` candidate and
+the explicit `esio-p0-safety-floor` policy version. The first accepted local
+schema `0.1` baseline remains immutable at commit `b6fac87`; it is preserved as
+historical replay evidence and is not a current permit or compatibility mode.
 
 This is an independent project. It is not an extension or release claim for any earlier assurance platform.
 
@@ -30,7 +35,11 @@ The initial evidence states are:
 - `FAILED`
 - `CONTRADICTORY`
 
-`ABSENT_WITHIN_SCOPE` is always conditional on the declared population, fields, time interval, source assumptions, access boundary, detection assumptions, and finality horizon. It is not proof of absolute absence.
+The target semantics make `ABSENT_WITHIN_SCOPE` conditional on the declared
+population, fields, time interval, source assumptions, access boundary,
+detection assumptions, and finality horizon. The current schema `1.0` candidate
+does not yet carry an explicit finality horizon and is therefore not a frozen
+contract. No version of this state is proof of absolute absence.
 
 ## Product direction
 
@@ -55,10 +64,9 @@ The first vertical profile is cyber investigation and threat hunting. The underl
 The supported baseline is Python 3.11 or newer. The reference implementation is intentionally dependency-light and does not require a GPU.
 
 ```bash
-python3 -m venv .venv
+./scripts/setup.sh
 source .venv/bin/activate
-python -m pip install '.[dev]'
-pytest
+./scripts/test.sh
 evidence-state --help
 ```
 
@@ -75,11 +83,17 @@ The target paired experiment asks the same question against the same visible emp
 
 The baseline agent may answer “none found” in both cases. The gateway must permit a scoped negative only in the first case and preserve indeterminacy in the second.
 
-The checked-in P0 operator pair is narrower: it compares one declared source
-whose current coverage and pagination facts pass with the same empty result from
-an incompletely paginated execution. It does **not** yet encode a required-source
-set or an explicit finality horizon. Those are active P0 gaps, not behavior
-established by the current demonstration.
+The checked-in P0 operator pair is narrower: it compares one explicitly
+required and observed source whose current coverage and pagination facts pass
+with the same empty result from an incompletely paginated execution. The full
+seed adds a missing-required-source pair. The candidate rejects missing,
+inaccessible, pending, stale, failed, contradictory, unknown,
+identity-mismatched, adapter-mismatched, authorization-mismatched,
+population-mismatched, or error-bearing required sources. Observations and
+coverage must match a canonical query fingerprint. Because population
+composition is not yet defined, the candidate accepts exactly one declared
+`REQUIRED` source and rejects multi-source input before evaluation. An explicit
+finality horizon remains an active P0 gap.
 
 ## Success threshold for the first gate
 
@@ -99,6 +113,7 @@ Failing those thresholds is a reason to narrow or stop the project, not to reint
 src/evidence_state_io/  Reference schema, evaluator, gate, and CLI
 tests/                  Unit, integration, contract, and benchmark tests
 examples/               Reproducible evidence-envelope and paired-case examples
+examples/legacy/        Hash-bound schema 0.1 historical replay evidence
 docs/PRD.md             Product requirements and acceptance criteria
 docs/ARCHITECTURE.md    System boundaries, interfaces, and data flow
 docs/adr/               Architecture decision records
@@ -120,6 +135,7 @@ dashboard.html          Local task-board view backed by TASKS.md
 - Treat source health as necessary but not sufficient evidence of detection coverage.
 - Keep the verdict path deterministic; language models may propose or explain but may not silently override coverage policy.
 - Preserve raw observations, declared assumptions, evaluator version, and policy version in every certificate.
+- Keep schema, policy, evaluator, profile, certificate, canonicalization, and package versions distinct.
 - Add a matched negative control for each new fault class.
 - Treat a source-overlay pass and an installed-command pass as separate evidence; `./scripts/check.sh` compares source and installed package file snapshots, then compares deterministic demos, and fails if the installed package is stale.
 - Stop and request owner approval before public release, licensing, deployment into a real environment, handling sensitive data, or making external claims.

@@ -38,6 +38,8 @@ verification is recorded in `PROJECT_STATUS.md` or the task record.
 - Keep domain evaluation free of filesystem, network, environment, wall-clock, and random-state dependencies.
 - Pass `evaluation_time` explicitly.
 - Reject unsupported schema and policy versions; never guess semantics.
+- Preserve the schema `0.1` replay boundary. The active schema `1.0` candidate accepts exactly one declared `REQUIRED` source; optional and multi-source requests are invalid until composition is specified.
+- Bind source/adapter identity, non-secret authorization context, accessible population, observations, and coverage to the normalized query; never repair a fingerprint mismatch.
 - Reject malformed, ambiguous, duplicate, non-finite, or internally contradictory evidence-bearing values rather than repairing them silently.
 - Put structured JSON on stdout and diagnostics on stderr.
 - Use nonzero process exit codes for invalid input or program failure, not for a valid gate rejection.

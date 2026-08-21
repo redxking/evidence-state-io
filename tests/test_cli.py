@@ -34,7 +34,7 @@ class CliTests(unittest.TestCase):
     def test_demo_all_runs_seed_suite(self) -> None:
         code, stdout, _ = self.invoke(["demo", "--all"])
         self.assertEqual(code, 0)
-        self.assertEqual(json.loads(stdout)["summary"]["total"], 10)
+        self.assertEqual(json.loads(stdout)["summary"]["total"], 12)
 
     def test_evaluate_full_request_allows_covered_case(self) -> None:
         code, stdout, stderr = self.invoke(

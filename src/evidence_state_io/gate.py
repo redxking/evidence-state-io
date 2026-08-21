@@ -16,15 +16,26 @@ from .models import (
     EvidenceEnvelope,
     EvidenceState,
     ModelValidationError,
+    SourceObservationStatus,
+    SourceRole,
+    _concrete_declaration,
     _nonnegative_int,
     _validate_aware_datetime,
-    bounded_single_line,
+    bounded_ascii_identifier,
     datetime_to_json,
     parse_datetime,
+)
+from .sources import (
+    SourceAccountingAssessment,
+    SourceIssueCode,
+    evaluate_source_accounting,
 )
 
 
 MAX_SUBJECT_LENGTH = 160
+DEFAULT_POLICY_ID = "esio-p0-safety-floor"
+DEFAULT_POLICY_VERSION = "1.0-candidate.1"
+EVALUATOR_VERSION = "esio-evaluator-1.0-candidate.1"
 _ABSOLUTE_SUBJECT_PATTERN = re.compile(
     r"\b(?:nothing|none|anywhere|everywhere|always|never)\b"
     r"|\bno\b.{0,80}\bexists?\b"
@@ -45,7 +56,38 @@ class GateReason(str, Enum):
     OBSERVATION_TOO_OLD = "OBSERVATION_TOO_OLD"
     INDEX_TIMESTAMP_UNDECLARED = "INDEX_TIMESTAMP_UNDECLARED"
     INDEX_TIME_AFTER_EVALUATION = "INDEX_TIME_AFTER_EVALUATION"
+    INDEX_PRECEDES_QUERY_END = "INDEX_PRECEDES_QUERY_END"
     INDEX_TOO_OLD = "INDEX_TOO_OLD"
+    REQUIRED_SOURCE_MISSING = "REQUIRED_SOURCE_MISSING"
+    REQUIRED_SOURCE_NOT_OBSERVED = "REQUIRED_SOURCE_NOT_OBSERVED"
+    REQUIRED_SOURCE_INACCESSIBLE = "REQUIRED_SOURCE_INACCESSIBLE"
+    REQUIRED_SOURCE_PENDING = "REQUIRED_SOURCE_PENDING"
+    REQUIRED_SOURCE_STALE = "REQUIRED_SOURCE_STALE"
+    REQUIRED_SOURCE_FAILED = "REQUIRED_SOURCE_FAILED"
+    REQUIRED_SOURCE_CONTRADICTORY = "REQUIRED_SOURCE_CONTRADICTORY"
+    REQUIRED_SOURCE_STATUS_UNKNOWN = "REQUIRED_SOURCE_STATUS_UNKNOWN"
+    REQUIRED_SOURCE_IDENTITY_MISMATCH = "REQUIRED_SOURCE_IDENTITY_MISMATCH"
+    REQUIRED_SOURCE_ADAPTER_MISMATCH = "REQUIRED_SOURCE_ADAPTER_MISMATCH"
+    REQUIRED_SOURCE_AUTHORIZATION_MISMATCH = "REQUIRED_SOURCE_AUTHORIZATION_MISMATCH"
+    REQUIRED_SOURCE_POPULATION_MISMATCH = "REQUIRED_SOURCE_POPULATION_MISMATCH"
+    REQUIRED_SOURCE_ERRORS_PRESENT = "REQUIRED_SOURCE_ERRORS_PRESENT"
+
+
+_SOURCE_REASON_MAP = {
+    SourceIssueCode.REQUIRED_SOURCE_MISSING: GateReason.REQUIRED_SOURCE_MISSING,
+    SourceIssueCode.REQUIRED_SOURCE_NOT_OBSERVED: GateReason.REQUIRED_SOURCE_NOT_OBSERVED,
+    SourceIssueCode.REQUIRED_SOURCE_INACCESSIBLE: GateReason.REQUIRED_SOURCE_INACCESSIBLE,
+    SourceIssueCode.REQUIRED_SOURCE_PENDING: GateReason.REQUIRED_SOURCE_PENDING,
+    SourceIssueCode.REQUIRED_SOURCE_STALE: GateReason.REQUIRED_SOURCE_STALE,
+    SourceIssueCode.REQUIRED_SOURCE_FAILED: GateReason.REQUIRED_SOURCE_FAILED,
+    SourceIssueCode.REQUIRED_SOURCE_CONTRADICTORY: GateReason.REQUIRED_SOURCE_CONTRADICTORY,
+    SourceIssueCode.REQUIRED_SOURCE_STATUS_UNKNOWN: GateReason.REQUIRED_SOURCE_STATUS_UNKNOWN,
+    SourceIssueCode.REQUIRED_SOURCE_IDENTITY_MISMATCH: GateReason.REQUIRED_SOURCE_IDENTITY_MISMATCH,
+    SourceIssueCode.REQUIRED_SOURCE_ADAPTER_MISMATCH: GateReason.REQUIRED_SOURCE_ADAPTER_MISMATCH,
+    SourceIssueCode.REQUIRED_SOURCE_AUTHORIZATION_MISMATCH: GateReason.REQUIRED_SOURCE_AUTHORIZATION_MISMATCH,
+    SourceIssueCode.REQUIRED_SOURCE_POPULATION_MISMATCH: GateReason.REQUIRED_SOURCE_POPULATION_MISMATCH,
+    SourceIssueCode.REQUIRED_SOURCE_ERRORS_PRESENT: GateReason.REQUIRED_SOURCE_ERRORS_PRESENT,
+}
 
 
 def _strict_bool(value: Any, path: str, default: bool) -> bool:
@@ -73,14 +115,29 @@ def _timedelta_exceeds_seconds(value: timedelta, limit: int) -> bool:
 
 @dataclass(frozen=True, slots=True)
 class NegativeClaimPolicy:
+    policy_id: str = DEFAULT_POLICY_ID
+    policy_version: str = DEFAULT_POLICY_VERSION
     coverage: CoveragePolicy = field(default_factory=CoveragePolicy)
     require_valid_until: bool = True
     max_observation_age_seconds: int | None = None
-    require_index_as_of: bool = False
+    require_index_as_of: bool = True
     max_index_age_seconds: int | None = None
     reject_envelope_errors: bool = True
 
     def __post_init__(self) -> None:
+        object.__setattr__(
+            self, "policy_id", bounded_ascii_identifier(self.policy_id, "policy.policy_id")
+        )
+        object.__setattr__(
+            self,
+            "policy_version",
+            bounded_ascii_identifier(self.policy_version, "policy.policy_version"),
+        )
+        if self.policy_id != DEFAULT_POLICY_ID or self.policy_version != DEFAULT_POLICY_VERSION:
+            raise ModelValidationError(
+                "policy_id and policy_version must identify the supported "
+                f"{DEFAULT_POLICY_ID} {DEFAULT_POLICY_VERSION} contract"
+            )
         if not isinstance(self.coverage, CoveragePolicy):
             raise ModelValidationError("policy.coverage must be a CoveragePolicy")
         for name in ("require_valid_until", "require_index_as_of", "reject_envelope_errors"):
@@ -94,6 +151,10 @@ class NegativeClaimPolicy:
             raise ModelValidationError(
                 "policy.reject_envelope_errors cannot relax the P0 safety floor"
             )
+        if self.require_index_as_of is not True:
+            raise ModelValidationError(
+                "policy.require_index_as_of cannot relax the P0 safety floor"
+            )
         _optional_seconds(
             self.max_observation_age_seconds, "policy.max_observation_age_seconds"
         )
@@ -101,11 +162,11 @@ class NegativeClaimPolicy:
 
     @classmethod
     def from_dict(cls, value: Any) -> "NegativeClaimPolicy":
-        if value is None:
-            return cls()
         if not isinstance(value, Mapping):
             raise ModelValidationError("policy must be a JSON object")
         allowed = {
+            "policy_id",
+            "policy_version",
             "coverage",
             "require_valid_until",
             "max_observation_age_seconds",
@@ -116,7 +177,16 @@ class NegativeClaimPolicy:
         unknown = sorted(set(value) - allowed)
         if unknown:
             raise ModelValidationError(f"policy has unknown fields: {', '.join(unknown)}")
+        missing = sorted({"policy_id", "policy_version"} - set(value))
+        if missing:
+            raise ModelValidationError(
+                "policy is missing required fields: " + ", ".join(missing)
+            )
         return cls(
+            policy_id=bounded_ascii_identifier(value.get("policy_id"), "policy.policy_id"),
+            policy_version=bounded_ascii_identifier(
+                value.get("policy_version"), "policy.policy_version"
+            ),
             coverage=CoveragePolicy.from_dict(value.get("coverage")),
             require_valid_until=_strict_bool(
                 value.get("require_valid_until"), "policy.require_valid_until", True
@@ -126,7 +196,7 @@ class NegativeClaimPolicy:
                 "policy.max_observation_age_seconds",
             ),
             require_index_as_of=_strict_bool(
-                value.get("require_index_as_of"), "policy.require_index_as_of", False
+                value.get("require_index_as_of"), "policy.require_index_as_of", True
             ),
             max_index_age_seconds=_optional_seconds(
                 value.get("max_index_age_seconds"), "policy.max_index_age_seconds"
@@ -140,6 +210,8 @@ class NegativeClaimPolicy:
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "policy_id": self.policy_id,
+            "policy_version": self.policy_version,
             "coverage": self.coverage.to_dict(),
             "require_valid_until": self.require_valid_until,
             "max_observation_age_seconds": self.max_observation_age_seconds,
@@ -162,9 +234,15 @@ class NegativeClaimRequest:
             raise ModelValidationError("envelope must be EvidenceEnvelope")
         if not isinstance(self.policy, NegativeClaimPolicy):
             raise ModelValidationError("policy must be NegativeClaimPolicy")
-        normalized_subject = bounded_single_line(
-            self.subject, "subject", max_length=MAX_SUBJECT_LENGTH
+        normalized_subject = _concrete_declaration(
+            self.subject,
+            "subject",
+            reject_unbounded=True,
         )
+        if len(normalized_subject) > MAX_SUBJECT_LENGTH:
+            raise ModelValidationError(
+                f"subject exceeds the {MAX_SUBJECT_LENGTH}-character limit"
+            )
         if _ABSOLUTE_SUBJECT_PATTERN.search(normalized_subject):
             raise ModelValidationError(
                 "subject contains a prohibited universal or absolute-negative formulation"
@@ -188,9 +266,15 @@ class NegativeClaimRequest:
         unknown = sorted(set(value) - allowed)
         if unknown:
             raise ModelValidationError(f"request has unknown fields: {', '.join(unknown)}")
-        subject = bounded_single_line(
-            value.get("subject"), "request.subject", max_length=MAX_SUBJECT_LENGTH
+        subject = _concrete_declaration(
+            value.get("subject"),
+            "request.subject",
+            reject_unbounded=True,
         )
+        if len(subject) > MAX_SUBJECT_LENGTH:
+            raise ModelValidationError(
+                f"request.subject exceeds the {MAX_SUBJECT_LENGTH}-character limit"
+            )
         try:
             mode = ClaimMode(value.get("mode"))
         except (TypeError, ValueError) as exc:
@@ -219,11 +303,13 @@ class GateDecision:
     decision: str
     reasons: tuple[GateReason, ...]
     coverage: CoverageAssessment
+    source_accounting: SourceAccountingAssessment
     qualified_claim: str | None
     limitations: tuple[str, ...]
     input_digest: str
     canonicalization_profile: str = CANONICALIZATION_PROFILE
     digest_algorithm: str = DIGEST_ALGORITHM
+    evaluator_version: str = EVALUATOR_VERSION
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -231,11 +317,13 @@ class GateDecision:
             "decision": self.decision,
             "reasons": [reason.value for reason in self.reasons],
             "coverage": self.coverage.to_dict(),
+            "source_accounting": self.source_accounting.to_dict(),
             "qualified_claim": self.qualified_claim,
             "limitations": list(self.limitations),
             "input_digest": self.input_digest,
             "canonicalization_profile": self.canonicalization_profile,
             "digest_algorithm": self.digest_algorithm,
+            "evaluator_version": self.evaluator_version,
         }
 
 
@@ -262,16 +350,29 @@ def _qualified_claim(
             " and the evidence is declared valid through "
             f"{datetime_to_json(envelope.valid_until)}."
         )
+    required_sources = [
+        requirement.to_dict()
+        for requirement in envelope.query.source_requirements
+        if requirement.role is SourceRole.REQUIRED
+    ]
+    source_text = json.dumps(
+        required_sources,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
     return (
         f"The subject {json.dumps(request.subject, ensure_ascii=False)} had zero observed "
         "matches within the declared query scope "
         f"({envelope.query.qualification()}) as observed at "
         f"{datetime_to_json(envelope.observed_at)}, with coverage {coverage_text}."
+        f" The declared required-source set was {source_text}."
         f" The claim was evaluated at {datetime_to_json(request.evaluated_at)}"
         f"{validity_text}"
         f"{permission_text} This conclusion is conditional on the declared scope, "
         "coverage, source state, and validity window; it is not proof of absence "
-        "outside that scope."
+        "outside that scope. The schema 1.0 candidate checks source-index "
+        "chronology but does not establish a late-arrival finality horizon."
     )
 
 
@@ -289,21 +390,31 @@ def evaluate_negative_claim(request: NegativeClaimRequest) -> GateDecision:
     envelope = request.envelope
     policy = request.policy
     assessment = evaluate_coverage(envelope.coverage, policy.coverage)
+    source_assessment = evaluate_source_accounting(
+        envelope.query.source_requirements,
+        envelope.source_observations,
+    )
     reasons: list[GateReason] = []
 
+    def add_reason(reason: GateReason) -> None:
+        if reason not in reasons:
+            reasons.append(reason)
+
     if request.mode is ClaimMode.ABSOLUTE:
-        reasons.append(GateReason.ABSOLUTE_NEGATIVE_UNSUPPORTED)
+        add_reason(GateReason.ABSOLUTE_NEGATIVE_UNSUPPORTED)
     if envelope.state is not EvidenceState.ABSENT_WITHIN_SCOPE:
-        reasons.append(GateReason.STATE_NOT_ABSENT_WITHIN_SCOPE)
+        add_reason(GateReason.STATE_NOT_ABSENT_WITHIN_SCOPE)
     if envelope.matched_count != 0:
-        reasons.append(GateReason.NONZERO_MATCHES)
+        add_reason(GateReason.NONZERO_MATCHES)
     if not assessment.meets_policy:
-        reasons.append(GateReason.COVERAGE_POLICY_NOT_MET)
+        add_reason(GateReason.COVERAGE_POLICY_NOT_MET)
     if policy.reject_envelope_errors and envelope.errors:
-        reasons.append(GateReason.ENVELOPE_ERRORS_PRESENT)
+        add_reason(GateReason.ENVELOPE_ERRORS_PRESENT)
+    for issue in source_assessment.issues:
+        add_reason(_SOURCE_REASON_MAP[issue.code])
 
     if request.evaluated_at < envelope.observed_at:
-        reasons.append(GateReason.EVALUATION_PRECEDES_OBSERVATION)
+        add_reason(GateReason.EVALUATION_PRECEDES_OBSERVATION)
     else:
         observation_age = request.evaluated_at - envelope.observed_at
         if (
@@ -312,34 +423,49 @@ def evaluate_negative_claim(request: NegativeClaimRequest) -> GateDecision:
                 observation_age, policy.max_observation_age_seconds
             )
         ):
-            reasons.append(GateReason.OBSERVATION_TOO_OLD)
+            add_reason(GateReason.OBSERVATION_TOO_OLD)
 
     if envelope.valid_until is None:
         if policy.require_valid_until:
-            reasons.append(GateReason.VALIDITY_UNDECLARED)
+            add_reason(GateReason.VALIDITY_UNDECLARED)
     elif request.evaluated_at > envelope.valid_until:
-        reasons.append(GateReason.RESULT_EXPIRED)
+        add_reason(GateReason.RESULT_EXPIRED)
 
-    index_as_of = envelope.source.index_as_of
-    if index_as_of is None:
-        if policy.require_index_as_of or policy.max_index_age_seconds is not None:
-            reasons.append(GateReason.INDEX_TIMESTAMP_UNDECLARED)
-    elif index_as_of > request.evaluated_at:
-        reasons.append(GateReason.INDEX_TIME_AFTER_EVALUATION)
-    elif (
-        policy.max_index_age_seconds is not None
-        and _timedelta_exceeds_seconds(
-            request.evaluated_at - index_as_of,
-            policy.max_index_age_seconds,
-        )
-    ):
-        reasons.append(GateReason.INDEX_TOO_OLD)
+    required_ids = {
+        requirement.source_id
+        for requirement in envelope.query.source_requirements
+        if requirement.role is SourceRole.REQUIRED
+    }
+    for observation in envelope.source_observations:
+        if (
+            observation.source_id not in required_ids
+            or observation.status is not SourceObservationStatus.OBSERVED
+        ):
+            continue
+        index_as_of = observation.descriptor.index_as_of
+        if index_as_of is None:
+            if policy.require_index_as_of or policy.max_index_age_seconds is not None:
+                add_reason(GateReason.INDEX_TIMESTAMP_UNDECLARED)
+        elif index_as_of < envelope.query.time_end:
+            add_reason(GateReason.INDEX_PRECEDES_QUERY_END)
+        elif index_as_of > request.evaluated_at:
+            add_reason(GateReason.INDEX_TIME_AFTER_EVALUATION)
+        elif (
+            policy.max_index_age_seconds is not None
+            and _timedelta_exceeds_seconds(
+                request.evaluated_at - index_as_of,
+                policy.max_index_age_seconds,
+            )
+        ):
+            add_reason(GateReason.INDEX_TOO_OLD)
 
     allowed = not reasons
     limitations = (
         "The decision is conditional on source-declared scope and coverage evidence.",
         "ABSENT_WITHIN_SCOPE never proves global or absolute absence.",
         "The gate does not independently verify source honesty or inaccessible data.",
+        "The current evaluator does not establish multi-source coverage composition.",
+        "The schema 1.0 candidate checks source-index chronology but does not establish late-arrival finality or completeness.",
         "The SHA-256 input digest is integrity metadata, not a signature; mutation detection requires a trusted expected digest.",
     )
     return GateDecision(
@@ -347,6 +473,7 @@ def evaluate_negative_claim(request: NegativeClaimRequest) -> GateDecision:
         decision="PERMIT_SCOPED_NEGATIVE" if allowed else "REJECT_NEGATIVE",
         reasons=tuple(reasons),
         coverage=assessment,
+        source_accounting=source_assessment,
         qualified_claim=_qualified_claim(request, assessment) if allowed else None,
         limitations=limitations,
         input_digest=_digest_request(request),

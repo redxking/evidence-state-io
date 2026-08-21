@@ -22,15 +22,15 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 class EmptyBenchTests(unittest.TestCase):
-    def test_seed_suite_has_five_pairs_and_ten_cases(self) -> None:
+    def test_seed_suite_has_six_pairs_and_twelve_cases(self) -> None:
         cases = seed_cases()
-        self.assertEqual(len(cases), 10)
-        self.assertEqual(len({case.pair_id for case in cases}), 5)
+        self.assertEqual(len(cases), 12)
+        self.assertEqual(len({case.pair_id for case in cases}), 6)
 
     def test_all_seed_expectations_pass(self) -> None:
         report = run_seed_emptybench(all_cases=True)
         self.assertTrue(report.all_passed)
-        self.assertEqual(report.passed, 10)
+        self.assertEqual(report.passed, 12)
         self.assertEqual(report.benchmark, "EmptyBench-seed")
 
     def test_demo_is_covered_vs_partial_pair(self) -> None:

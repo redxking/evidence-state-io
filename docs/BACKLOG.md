@@ -8,10 +8,11 @@ Priority order is P0 falsification first, then real read-only adapters, then des
 
 `TASKS.md` is the short current work queue. It activates a bounded slice of this
 backlog but does not prove that slice is complete. Stage 0 and the first local
-schema/gate hardening baseline are implemented and locally tested. The active
-queue now maps to the remaining portions of P0-02/P0-03 (required-versus-observed
-sources), P0-04 (explicit finality), and P0-08 (complete certificate/version
-binding). Its explicit prohibition on real adapters keeps Stage 3 blocked until
+schema/gate hardening baseline and the single-source schema `1.0` candidate are
+implemented and locally tested. The active queue now maps to P0-04 (explicit
+finality), P0-08 (complete certificate/version binding), and EB-07 (independent
+oracle custody), plus remaining credential/semantic validation in P0-02/P0-03.
+Its explicit prohibition on real adapters keeps Stage 3 blocked until
 the P0 falsification gate is frozen and approved.
 
 ### Status vocabulary
@@ -45,9 +46,9 @@ Every engineering item must satisfy all applicable conditions:
 
 | ID | Item | Depends on | Item-specific definition of done | Gate |
 |---|---|---|---|---|
-| P0-01 | Freeze schema `0.1` evidence states | S0-02 | All nine initial states round-trip exactly; unsupported states/major versions fail closed; normative meanings have tests. | ADR for semantic changes |
-| P0-02 | Validate query scope and access boundary | P0-01 | Required target, predicate, authorization boundary, interval, exclusions, and source identifiers distinguish null/unknown/empty; credential-like values are rejected where prohibited. | None |
-| P0-03 | Validate coverage and completion facts | P0-01 | Coverage is finite and bounded; pages/partitions/continuations/errors cannot contradict each other; declared lower bounds cannot exceed computed bounds. | None |
+| P0-01 | Preserve schema `0.1`; freeze schema `1.0` candidate when its criteria pass | S0-02 | All nine states round-trip; unsupported versions fail closed; `0.1` historical replay remains hash-bound; ADR-0007 freeze criteria and compatibility vectors pass. | ADR for semantic changes |
+| P0-02 | Validate query scope and access boundary | P0-01 | Required target, predicate, descriptive boundary, stable authorization-context ID, interval, exclusions, and one required source identity/adapter/population/assumption contract are explicit and query-bound; credential-like values are rejected where prohibited. | None |
+| P0-03 | Validate coverage and completion facts | P0-01 | Coverage is finite, bounded, and bound to the normalized query; the required observation matches identity/adapter/auth/population; pages/partitions/continuations/errors cannot contradict; declared lower bounds cannot exceed computed bounds. | None |
 | P0-04 | Implement freshness and finality evaluation | P0-02, P0-03 | Supplied evaluation time controls results; below/equal/above boundary tests cover freshness and finality; no wall-clock read occurs in the evaluator. | None |
 | P0-05 | Implement fail-closed coverage evaluator | P0-02, P0-03, P0-04 | Missing, partial, stale, inaccessible, pending, failed, or contradictory inputs retain stable reason codes; all reasons are preserved under aggregate precedence. | ADR for precedence changes |
 | P0-06 | Implement negative-claim gate | P0-05 | Absolute negatives always reject; only valid `ABSENT_WITHIN_SCOPE` permits a generated scoped negative; `PRESENT` and every indeterminate state reject. | None |
@@ -60,7 +61,7 @@ Every engineering item must satisfy all applicable conditions:
 | ID | Item | Depends on | Item-specific definition of done | Gate |
 |---|---|---|---|---|
 | EB-01 | Freeze covered-zero control | P0-09 | The canonical complete/current/final empty case produces `PERMIT_SCOPED_NEGATIVE`; fixture, oracle, and digest are versioned. | Freeze before baseline |
-| EB-02 | Add matched missing-source case | EB-01 | Visible result is unchanged; one required source is absent; oracle requires rejection with stable reason. | None |
+| EB-02 | Add matched missing-source case | EB-01 | Visible result is unchanged; the one required source is absent; oracle requires rejection with stable reason. | None |
 | EB-03 | Add pagination and partition cases | EB-01 | Incomplete page, continuation token, missing partition, and matched controls are independently represented and rejected. | None |
 | EB-04 | Add freshness and finality cases | EB-01 | Stale and pending-window pairs include exact boundary cases and supplied evaluation times. | None |
 | EB-05 | Add access and failure cases | EB-01 | Permission boundary, inaccessible source, timeout, interruption, parsing/query error, and matched controls are covered. | None |

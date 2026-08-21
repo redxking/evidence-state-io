@@ -108,7 +108,8 @@ Run exhaustive combinations for every boolean gate input at P0 scale. Where the 
 - coverage: below 0, 0, just below threshold, equal threshold, just above threshold, 1, above 1, NaN, infinity;
 - counts: negative, zero, one, large valid value, integer overflow or non-integer input;
 - time: offset-aware/naive timestamps, exact expiry, one unit before/after expiry, leap day, daylight-saving transition, end before start, absent evaluation time;
-- collections: empty required sources, duplicate identifiers, reordered sets, very large sets, unknown source;
+- collections: empty required sources, duplicate identifiers, optional/multi-source candidate declarations, reordered semantic sets, very large sets, unknown source;
+- binding: wrong system/locator, adapter ID/version, authorization-context ID, accessible population, observation query fingerprint, and coverage query fingerprint;
 - text/identifiers: Unicode normalization, control characters, extremely long values, secret-like authorization tokens;
 - versions: known version, unknown minor, unsupported major, downgrade, missing policy/evaluator version.
 

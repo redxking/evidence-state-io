@@ -8,7 +8,7 @@ import unittest
 from evidence_state_io import EvidenceEnvelope, EvidenceState, ModelValidationError
 from evidence_state_io.models import datetime_to_json, parse_datetime
 
-from tests.helpers import request_dict
+from tests.helpers import refresh_query_fingerprints, request_dict
 
 
 class EvidenceStateModelTests(unittest.TestCase):
@@ -36,7 +36,7 @@ class EvidenceStateModelTests(unittest.TestCase):
 
     def test_direct_envelope_component_types_fail_with_model_errors(self) -> None:
         envelope = EvidenceEnvelope.from_dict(request_dict()["envelope"])
-        for field in ("query", "coverage", "source"):
+        for field in ("query", "coverage", "source_observations"):
             with self.subTest(field=field):
                 with self.assertRaisesRegex(ModelValidationError, field):
                     replace(envelope, **{field: None})
@@ -49,7 +49,10 @@ class EvidenceStateModelTests(unittest.TestCase):
     def test_programmatic_model_strings_are_trimmed(self) -> None:
         envelope = EvidenceEnvelope.from_dict(request_dict()["envelope"])
         query = replace(envelope.query, target="  repository search  ")
-        source = replace(envelope.source, system="  github-search  ")
+        source = replace(
+            envelope.source_observations[0].descriptor,
+            system="  github-search  ",
+        )
         self.assertEqual(query.target, "repository search")
         self.assertEqual(source.system, "github-search")
 
@@ -65,7 +68,7 @@ class EvidenceStateModelTests(unittest.TestCase):
     def test_numeric_schema_version_is_rejected(self) -> None:
         data = request_dict()["envelope"]
         data["schema_version"] = 0.1
-        with self.assertRaisesRegex(ModelValidationError, "string '0.1'"):
+        with self.assertRaisesRegex(ModelValidationError, "string '1.0'"):
             EvidenceEnvelope.from_dict(data)
 
     def test_omitted_schema_version_is_rejected(self) -> None:
@@ -74,11 +77,15 @@ class EvidenceStateModelTests(unittest.TestCase):
         with self.assertRaisesRegex(ModelValidationError, "schema_version"):
             EvidenceEnvelope.from_dict(data)
 
-    def test_unknown_schema_version_is_rejected(self) -> None:
-        data = request_dict()["envelope"]
-        data["schema_version"] = "0.2"
-        with self.assertRaisesRegex(ModelValidationError, "supported string value '0.1'"):
-            EvidenceEnvelope.from_dict(data)
+    def test_legacy_and_unknown_schema_versions_are_rejected(self) -> None:
+        for version in ("0.1", "0.2", "1.1", "2.0"):
+            with self.subTest(version=version):
+                data = request_dict()["envelope"]
+                data["schema_version"] = version
+                with self.assertRaisesRegex(
+                    ModelValidationError, "supported string value '1.0'"
+                ):
+                    EvidenceEnvelope.from_dict(data)
 
     def test_utc_timestamp_is_canonicalized(self) -> None:
         value = parse_datetime("2026-08-21T08:00:00-04:00", "test")
@@ -287,6 +294,8 @@ class EvidenceStateModelTests(unittest.TestCase):
     def test_query_end_before_observation_is_valid(self) -> None:
         data = request_dict()["envelope"]
         data["query"]["time_end"] = "2026-08-21T11:59:59Z"
+        wrapper = {"envelope": data}
+        refresh_query_fingerprints(wrapper)
         EvidenceEnvelope.from_dict(data)
 
     def test_query_end_equal_to_observation_is_valid(self) -> None:
@@ -302,15 +311,20 @@ class EvidenceStateModelTests(unittest.TestCase):
 
     def test_source_index_after_observation_is_rejected(self) -> None:
         data = request_dict()["envelope"]
-        data["source"]["index_as_of"] = "2026-08-21T12:00:00.000001Z"
+        data["source_observations"][0]["descriptor"]["index_as_of"] = (
+            "2026-08-21T12:00:00.000001Z"
+        )
         with self.assertRaisesRegex(
-            ModelValidationError, "source.index_as_of must not be after observed_at"
+            ModelValidationError,
+            "source_observations descriptor index_as_of must not be after observed_at",
         ):
             EvidenceEnvelope.from_dict(data)
 
     def test_source_index_equal_to_observation_is_valid(self) -> None:
         data = request_dict()["envelope"]
-        data["source"]["index_as_of"] = data["observed_at"]
+        data["source_observations"][0]["descriptor"]["index_as_of"] = data[
+            "observed_at"
+        ]
         EvidenceEnvelope.from_dict(data)
 
     def test_submicrosecond_query_end_is_rejected_instead_of_truncated(self) -> None:
@@ -324,6 +338,21 @@ class EvidenceStateModelTests(unittest.TestCase):
         data["query"]["target"] = "repositories\ninjected line"
         with self.assertRaisesRegex(ModelValidationError, "single line"):
             EvidenceEnvelope.from_dict(data)
+
+        for field in ("target", "predicate"):
+            for placeholder in ("unknown", "unspecified", "none", "n/a"):
+                with self.subTest(field=field, placeholder=placeholder):
+                    data = request_dict()["envelope"]
+                    data["query"][field] = placeholder
+                    with self.assertRaisesRegex(ModelValidationError, "placeholder"):
+                        EvidenceEnvelope.from_dict(data)
+
+        for placeholder in ("unknown", "unspecified", "none", "n/a", "*", "all"):
+            with self.subTest(exclusion_placeholder=placeholder):
+                data = request_dict()["envelope"]
+                data["query"]["exclusions"] = [placeholder]
+                with self.assertRaisesRegex(ModelValidationError, "placeholder"):
+                    EvidenceEnvelope.from_dict(data)
 
     def test_scope_qualification_names_authorization_and_exclusions(self) -> None:
         envelope = EvidenceEnvelope.from_dict(request_dict()["envelope"])

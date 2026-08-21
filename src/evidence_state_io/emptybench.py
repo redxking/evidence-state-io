@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any, Iterable, Mapping, Sequence
 
 from .gate import GateDecision, GateReason, NegativeClaimRequest, evaluate_negative_claim
-from .models import ModelValidationError, bounded_single_line
+from .models import ModelValidationError, QueryScope, bounded_single_line
 
 
 MAX_BENCHMARK_ID_LENGTH = 128
@@ -250,7 +250,6 @@ def _validate_case_pairs(
 def _visible_signature(case: EmptyBenchCase) -> dict[str, Any]:
     request = case.request.to_dict()
     envelope = request["envelope"]
-    source = envelope["source"]
     return {
         "subject": request["subject"],
         "mode": request["mode"],
@@ -259,11 +258,6 @@ def _visible_signature(case: EmptyBenchCase) -> dict[str, Any]:
         "query": envelope["query"],
         "matched_count": envelope["matched_count"],
         "observed_at": envelope["observed_at"],
-        "source": {
-            "system": source["system"],
-            "locator": source["locator"],
-            "adapter_version": source["adapter_version"],
-        },
         "notes": envelope["notes"],
     }
 
@@ -276,7 +270,7 @@ def _sufficiency_signature(case: EmptyBenchCase) -> dict[str, Any]:
         "coverage": envelope["coverage"],
         "valid_until": envelope["valid_until"],
         "errors": envelope["errors"],
-        "index_as_of": envelope["source"]["index_as_of"],
+        "source_observations": envelope["source_observations"],
         "policy": request["policy"],
     }
 
@@ -342,27 +336,78 @@ def _request_dict(
     timed_out: bool = False,
     permission_limited: bool = False,
     valid_until: str | None = "2026-08-21T13:00:00Z",
-    index_as_of: str | None = "2026-08-21T11:59:00Z",
+    index_as_of: str | None = "2026-08-21T12:00:00Z",
+    source_observations: Sequence[Mapping[str, Any]] | None = None,
+    source_requirements: Sequence[Mapping[str, Any]] | None = None,
     mode: str = "SCOPED",
     authorization_boundary: str = "public repositories visible to the adapter token",
+    authorization_context_id: str = "public-search-adapter-context",
     policy: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
+    effective_requirements = (
+        [
+            {
+                "source_id": "github-public-repositories",
+                "role": "REQUIRED",
+                "system": "github-search",
+                "locator": "repositories/search",
+                "adapter_id": "github-search-adapter",
+                "adapter_version": "seed-0.2",
+                "authorization_context_id": authorization_context_id,
+                "accessible_population": "public-repositories-visible-to-adapter",
+                "detection_assumptions": [
+                    "repository is indexed by the declared search endpoint"
+                ],
+            }
+        ]
+        if source_requirements is None
+        else [dict(requirement) for requirement in source_requirements]
+    )
+    query = {
+        "target": "GitHub repository search",
+        "predicate": "topic:evidence-state language:Python",
+        "authorization_boundary": authorization_boundary,
+        "authorization_context_id": authorization_context_id,
+        "time_start": "2026-08-21T00:00:00Z",
+        "time_end": "2026-08-21T12:00:00Z",
+        "exclusions": ["deleted repositories", "unindexed content"],
+        "source_requirements": effective_requirements,
+    }
+    query_fingerprint = QueryScope.from_dict(query).fingerprint()
+    effective_observations = (
+        [
+            {
+                "source_id": "github-public-repositories",
+                "status": "OBSERVED",
+                "authorization_context_id": authorization_context_id,
+                "query_fingerprint": query_fingerprint,
+                "accessible_population": "public-repositories-visible-to-adapter",
+                "descriptor": {
+                    "system": "github-search",
+                    "locator": "repositories/search",
+                    "adapter_id": "github-search-adapter",
+                    "adapter_version": "seed-0.2",
+                    "index_as_of": index_as_of,
+                },
+                "errors": [],
+            }
+        ]
+        if source_observations is None
+        else [dict(observation) for observation in source_observations]
+    )
     return {
         "subject": "repositories matching the query",
         "mode": mode,
         "evaluated_at": "2026-08-21T12:05:00Z",
-        "policy": dict({} if policy is None else policy),
+        "policy": {
+            "policy_id": "esio-p0-safety-floor",
+            "policy_version": "1.0-candidate.1",
+            **dict({} if policy is None else policy),
+        },
         "envelope": {
-            "schema_version": "0.1",
+            "schema_version": "1.0",
             "state": state,
-            "query": {
-                "target": "GitHub repository search",
-                "predicate": "topic:evidence-state language:Python",
-                "authorization_boundary": authorization_boundary,
-                "time_start": "2026-08-21T00:00:00Z",
-                "time_end": "2026-08-21T12:00:00Z",
-                "exclusions": ["deleted repositories", "unindexed content"],
-            },
+            "query": query,
             "coverage": {
                 "examined_units": examined_units,
                 "population_basis": population_basis,
@@ -380,15 +425,11 @@ def _request_dict(
                 "permission_limited": permission_limited,
                 "query_errors": [],
             },
+            "coverage_query_fingerprint": query_fingerprint,
             "matched_count": 0,
             "observed_at": "2026-08-21T12:00:00Z",
             "valid_until": valid_until,
-            "source": {
-                "system": "github-search",
-                "locator": "repositories/search",
-                "adapter_version": "seed-0.1",
-                "index_as_of": index_as_of,
-            },
+            "source_observations": effective_observations,
             "errors": [],
             "notes": ["Synthetic EmptyBench seed case; not an external observation."],
         },
@@ -510,6 +551,24 @@ def seed_case_dicts() -> list[dict[str, Any]]:
             "request": _request_dict(timed_out=True),
             "expected_allowed": False,
             "expected_reasons": ["COVERAGE_POLICY_NOT_MET"],
+        },
+        {
+            "case_id": "required-source-observed",
+            "pair_id": "required-source-present-vs-missing",
+            "variant": "observed",
+            "description": "The declared required source has an explicit observation record.",
+            "request": _request_dict(),
+            "expected_allowed": True,
+            "expected_reasons": [],
+        },
+        {
+            "case_id": "required-source-missing",
+            "pair_id": "required-source-present-vs-missing",
+            "variant": "missing",
+            "description": "The visible empty result lacks an observation for the declared required source.",
+            "request": _request_dict(source_observations=[]),
+            "expected_allowed": False,
+            "expected_reasons": ["REQUIRED_SOURCE_MISSING"],
         },
     ]
 

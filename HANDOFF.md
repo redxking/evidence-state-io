@@ -13,6 +13,7 @@ The repository is expected to contain:
 - a product requirements document with explicit goals and non-goals;
 - architecture decisions and a laptop-first deployment design;
 - a typed evidence-envelope model;
+- explicit required-versus-observed source accounting for the schema `1.0` candidate;
 - a deterministic coverage evaluator and negative-claim gate;
 - a command-line interface suitable for scripts and demonstrations;
 - paired benchmark fixtures covering at least one supported-negative and one partial-coverage case;
@@ -27,14 +28,19 @@ Use `PROJECT_STATUS.md` and the test results to determine what is actually imple
 Do not begin by adding features. Begin by running the existing checks, reading the open risks, and reproducing the paired-case demonstration.
 
 ```bash
-python3 -m venv .venv
+./scripts/setup.sh
 source .venv/bin/activate
-python -m pip install '.[dev]'
-pytest
+./scripts/test.sh
 env -u PYTHONPATH .venv/bin/evidence-state demo
 ```
 
 If the test command or documented demonstration fails, repair or accurately document that failure before taking new backlog work. Run the installed-command check with `PYTHONPATH` unset: the repository wrappers intentionally exercise current `src/`, while the installed command verifies the package an operator will actually invoke.
+
+The active parser intentionally rejects schema `0.1`. Historical replay is
+preserved in `examples/legacy/` and requires checkout of the pinned `b6fac87`
+implementation. Do not relabel or auto-migrate that fixture, and do not treat
+its historical local verdict as a current decision or certificate. See
+ADR-0007 for the version boundary.
 
 ## Continuous work loop
 
@@ -69,9 +75,11 @@ No state implies the next one.
 
 Unless evidence changes the plan, work in this order:
 
-1. Preserve the first local schema `0.1` freeze while adding explicit required-versus-observed source accounting.
-2. Add a supplied finality horizon and exact below/equal/above boundary behavior.
-3. Complete the deterministic evidence certificate and bind policy/evaluator versions; keep digest and signature semantics separate.
+1. Preserve the first local schema `0.1` freeze and the tested schema `1.0`
+   source-accounting boundary without calling the candidate frozen.
+2. Add a supplied finality horizon and exact below/equal/above boundary
+   behavior; this is the active implementation item.
+3. Complete the deterministic evidence certificate and bind schema, policy, evaluator, profile, and certificate versions; keep digest and signature semantics separate.
 4. Freeze a minimum paired EmptyBench corpus with a separately governed scoring oracle.
 5. Establish baseline model/tool behavior on that frozen corpus and apply the go/no-go thresholds without reinterpretation.
 6. If the gate passes, add one real read-only adapter and a source-coverage profile under owner-approved authority and data boundaries.

@@ -36,10 +36,22 @@ from .models import (
     CoverageEvidence,
     EvidenceEnvelope,
     EvidenceState,
+    MAX_SOURCE_ACCOUNTING_ENTRIES,
     ModelValidationError,
     PopulationBasis,
     QueryScope,
     SourceDescriptor,
+    SourceObservation,
+    SourceObservationStatus,
+    SourceRequirement,
+    SourceRole,
+    bounded_ascii_identifier,
+)
+from .sources import (
+    SourceAccountingAssessment,
+    SourceIssue,
+    SourceIssueCode,
+    evaluate_source_accounting,
 )
 
 __all__ = [
@@ -58,17 +70,27 @@ __all__ = [
     "EvidenceState",
     "GateDecision",
     "GateReason",
+    "MAX_SOURCE_ACCOUNTING_ENTRIES",
     "ModelValidationError",
     "NegativeClaimPolicy",
     "NegativeClaimRequest",
     "PopulationBasis",
     "QueryScope",
+    "SourceAccountingAssessment",
     "SourceDescriptor",
+    "SourceIssue",
+    "SourceIssueCode",
+    "SourceObservation",
+    "SourceObservationStatus",
+    "SourceRequirement",
+    "SourceRole",
+    "bounded_ascii_identifier",
     "canonical_digest",
     "canonical_json_bytes",
     "demo_cases",
     "evaluate_coverage",
     "evaluate_negative_claim",
+    "evaluate_source_accounting",
     "parse_cases",
     "run_emptybench",
     "run_seed_emptybench",
@@ -76,4 +98,4 @@ __all__ = [
     "verify_canonical_digest",
 ]
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

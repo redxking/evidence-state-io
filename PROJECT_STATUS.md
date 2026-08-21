@@ -1,65 +1,138 @@
 # Project Status
 
 **Status date:** 2026-08-21
-**Lifecycle stage:** initial hardened runnable handoff, locally tested
+**Lifecycle stage:** schema `1.0` source-accounting candidate, locally tested
 **Claim level:** local research prototype only
 
 ## Current objective
 
-Produce a reproducible laptop-based demonstration in which a deterministic gateway distinguishes a coverage-supported negative from an observationally identical but insufficiently covered case.
+Produce a reproducible laptop-based gateway that permits a bounded negative
+only when the supplied evidence state, query scope, coverage, and required
+source observation satisfy an explicit fail-closed contract. The next
+increment must add explicit source finality; an index timestamp is not a
+finality watermark.
 
 ## Continuation mechanism
 
-- Active goal: complete the runnable handoff and advance the MVP until its defined acceptance criteria are met.
-- Active daily heartbeat: `advance-evidence-state-i-o`, scheduled for 9:00 AM in the task's local timezone.
-- The heartbeat is bounded by `HANDOFF.md` and may not cross release, licensing, external-deployment, sensitive-data, or material-cost approval boundaries.
+- Active goal: complete the runnable handoff and advance the MVP until its
+  defined acceptance criteria are met.
+- Active daily heartbeat: `advance-evidence-state-i-o`, scheduled for 9:00 AM
+  in the task's local timezone.
+- The heartbeat is bounded by `HANDOFF.md` and may not cross release,
+  licensing, external-deployment, sensitive-data, or material-cost approval
+  boundaries.
+- The ordered implementation queue and restart instructions are in `TASKS.md`
+  and `HANDOFF.md`; every increment must leave the repository recoverable and
+  update this evidence record.
 
-## Current evidence
+## Current implementation
 
-- Public research establishes that coverage-sensitive negative reasoning is a measurable model failure mode.
-- A bounded public scan found theory and benchmark work but no mature, cross-platform evidence-state runtime or adopted query-coverage contract.
-- A dependency-free core runtime, explicit fail-closed schema, deterministic coverage evaluator, negative-claim gate, strict JSON CLI, five seed case pairs, and laptop operating package are implemented.
-- Multiple green proposed baselines were rejected by read-only adversarial review. The reproduced unsafe paths were converted into regressions, and the unchanged 171-test source/installed snapshot passed the final replay. The full evidence trail is preserved in `docs/REVIEW_LOG.md`.
-- The implementation-to-PRD status is recorded in `docs/TRACEABILITY.md`; several P0 requirements remain partial.
+- Package `0.2.0` accepts exactly active schema `1.0`, policy
+  `esio-p0-safety-floor/1.0-candidate.1`, and evaluator
+  `esio-evaluator-1.0-candidate.1`.
+- Query scope includes a stable authorization-context ID and is normalized to
+  a canonical SHA-256 fingerprint. The coverage object and every source
+  observation must carry that fingerprint.
+- The candidate accepts exactly one declared `REQUIRED` source. The source
+  requirement and observation must match on source ID, system, locator,
+  adapter ID/version, authorization context, and accessible population.
+  Detection assumptions must be explicit, nonempty, unique, and canonical.
+- Missing and every non-observed source status reject. Identity, adapter,
+  authorization, population, observation-error, and query-binding mismatches
+  also reject with source-attributed reasons.
+- Literal `unknown`, `unspecified`, `none`, and `n/a` placeholders reject across
+  the safety-bearing subject, query, exclusion, source/adapter identity,
+  authorization context, population, and detection-assumption fields. Exact
+  `*` and `all` also reject where a bounded identity, population, exclusion, or
+  subject is required; they remain valid explicit target/predicate expressions
+  whose meaning is still bounded by the query's authorization, source, and
+  time contract. This does not prove broader semantic correctness.
+- An observed source must provide `index_as_of`, and it must not precede the
+  query interval end or postdate the observation. This is a necessary
+  chronology/currentness condition only; it does not prove late-arrival
+  finality or completeness.
+- EmptyBench contains six matched pairs/twelve synthetic cases, including a
+  required-source observed-versus-missing pair.
+- The hash-bound schema `0.1` fixture and decision digest remain available for
+  historical replay only at commit `b6fac87`; the active parser rejects `0.1`
+  and performs no implicit migration.
 
 ## Verification record
 
-On 2026-08-21, the candidate source and repository-local installed package produced the results below. The repository's initial local commit binds the accepted 171-test code, tests, documentation, and review record into the first recoverable snapshot; the package-file comparison establishes source/install parity, not independent custody.
+On 2026-08-21, the current schema `1.0` candidate produced the following local
+results:
 
-- `env -u PYTHONPATH ./scripts/check.sh` — passed; package compiled, dependencies checked, CLI imported, shell syntax passed, and optional Compose configuration validated.
-- The same check compared source and installed package-file snapshots and their deterministic demos; parity passed.
-- `env -u PYTHONPATH ./scripts/test.sh` — 171 tests passed on Python 3.13.0.
-- `env -u PYTHONPATH ./scripts/demo.sh --pretty` — 2/2 synthetic paired cases passed.
-- `PYTHONPATH=src /opt/homebrew/bin/python3.11 -m unittest discover -s tests -q` — 171 tests passed on Python 3.11.
-- A fresh copied-project install built successfully and its installed suite passed 168/168 before the final two source regressions were added; the repository-local final install then passed 171/171.
-- `env -u PYTHONPATH ./.venv/bin/python -m pytest -q` — 171 tests passed against the installed `site-packages` copy.
-- Covered case — `PERMIT_SCOPED_NEGATIVE`.
-- Matched incomplete-pagination case — `REJECT_NEGATIVE` with `STATE_NOT_ABSENT_WITHIN_SCOPE` and `COVERAGE_POLICY_NOT_MET`.
-- Direct installed-command evaluation of both checked-in examples reproduced those dispositions; the custom pair was labeled `EmptyBench-custom`.
-- Independent replay on the unchanged source and installed package passed the 98/98 core CLI exploit replay set across the two execution paths, 30/30 EmptyBench adversarial executions, 38/38 direct-library checks, and 6/6 explicit source-index chronology probes.
-- Source and installed seed demonstrations passed at 2/2 and 10/10. The custom example passed 2/2 and retained `EmptyBench-custom` provenance.
-- After the files were placed under local version control, `git diff --check` and `git diff --cached --check` passed.
+- `env -u PYTHONPATH ./scripts/check.sh` — passed static checks, local-link
+  checks, shell/Compose validation, source-versus-installed package snapshots,
+  and deterministic demonstration parity.
+- `env -u PYTHONPATH ./scripts/test.sh` — 224/224 passed on Python 3.13.0.
+- `env -u PYTHONPATH ./.venv/bin/python -m pytest -q` — 224/224 passed against
+  the installed `site-packages` copy with `PYTHONPATH` unset.
+- `PYTHONPATH=src /opt/homebrew/bin/python3.11 -m unittest discover -s tests -q`
+  — 224/224 passed against the checked-out source on Python 3.11.
+- `env -u PYTHONPATH ./scripts/demo.sh --pretty` — 2/2 synthetic operator cases
+  passed.
+- The Python 3.11 source seed and Python 3.13 installed-package seed runs passed
+  12/12 and were byte-identical. The custom EmptyBench example passed 2/2 and
+  retained `EmptyBench-custom` provenance.
+- Direct installed CLI evaluation produced `PERMIT_SCOPED_NEGATIVE` for the
+  fully bound covered example and `REJECT_NEGATIVE` for the matched partial
+  example.
+- `scripts/setup.sh` now verifies equality among the project, imported module,
+  and installed-distribution versions. A stale `0.1.0` metadata directory was
+  detected during review, moved recoverably to
+  `/private/tmp/evidence-state-io-stale-0.1.0.dist-info`, and the clean
+  `0.2.0` installation passed the complete replay.
+- `git diff --check` and `bash -n scripts/*.sh` passed.
 
-The 79-, 114-, 168-, and 169-test proposed snapshots were not accepted. Review found unsupported permits, source/install drift, numeric and temporal precision defects, parser/output failures, programmatic-model inconsistencies, falsy-input repair, and source/observation chronology defects. Each material finding and its disposition remains recorded in `docs/REVIEW_LOG.md`.
+An internal read-only adversarial review rejected the first green 215-test
+schema `1.0` proposal. It reproduced permits with the wrong source descriptor,
+missing adapter identity, conflicting authorization context, empty detection
+assumptions, hidden optional-source failure, unbound coverage/observation
+objects, and missing or pre-query source-index timestamps. Those paths were
+converted to regressions before the 224-test candidate checkpoint was accepted
+for continued local development.
 
-The 171-test snapshot is the first accepted **local** schema `0.1` and canonicalization-profile `0.1` freeze. Earlier snapshots were development proposals, not accepted contracts; none was released, published, benchmark-frozen, or used to issue a certificate. Therefore the hardening changes did not silently revise an accepted `0.1` contract. From this local freeze forward, incompatible contract changes require the version-governance rules in ADR-0002. Policy/certificate version binding remains incomplete.
+The final candidate audit also caught source/install drift after a late output
+edit and a self-consistent placeholder-declaration permit path. The package was
+reinstalled, exact parity was restored, and the placeholder mutations were
+converted into existing-suite regressions before custody binding.
 
-This is local synthetic evidence. The Python 3.11 check used `unittest`, not the complete CI job. GitHub Actions was not executed, containers were not started, and no external or operational system was evaluated.
+The historical 171-test snapshot remains the first accepted **local** schema
+`0.1` and canonicalization-profile `0.1` freeze at `b6fac87`. The 224-test
+schema `1.0` state is a candidate source-accounting checkpoint, not a frozen
+schema, benchmark, release, certificate, or external validation result.
+
+These results are local synthetic evidence. GitHub Actions was not executed,
+containers were not started, and no external or operational system was
+evaluated.
 
 ## Known limitations
 
-- No design-partner evidence.
-- No independently reproduced benchmark.
-- No operational or production deployment.
-- No demonstrated completeness model for a real SIEM or enterprise search system.
-- No complete certificate object, independent oracle, frozen baseline campaign, explicit finality derivation, or multi-source coverage composition.
-- Pair validation requires the same visible question and at least one changed sufficiency fact; it does not yet prove that exactly one independent variable changed.
-- Credential-like field detection and comprehensive per-collection semantic bounds remain open.
-- Source `index_as_of` cannot postdate observation, but it is not yet a completeness/finality watermark. An index timestamp earlier than the query interval end therefore remains part of the explicit finality-model gap.
-- The verified digest is integrity metadata only; it is not a signature or independent evidence custody.
-- No licensing decision.
-- Public-search absence does not establish that no private implementation exists.
+- The aggregate evidence state and coverage facts are producer-supplied. The
+  gateway validates their internal contract but does not independently derive
+  or attest their truth.
+- Query fingerprints reduce wrong-object and accidental substitution risk; a
+  self-consistent malicious producer can still forge declarations without an
+  authenticated adapter or attestation profile.
+- No explicit finality horizon, late-arrival model, snapshot-consistency model,
+  blind-interval model, or multi-source composition exists.
+- No complete certificate binding schema, policy/evaluator versions, origin,
+  input, verdict, reasons, qualification, and issue time exists.
+- The SHA-256 input digest is integrity metadata, not a signature or independent
+  evidence custody.
+- The EmptyBench corpus and oracle are implementation-owned, not independently
+  governed, preregistered, or frozen.
+- No design-partner evidence, real adapter, independently reproduced benchmark,
+  operational deployment, or external security assessment exists.
+- Credential-like identifier detection, governed adapter/profile registries,
+  comprehensive per-collection bounds, and broad fuzzing remain open.
+- No licensing decision has been made. Public-search absence does not prove no
+  private implementation exists.
 
 ## Next decision
 
-Close the remaining P0 evidence-source/finality/certificate gaps, freeze an oracle-separated EmptyBench corpus, then measure whether the gate reduces a preregistered model baseline without collapsing supported negatives into universal abstention.
+Implement explicit, supplied finality with exact below/equal/above boundary
+tests and no wall-clock dependency. Then bind a complete deterministic
+certificate and separate/freeze the EmptyBench oracle before any market,
+benchmark, production-readiness, or external-validation claim.
