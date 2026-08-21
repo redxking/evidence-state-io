@@ -53,7 +53,8 @@ Every engineering item must satisfy all applicable conditions:
 | P0-05 | Implement fail-closed coverage evaluator | P0-02, P0-03, P0-04 | Missing, partial, stale, inaccessible, pending, failed, or contradictory inputs retain stable reason codes; all reasons are preserved under aggregate precedence. | ADR for precedence changes |
 | P0-06 | Implement negative-claim gate | P0-05 | Absolute negatives always reject; only valid `ABSENT_WITHIN_SCOPE` permits a generated scoped negative; `PRESENT` and every indeterminate state reject. | None |
 | P0-07 | Implement qualified renderer | P0-06 | Permitted output names scope, authorization boundary, interval, sources, and material exclusions; rejected output states insufficiency without asserting the positive opposite. | Claims review |
-| P0-08 | Implement canonical certificate | P0-05, P0-06 | Stable payload and SHA-256 integrity digest reproduce byte-for-byte; one-field mutation changes the digest; output calls it a digest, not a signature. | ADR before signing |
+| P0-07A | Define and bind governed coverage/finality profile | P0-03, P0-04 | Profile ID, version, digest, issuer/authority, validity, population, access, late-arrival/reopen, blind-interval, and detection assumptions are explicit; missing/expired/mismatched profiles block; query and certificate bind the exact profile without claiming its assertions are independently true. | Governance ADR |
+| P0-08 | Implement canonical certificate | P0-05, P0-06, P0-07A | Stable payload binds schema, policy, evaluator, applicable profiles, canonical input, evaluation time, origin, verdict, reasons, and qualification; SHA-256 reproduces byte-for-byte; one-field mutation changes the digest; output calls it a digest, not a signature. | ADR before signing |
 | P0-09 | Implement JSON CLI | P0-06, P0-08 | Approved `evaluate` and `demo` commands work; JSON goes to stdout, diagnostics to stderr; evaluation rejection is distinct from process failure. | None |
 
 ## Stage 2 — EmptyBench and falsification gate
@@ -77,7 +78,7 @@ These items begin only if `GATE-01` authorizes continuation.
 
 | ID | Item | Depends on | Item-specific definition of done | Gate |
 |---|---|---|---|---|
-| P1-01 | Coverage profile schema and local registry | GATE-01 | Profiles version ownership, population, fields, retention, blind intervals, freshness, access, detection assumptions, and effective dates; drift or expiry blocks absence. | Owner for governance policy |
+| P1-01 | Operational coverage-profile registry and validation | GATE-01, P0-07A | Extend the P0 profile contract with governed storage, trust roots, lifecycle, source-owner validation, drift monitoring, and operational expiry/revocation behavior. | Owner for governance policy |
 | P1-02 | Read-only SQL/Postgres adapter | P1-01 | Uses least-privilege read-only access; maps snapshots, row count, interval, pagination, timeout, and permission failures; replay tests cover all paths. | Approval for any real DB |
 | P1-03 | Read-only search adapter | P1-01 | OpenSearch/Elasticsearch mapping covers shards/partitions, total-hit relation, timeouts, truncation, and authorization filters; tests use synthetic or recorded authorized data. | Approval for any real search service |
 | P1-04 | Read-only GitHub Search adapter | P1-01 | Rate limits, pagination cap, query qualifiers, accessible repositories, and incomplete results are explicit; no empty result self-declares absence. | Network/account approval |

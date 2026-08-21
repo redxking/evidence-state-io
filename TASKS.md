@@ -2,7 +2,7 @@
 
 ## Active
 
-- [ ] **Derive pending finality explicitly** - Add a supplied finality horizon and exact below/equal/above boundary tests; do not consult wall-clock time.
+- [ ] **Define and bind the governed coverage/finality profile** - Add profile ID, version, digest, issuer/authority, validity, late-arrival and reopen assumptions, and exact query/certificate binding; treat the profile as a governed assertion, not proof that the source behavior is true.
 - [ ] **Build the complete deterministic certificate** - Bind schema, evaluator and policy versions, origin classification, canonical input, verdict, reasons, qualification, and evaluation time; keep digest and signature semantics separate.
 - [ ] **Separate the EmptyBench oracle** - Move expected outcomes outside executable request fixtures, freeze corpus and oracle digests, and add source/finality fault families without using the gate as its own truth source.
 
@@ -17,6 +17,28 @@
 - [ ] **Evaluate trusted-time integration** - Keep separate from P0 evidence-coverage semantics.
 
 ## Done
+
+- [x] ~~Derive declared finality chronology explicitly~~ (2026-08-21)
+  - Package `0.3.0`, policy `1.0-candidate.2`, and evaluator
+    `esio-evaluator-1.0-candidate.2` enforce a query-bound declared finality
+    horizon without reading the wall clock.
+  - A permit requires `query.time_end <= finality_horizon <= index_as_of <=
+    observed_at <= evaluated_at <= valid_until`; waiting cannot upgrade an old
+    snapshot.
+  - Missing/null horizon, exact below/equal/above boundaries, malformed time,
+    wait-only reuse, old policy, policy relaxation, stale fingerprint, digest
+    mutation, reason ordering, CLI behavior, and offset normalization are tested.
+  - EmptyBench now contains seven matched pairs/fourteen cases; its finality pair
+    keeps the query, horizon, evaluation time, and visible zero constant while
+    the source index moves by one microsecond.
+  - Python 3.13 source/installed and Python 3.11 source suites passed 244/244;
+    cross-runtime seed output passed 14/14 and was byte-identical.
+  - Independent read-only review reproduced and corrected the legacy-fingerprint
+    compatibility contradiction, then accepted the bounded fail-closed result.
+  - This closes the evaluator chronology increment only. Governed profile
+    authority, watermark authenticity, and source completeness remain open.
+  - Candidate implementation checkpoint:
+    `7deaea1dd79eacd2c4f3ebbef87a314e5293f1f6`.
 
 - [x] ~~Add required and observed source accounting~~ (2026-08-21)
   - Package `0.2.0` accepts only the schema `1.0` candidate; query requirements and runtime observations are distinct and deterministically ordered.

@@ -256,3 +256,84 @@ independent oracle, an authenticated adapter, external reproduction, an
 operational evaluation, or a production-readiness determination. The gateway
 still evaluates producer-supplied state and facts; it does not independently
 establish their truth.
+
+## 2026-08-21 — Explicit source-finality candidate review
+
+**Review disposition:** initial semantic and compatibility proposals rejected;
+repaired increment accepted as a local candidate checkpoint only
+**Evidence class:** local synthetic implementation; independent read-only
+adversarial and contract review within the project team
+
+### Rejected finality designs and candidate state
+
+The first tempting design compared only `evaluated_at` with a finality delay.
+It was rejected before acceptance because an unchanged pre-horizon empty
+snapshot could become sufficient merely by waiting. The source snapshot itself
+must advance through the horizon.
+
+The first integrated implementation enforced that safe comparison and passed
+243 source tests, but its canonical representation emitted an undeclared
+horizon as `"finality_horizon": null`. That changed the query fingerprint of an
+actual pre-finality schema `1.0` candidate object. The object therefore failed
+at fingerprint validation before producing the intended
+`FINALITY_HORIZON_UNDECLARED` diagnosis. Safety remained fail-closed, but the
+documented parse-and-diagnose compatibility claim was false. That candidate
+state was rejected.
+
+### Accepted contract and remediation
+
+- The source requirement owns the per-query declared horizon. The runtime
+  observation independently reports `index_as_of`.
+- A permit requires the inclusive chain `query.time_end <= finality_horizon <=
+  index_as_of <= observed_at <= evaluated_at <= valid_until` plus every existing
+  coverage, source, freshness, validity, and error condition.
+- Missing and null horizons are syntactically accepted but semantically
+  insufficient under non-relaxable policy `1.0-candidate.2`; both normalize by
+  omitting the undeclared field and reject with
+  `FINALITY_HORIZON_UNDECLARED`.
+- A declared horizon is normalized to UTC and bound into the query fingerprint,
+  coverage and observation bindings, normalized request, and input digest.
+- A source index below both the query end and finality horizon retains both
+  applicable reasons in deterministic order.
+- A regression reconstructs the actual pre-finality `example-0.2` query
+  fingerprint without rebinding. It parses under candidate.2 and rejects solely
+  for undeclared finality.
+- Package, policy, and evaluator advanced to `0.3.0`,
+  `1.0-candidate.2`, and `esio-evaluator-1.0-candidate.2`. Schema `1.0` remains
+  an unfrozen candidate; canonicalization profile `0.1` and the hash-bound
+  schema `0.1` replay remain unchanged.
+- EmptyBench gained a seventh pair. Its query, horizon, evaluation time, and
+  visible zero remain fixed while the reported source index moves one
+  microsecond below versus exactly to the horizon.
+
+### Verification and independent review
+
+- Reviewed implementation checkpoint:
+  `7deaea1dd79eacd2c4f3ebbef87a314e5293f1f6`.
+- Python 3.13 source suite: 244/244.
+- Python 3.13 installed-package suite with `PYTHONPATH` unset: 244/244.
+- Python 3.11 source unittest discovery: 244/244.
+- Python 3.11 source and Python 3.13 installed seed outputs passed 14/14 and
+  were byte-identical.
+- Operator demonstration passed 2/2; custom example passed 2/2 with
+  `EmptyBench-custom` provenance.
+- `scripts/check.sh`, package/source snapshot parity, local links, shell syntax,
+  Compose validation, version equality, and no-ambient-clock scan passed.
+- Final independent adversarial review passed 164/164 focused Python 3.13
+  checks and 37/37 Python 3.11 finality/benchmark checks. It directly probed
+  missing/null/malformed horizons, horizon-before-query, pre-horizon and missing
+  indexes, optimistic state, wait-only evaluation advancement, stale
+  fingerprints, policy downgrade/relaxation, non-observed statuses, reason
+  ordering, and the actual legacy candidate fingerprint without reproducing a
+  permit.
+
+### Bounded acceptance
+
+This checkpoint establishes deterministic consistency with supplied finality
+declarations. It does not establish who was authorized to declare the horizon,
+that the lateness model is accurate, that the reported index is authentic, that
+clocks are calibrated, or that exceptional backfill, correction, deletion,
+retraction, reopening, or cross-page inconsistency cannot occur. Governed
+profiles, multi-source composition, the complete certificate, independent
+oracle custody, external validation, operational evaluation, and production
+readiness remain open.
