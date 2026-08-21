@@ -7,6 +7,18 @@ from .canonical import (
     canonical_json_bytes,
     verify_canonical_digest,
 )
+from .certificates import (
+    CERTIFICATE_FORMAT,
+    CertificateContextBinding,
+    CertificateVerification,
+    EvidenceCertificate,
+    EvidenceCertificatePayload,
+    EvidenceOrigin,
+    ImplementationIdentity,
+    WorkingTreeState,
+    build_evidence_certificate,
+    verify_evidence_certificate,
+)
 from .coverage import (
     CoverageAssessment,
     CoverageComponent,
@@ -80,6 +92,7 @@ from .profiles import (
 
 __all__ = [
     "CANONICALIZATION_PROFILE",
+    "CERTIFICATE_FORMAT",
     "COVERAGE_FINALITY_PROFILE_SCHEMA",
     "DIGEST_ALGORITHM",
     "EVALUATION_INPUT_SCHEMA",
@@ -88,6 +101,8 @@ __all__ = [
     "PROFILE_TRUST_SELECTION_SCHEMA",
     "BlindInterval",
     "ClaimMode",
+    "CertificateContextBinding",
+    "CertificateVerification",
     "CoverageProfileReference",
     "CoverageAssessment",
     "CoverageComponent",
@@ -98,6 +113,9 @@ __all__ = [
     "EmptyBenchCase",
     "EmptyBenchOutcome",
     "EmptyBenchReport",
+    "EvidenceCertificate",
+    "EvidenceCertificatePayload",
+    "EvidenceOrigin",
     "EvidenceEnvelope",
     "EvidenceState",
     "GateDecision",
@@ -106,6 +124,7 @@ __all__ = [
     "ModelValidationError",
     "NegativeClaimPolicy",
     "NegativeClaimRequest",
+    "ImplementationIdentity",
     "PopulationBasis",
     "ProfileApplicability",
     "ProfileAssessment",
@@ -128,7 +147,9 @@ __all__ = [
     "SourceRequirement",
     "SourceRole",
     "TrustedProfileContext",
+    "WorkingTreeState",
     "bounded_ascii_identifier",
+    "build_evidence_certificate",
     "canonical_digest",
     "canonical_json_bytes",
     "demo_cases",
@@ -142,6 +163,7 @@ __all__ = [
     "seed_cases",
     "seed_profile_context",
     "verify_canonical_digest",
+    "verify_evidence_certificate",
 ]
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"

@@ -27,6 +27,11 @@ class CliTests(unittest.TestCase):
                 )
             if "--trust" not in argv:
                 argv.extend(["--trust", str(EXAMPLES / "profile_trust.json")])
+        if argv and argv[0] == "evaluate":
+            if "--issued-at" not in argv:
+                argv.extend(["--issued-at", "2026-08-21T12:06:00Z"])
+            if "--origin" not in argv:
+                argv.extend(["--origin", "SYNTHETIC"])
         stdout = StringIO()
         stderr = StringIO()
         code = main(argv, stdin=StringIO(stdin_text), stdout=stdout, stderr=stderr)
@@ -51,7 +56,23 @@ class CliTests(unittest.TestCase):
         )
         self.assertEqual(code, 0)
         self.assertEqual(stderr, "")
-        self.assertTrue(json.loads(stdout)["allowed"])
+        payload = json.loads(stdout)
+        self.assertTrue(payload["certificate"]["decision"]["allowed"])
+        self.assertEqual(
+            payload["certificate"]["evidence_origin"], "SYNTHETIC"
+        )
+        self.assertEqual(
+            payload["certificate"]["implementation"]["package_version"],
+            "0.5.0",
+        )
+        expected = json.loads(
+            (EXAMPLES / "covered_certificate.json").read_text()
+        )
+        self.assertEqual(payload, expected)
+        self.assertEqual(
+            payload["certificate_digest"],
+            "sha256:45f66fb5f24b7aad0599aec5e7c06dc729967b6498f293ed00aefc94baf56ce6",
+        )
 
     def test_evaluate_full_request_denies_partial_case(self) -> None:
         code, stdout, _ = self.invoke(
@@ -59,8 +80,55 @@ class CliTests(unittest.TestCase):
         )
         payload = json.loads(stdout)
         self.assertEqual(code, 0)
-        self.assertFalse(payload["allowed"])
-        self.assertIn("COVERAGE_POLICY_NOT_MET", payload["reasons"])
+        decision = payload["certificate"]["decision"]
+        self.assertFalse(decision["allowed"])
+        self.assertIn("COVERAGE_POLICY_NOT_MET", decision["reasons"])
+
+    def test_verify_certificate_reports_replay_and_context_dimensions(self) -> None:
+        evaluate_code, certificate_json, _ = self.invoke(
+            ["evaluate", "--input", str(EXAMPLES / "covered_request.json")]
+        )
+        self.assertEqual(evaluate_code, 0)
+        code, stdout, stderr = self.invoke(
+            [
+                "verify-certificate",
+                "--input",
+                "-",
+                "--registry",
+                str(EXAMPLES / "profile_registry.json"),
+                "--trust",
+                str(EXAMPLES / "profile_trust.json"),
+                "--relying-party-at",
+                "2026-08-21T12:30:00Z",
+            ],
+            certificate_json,
+        )
+        self.assertEqual(code, 0)
+        self.assertEqual(stderr, "")
+        report = json.loads(stdout)
+        self.assertTrue(report["certificate_digest_integrity"])
+        self.assertTrue(report["deterministic_replay"])
+        self.assertTrue(report["expected_context_match"])
+        self.assertTrue(report["current_local_reliance_eligible"])
+        self.assertFalse(report["issuer_authenticated"])
+        self.assertFalse(report["authorization_established"])
+
+    def test_verify_certificate_tamper_is_exit_1_not_authentication(self) -> None:
+        _, certificate_json, _ = self.invoke(
+            ["evaluate", "--input", str(EXAMPLES / "covered_request.json")]
+        )
+        artifact = json.loads(certificate_json)
+        artifact["certificate_digest"] = "sha256:" + "0" * 64
+        code, stdout, stderr = self.invoke(
+            ["verify-certificate", "--input", "-"],
+            json.dumps(artifact),
+        )
+        self.assertEqual(code, 1)
+        self.assertEqual(stderr, "")
+        report = json.loads(stdout)
+        self.assertFalse(report["certificate_digest_integrity"])
+        self.assertTrue(report["deterministic_replay"])
+        self.assertFalse(report["issuer_authenticated"])
 
     def test_evaluate_missing_finality_horizon_fails_closed(self) -> None:
         full = json.loads((EXAMPLES / "covered_request.json").read_text())
@@ -74,8 +142,9 @@ class CliTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(stderr, "")
         payload = json.loads(stdout)
-        self.assertFalse(payload["allowed"])
-        self.assertIn("FINALITY_HORIZON_UNDECLARED", payload["reasons"])
+        decision = payload["certificate"]["decision"]
+        self.assertFalse(decision["allowed"])
+        self.assertIn("FINALITY_HORIZON_UNDECLARED", decision["reasons"])
 
     def test_evaluate_pre_horizon_index_fails_closed_without_process_error(self) -> None:
         full = json.loads((EXAMPLES / "covered_request.json").read_text())
@@ -88,8 +157,9 @@ class CliTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(stderr, "")
         payload = json.loads(stdout)
-        self.assertFalse(payload["allowed"])
-        self.assertIn("INDEX_PRECEDES_FINALITY_HORIZON", payload["reasons"])
+        decision = payload["certificate"]["decision"]
+        self.assertFalse(decision["allowed"])
+        self.assertIn("INDEX_PRECEDES_FINALITY_HORIZON", decision["reasons"])
 
     def test_finality_horizon_before_query_end_is_invalid_input(self) -> None:
         full = json.loads((EXAMPLES / "covered_request.json").read_text())
@@ -126,7 +196,9 @@ class CliTests(unittest.TestCase):
         )
         self.assertEqual(code, 0)
         self.assertEqual(stderr, "")
-        self.assertTrue(json.loads(stdout)["allowed"])
+        self.assertTrue(
+            json.loads(stdout)["certificate"]["decision"]["allowed"]
+        )
 
     def test_bare_envelope_explicit_empty_subject_is_rejected(self) -> None:
         full = json.loads((EXAMPLES / "covered_request.json").read_text())
@@ -289,6 +361,10 @@ class CliTests(unittest.TestCase):
                 str(EXAMPLES / "profile_registry.json"),
                 "--trust",
                 str(EXAMPLES / "profile_trust.json"),
+                "--issued-at",
+                "2026-08-21T12:06:00Z",
+                "--origin",
+                "SYNTHETIC",
             ],
             cwd=PROJECT_ROOT,
             env=environment,

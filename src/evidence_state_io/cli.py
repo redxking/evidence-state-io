@@ -10,8 +10,15 @@ import sys
 from typing import Any, Sequence, TextIO
 
 from .coverage import CoveragePolicy, evaluate_coverage
+from .certificates import (
+    EvidenceOrigin,
+    ImplementationIdentity,
+    WorkingTreeState,
+    build_evidence_certificate,
+    verify_evidence_certificate,
+)
 from .emptybench import parse_cases, run_emptybench, run_seed_emptybench
-from .gate import NegativeClaimRequest, NegativeClaimPolicy, evaluate_negative_claim
+from .gate import NegativeClaimRequest, NegativeClaimPolicy
 from .models import (
     ClaimMode,
     CoverageEvidence,
@@ -29,6 +36,7 @@ from .profiles import (
 MAX_INPUT_BYTES = 1_048_576
 MAX_JSON_DEPTH = 128
 MAX_JSON_NUMBER_TOKEN_CHARS = MAX_INTEGER_DECIMAL_DIGITS
+PACKAGE_VERSION = "0.5.0"
 
 
 def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -158,11 +166,10 @@ def _trusted_profile_context(
     )
 
 
-def _evaluate_input(
+def _request_input(
     data: Any,
     args: argparse.Namespace,
-    context: TrustedProfileContext,
-) -> dict[str, Any]:
+) -> NegativeClaimRequest:
     if isinstance(data, dict) and "envelope" in data:
         supplied_overrides = [
             name
@@ -174,9 +181,7 @@ def _evaluate_input(
                 "full request JSON cannot be combined with CLI overrides: "
                 + ", ".join(f"--{name.replace('_', '-')}" for name in supplied_overrides)
             )
-        return evaluate_negative_claim(
-            NegativeClaimRequest.from_dict(data), context
-        ).to_dict()
+        return NegativeClaimRequest.from_dict(data)
 
     if args.evaluated_at is None:
         raise ModelValidationError(
@@ -200,7 +205,22 @@ def _evaluate_input(
         evaluated_at=parse_datetime(args.evaluated_at, "--evaluated-at"),
         policy=NegativeClaimPolicy(),
     )
-    return evaluate_negative_claim(request, context).to_dict()
+    return request
+
+
+def _implementation_identity(args: argparse.Namespace) -> ImplementationIdentity:
+    try:
+        state = WorkingTreeState(args.working_tree_state)
+    except (TypeError, ValueError) as exc:
+        raise ModelValidationError(
+            "--working-tree-state must be CLEAN, DIRTY, or UNBOUND"
+        ) from exc
+    return ImplementationIdentity(
+        package_name="evidence-state-io",
+        package_version=PACKAGE_VERSION,
+        repository_revision=args.repository_revision,
+        working_tree_state=state,
+    )
 
 
 def _coverage_input(data: Any) -> dict[str, Any]:
@@ -236,6 +256,28 @@ def build_parser() -> argparse.ArgumentParser:
         "--trust",
         required=True,
         help="Operator-controlled profile trust-selection JSON file",
+    )
+    evaluate.add_argument(
+        "--issued-at",
+        required=True,
+        help="Explicit ISO-8601 certificate issuance time; no wall-clock fallback",
+    )
+    evaluate.add_argument(
+        "--origin",
+        required=True,
+        choices=[origin.value for origin in EvidenceOrigin],
+        help="Descriptive evidence origin; it does not upgrade sufficiency",
+    )
+    evaluate.add_argument(
+        "--working-tree-state",
+        choices=[state.value for state in WorkingTreeState],
+        default=WorkingTreeState.UNBOUND.value,
+        help="Explicit implementation tree state (default: UNBOUND)",
+    )
+    evaluate.add_argument(
+        "--repository-revision",
+        default=None,
+        help="Full lowercase Git revision required for CLEAN or DIRTY builds",
     )
     evaluate.add_argument(
         "--evaluated-at",
@@ -285,6 +327,29 @@ def build_parser() -> argparse.ArgumentParser:
     )
     coverage.add_argument("--input", required=True, help="JSON file, or - for stdin")
     coverage.add_argument("--pretty", action="store_true", help="Pretty-print JSON")
+
+    verify = subparsers.add_parser(
+        "verify-certificate",
+        help="Verify an unsigned certificate's independent replay and custody dimensions.",
+    )
+    verify.add_argument("--input", required=True, help="Certificate JSON file, or - for stdin")
+    verify.add_argument(
+        "--registry",
+        help="Separately controlled expected registry snapshot JSON file",
+    )
+    verify.add_argument(
+        "--trust",
+        help="Separately controlled expected trust-selection JSON file",
+    )
+    verify.add_argument(
+        "--expected-digest",
+        help="Separately retained expected lowercase SHA-256 certificate digest",
+    )
+    verify.add_argument(
+        "--relying-party-at",
+        help="Explicit relying-party time for current local-reliance assessment",
+    )
+    verify.add_argument("--pretty", action="store_true", help="Pretty-print JSON")
     return parser
 
 
@@ -304,10 +369,17 @@ def main(
     try:
         if args.command == "evaluate":
             context = _trusted_profile_context(args, input_stream)
-            result = _evaluate_input(
-                _read_json(args.input, input_stream), args, context
+            request = _request_input(
+                _read_json(args.input, input_stream), args
             )
-            _write_json(result, output_stream, args.pretty)
+            artifact = build_evidence_certificate(
+                request,
+                context,
+                issued_at=parse_datetime(args.issued_at, "--issued-at"),
+                origin=EvidenceOrigin(args.origin),
+                implementation=_implementation_identity(args),
+            )
+            _write_json(artifact.to_dict(), output_stream, args.pretty)
             return 0
         if args.command == "demo":
             report = run_seed_emptybench(all_cases=args.all)
@@ -323,6 +395,37 @@ def main(
             result = _coverage_input(_read_json(args.input, input_stream))
             _write_json(result, output_stream, args.pretty)
             return 0
+        if args.command == "verify-certificate":
+            if (args.registry is None) != (args.trust is None):
+                raise ModelValidationError(
+                    "--registry and --trust must be supplied together for expected-context verification"
+                )
+            expected_context = (
+                None
+                if args.registry is None
+                else _trusted_profile_context(args, input_stream)
+            )
+            report = verify_evidence_certificate(
+                _read_json(args.input, input_stream),
+                expected_context=expected_context,
+                expected_certificate_digest=args.expected_digest,
+                relying_party_at=(
+                    None
+                    if args.relying_party_at is None
+                    else parse_datetime(args.relying_party_at, "--relying-party-at")
+                ),
+            )
+            _write_json(report.to_dict(), output_stream, args.pretty)
+            checks = (
+                report.structural_support,
+                report.certificate_digest_integrity,
+                report.embedded_digest_integrity,
+                report.deterministic_replay,
+                report.expected_context_match is not False,
+                report.expected_certificate_digest_match is not False,
+                report.current_local_reliance_eligible is not False,
+            )
+            return 0 if all(checks) else 1
         parser.error(f"unknown command: {args.command}")
         return 2
     except (

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "evidence-state-io"
-version = "0.4.0"
+version = "0.5.0"
 description = "Typed evidence-state envelopes and deterministic negative-claim gating"
 requires-python = ">=3.11"
 dependencies = []
