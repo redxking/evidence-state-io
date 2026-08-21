@@ -22,7 +22,7 @@ from evidence_state_io.models import datetime_to_json
 def policy_dict(**changes):
     return {
         "policy_id": "esio-p0-safety-floor",
-        "policy_version": "1.0-candidate.1",
+        "policy_version": "1.0-candidate.2",
         **changes,
     }
 
@@ -40,7 +40,7 @@ class NegativeClaimGateTests(unittest.TestCase):
         self.assertTrue(result.allowed)
         self.assertEqual(result.decision, "PERMIT_SCOPED_NEGATIVE")
         self.assertEqual(result.reasons, ())
-        self.assertEqual(result.evaluator_version, "esio-evaluator-1.0-candidate.1")
+        self.assertEqual(result.evaluator_version, "esio-evaluator-1.0-candidate.2")
         self.assertTrue(result.source_accounting.meets_policy)
 
     def test_allowed_text_remains_explicitly_conditional(self) -> None:
@@ -51,9 +51,10 @@ class NegativeClaimGateTests(unittest.TestCase):
         self.assertIn("not proof of absence outside that scope", result.qualified_claim)
         self.assertIn('"source_id":"github-public-repositories"', result.qualified_claim)
         self.assertIn("public repositories visible to the adapter", result.qualified_claim)
-        self.assertIn("does not establish a late-arrival finality horizon", result.qualified_claim)
+        self.assertIn("reached the declared finality horizon", result.qualified_claim)
+        self.assertIn("not independently attested or profile-governed", result.qualified_claim)
         self.assertTrue(
-            any("does not establish late-arrival finality" in item for item in result.limitations)
+            any("does not prove ingestion completeness" in item for item in result.limitations)
         )
         self.assertNotIn("do not exist", result.qualified_claim)
 
@@ -68,7 +69,7 @@ class NegativeClaimGateTests(unittest.TestCase):
     def test_unknown_policy_identity_or_version_is_rejected(self) -> None:
         cases = (
             ("policy_id", "other-policy"),
-            ("policy_version", "1.0-candidate.2"),
+            ("policy_version", "1.0-candidate.1"),
         )
         for field, value in cases:
             with self.subTest(field=field):
@@ -181,7 +182,7 @@ class NegativeClaimGateTests(unittest.TestCase):
 
     def test_expired_result_is_denied(self) -> None:
         result = decision(
-            lambda data: data["envelope"].update(valid_until="2026-08-21T12:01:00Z")
+            lambda data: data["envelope"].update(valid_until="2026-08-21T12:04:30Z")
         )
         self.assertIn(GateReason.RESULT_EXPIRED, result.reasons)
 
@@ -215,7 +216,7 @@ class NegativeClaimGateTests(unittest.TestCase):
 
     def test_observation_age_policy_is_enforced(self) -> None:
         def mutate(data):
-            data["policy"] = policy_dict(max_observation_age_seconds=60)
+            data["policy"] = policy_dict(max_observation_age_seconds=59)
 
         result = decision(mutate)
         self.assertIn(GateReason.OBSERVATION_TOO_OLD, result.reasons)
@@ -235,6 +236,9 @@ class NegativeClaimGateTests(unittest.TestCase):
                 time_start=observed_text,
                 time_end=observed_text,
             )
+            data["envelope"]["query"]["source_requirements"][0][
+                "finality_horizon"
+            ] = observed_text
             data["envelope"].update(
                 observed_at=observed_text,
                 valid_until=datetime_to_json(evaluated + timedelta(seconds=1)),
@@ -285,7 +289,7 @@ class NegativeClaimGateTests(unittest.TestCase):
 
     def test_index_age_policy_is_enforced(self) -> None:
         def mutate(data):
-            data["policy"] = policy_dict(max_index_age_seconds=60)
+            data["policy"] = policy_dict(max_index_age_seconds=59)
 
         result = decision(mutate)
         self.assertIn(GateReason.INDEX_TOO_OLD, result.reasons)
@@ -312,6 +316,9 @@ class NegativeClaimGateTests(unittest.TestCase):
                 time_start=datetime_to_json(index_time),
                 time_end=datetime_to_json(index_time),
             )
+            data["envelope"]["query"]["source_requirements"][0][
+                "finality_horizon"
+            ] = datetime_to_json(index_time)
             refresh_query_fingerprints(data)
             data["evaluated_at"] = evaluated_text
             data["policy"] = policy_dict(max_index_age_seconds=limit)
@@ -327,7 +334,16 @@ class NegativeClaimGateTests(unittest.TestCase):
         early = datetime(2026, 11, 1, 1, 30, tzinfo=eastern, fold=0)
         late = datetime(2026, 11, 1, 1, 30, tzinfo=eastern, fold=1)
         base = request()
-        query = replace(base.envelope.query, time_start=early, time_end=early)
+        requirement = replace(
+            base.envelope.query.source_requirements[0],
+            finality_horizon=early,
+        )
+        query = replace(
+            base.envelope.query,
+            time_start=early,
+            time_end=early,
+            source_requirements=(requirement,),
+        )
         descriptor = replace(
             base.envelope.source_observations[0].descriptor,
             index_as_of=early,

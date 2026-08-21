@@ -107,7 +107,7 @@ Run exhaustive combinations for every boolean gate input at P0 scale. Where the 
 
 - coverage: below 0, 0, just below threshold, equal threshold, just above threshold, 1, above 1, NaN, infinity;
 - counts: negative, zero, one, large valid value, integer overflow or non-integer input;
-- time: offset-aware/naive timestamps, exact expiry, one unit before/after expiry, leap day, daylight-saving transition, end before start, absent evaluation time;
+- time: offset-aware/naive timestamps, finality horizon and source index one microsecond below/equal/above their thresholds, exact expiry, one unit before/after expiry, leap day, daylight-saving transition, end before start, absent evaluation time;
 - collections: empty required sources, duplicate identifiers, optional/multi-source candidate declarations, reordered semantic sets, very large sets, unknown source;
 - binding: wrong system/locator, adapter ID/version, authorization-context ID, accessible population, observation query fingerprint, and coverage query fingerprint;
 - text/identifiers: Unicode normalization, control characters, extremely long values, secret-like authorization tokens;
@@ -120,7 +120,7 @@ The following properties must hold over generated valid envelopes:
 1. **Monotonicity of insufficiency:** removing completed required evidence cannot change reject to permit.
 2. **Monotonicity of errors:** adding a disqualifying error cannot change reject to permit.
 3. **Order invariance:** reordering sources, partitions, exclusions, and JSON keys cannot change semantic output.
-4. **Evaluation-time explicitness:** changing only evaluation time can affect freshness/finality exactly at documented boundaries; ambient clock cannot.
+4. **Evaluation-time explicitness:** changing only evaluation time can affect freshness and validity exactly at documented boundaries, but cannot make a fixed pre-horizon source snapshot final; ambient clock cannot affect any result.
 5. **No optimistic composition:** adding an overlapping source with unknown overlap cannot increase the coverage lower bound.
 6. **State/count consistency:** positive count cannot produce `ABSENT_WITHIN_SCOPE`; zero count alone cannot produce it.
 7. **Qualification preservation:** permitted output cannot omit a policy-required scope or time element.

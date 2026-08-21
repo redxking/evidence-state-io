@@ -366,6 +366,7 @@ class SourceRequirement:
     authorization_context_id: str
     accessible_population: str
     detection_assumptions: tuple[str, ...]
+    finality_horizon: datetime | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -445,6 +446,15 @@ class SourceRequirement:
             "detection_assumptions",
             tuple(sorted(self.detection_assumptions)),
         )
+        if self.finality_horizon is not None:
+            object.__setattr__(
+                self,
+                "finality_horizon",
+                _validate_aware_datetime(
+                    self.finality_horizon,
+                    "source_requirement.finality_horizon",
+                ),
+            )
 
     @classmethod
     def from_dict(
@@ -463,9 +473,10 @@ class SourceRequirement:
             "authorization_context_id",
             "accessible_population",
             "detection_assumptions",
+            "finality_horizon",
         }
         _reject_unknown(data, allowed, path)
-        _require_fields(data, allowed, path)
+        _require_fields(data, allowed - {"finality_horizon"}, path)
         try:
             role = SourceRole(data["role"])
         except (TypeError, ValueError) as exc:
@@ -500,10 +511,14 @@ class SourceRequirement:
                 assumptions,
                 f"{path}.detection_assumptions",
             ),
+            finality_horizon=optional_datetime(
+                data.get("finality_horizon"),
+                f"{path}.finality_horizon",
+            ),
         )
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        payload = {
             "source_id": self.source_id,
             "role": self.role.value,
             "system": self.system,
@@ -514,6 +529,9 @@ class SourceRequirement:
             "accessible_population": self.accessible_population,
             "detection_assumptions": sorted(self.detection_assumptions),
         }
+        if self.finality_horizon is not None:
+            payload["finality_horizon"] = datetime_to_json(self.finality_horizon)
+        return payload
 
 
 @dataclass(frozen=True, slots=True)
@@ -615,6 +633,18 @@ class QueryScope:
             raise ModelValidationError(
                 "query.source_requirements must contain exactly one REQUIRED source "
                 "in the schema 1.0 candidate"
+            )
+        invalid_finality_horizons = sorted(
+            item.source_id
+            for item in requirements
+            if item.finality_horizon is not None
+            and item.finality_horizon < self.time_end
+        )
+        if invalid_finality_horizons:
+            raise ModelValidationError(
+                "query.source_requirements finality_horizon must not precede "
+                "query.time_end for: "
+                + ", ".join(invalid_finality_horizons)
             )
         context_mismatches = sorted(
             item.source_id

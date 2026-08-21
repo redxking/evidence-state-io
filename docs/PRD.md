@@ -177,7 +177,10 @@ An envelope shall represent a coverage lower bound and derivation, required/obse
 **Current candidate note:** Aggregate coverage and the single source observation
 must match the canonical normalized-query fingerprint. Optional and multi-source
 declarations are rejected until coverage can be represented and composed per
-source. Explicit finality remains open.
+source. The requirement now carries a declared finality horizon, which is also
+query-bound; the reported source index must reach it before a negative can pass.
+The horizon's source-service basis is not yet governed or independently
+attested.
 
 #### ESIO-P0-004: Fail-closed envelope validation
 

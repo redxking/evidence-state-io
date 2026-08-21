@@ -12,8 +12,8 @@ The project defines a machine-readable evidence envelope, a deterministic negati
 **Intended use:** local research, synthetic evaluation, adapter development, and design-partner discovery
 **Not established:** production readiness, operational effectiveness, legal sufficiency, universal query completeness, market demand, protocol adoption, or independent validation
 
-The active package is `0.2.0`. It accepts only the schema `1.0` candidate and
-the explicit `esio-p0-safety-floor` policy version. The first accepted local
+The active package is `0.3.0`. It accepts only the schema `1.0` candidate and
+the explicit `esio-p0-safety-floor/1.0-candidate.2` policy. The first accepted local
 schema `0.1` baseline remains immutable at commit `b6fac87`; it is preserved as
 historical replay evidence and is not a current permit or compatibility mode.
 
@@ -38,8 +38,10 @@ The initial evidence states are:
 The target semantics make `ABSENT_WITHIN_SCOPE` conditional on the declared
 population, fields, time interval, source assumptions, access boundary,
 detection assumptions, and finality horizon. The current schema `1.0` candidate
-does not yet carry an explicit finality horizon and is therefore not a frozen
-contract. No version of this state is proof of absolute absence.
+carries a query-bound, declared finality horizon and requires the reported
+source index to reach it. The gateway does not attest that the source's
+late-arrival assumption or index watermark is true, and the candidate is not a
+frozen contract. No version of this state is proof of absolute absence.
 
 ## Product direction
 
@@ -86,14 +88,18 @@ The baseline agent may answer “none found” in both cases. The gateway must p
 The checked-in P0 operator pair is narrower: it compares one explicitly
 required and observed source whose current coverage and pagination facts pass
 with the same empty result from an incompletely paginated execution. The full
-seed adds a missing-required-source pair. The candidate rejects missing,
+seed adds missing-required-source and explicit-finality pairs. The candidate rejects missing,
 inaccessible, pending, stale, failed, contradictory, unknown,
 identity-mismatched, adapter-mismatched, authorization-mismatched,
-population-mismatched, or error-bearing required sources. Observations and
-coverage must match a canonical query fingerprint. Because population
+population-mismatched, error-bearing, or pre-finality required sources.
+Observations and coverage must match a canonical query fingerprint. A permit
+requires the declared finality horizon to be at or after the query end and the
+reported source index to reach that horizon; advancing evaluation time alone
+cannot repair an older snapshot. Because population
 composition is not yet defined, the candidate accepts exactly one declared
-`REQUIRED` source and rejects multi-source input before evaluation. An explicit
-finality horizon remains an active P0 gap.
+`REQUIRED` source and rejects multi-source input before evaluation. Governed
+source profiles, authenticated watermarks, and correction/reopen semantics
+remain active gaps.
 
 ## Success threshold for the first gate
 

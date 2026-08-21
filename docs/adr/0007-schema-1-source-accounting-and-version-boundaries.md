@@ -262,6 +262,16 @@ production-ready.
 2. [x] Give the active policy and evaluator explicit supported identifiers.
 3. [x] Reject more than one declared source until composition exists.
 4. [x] Preserve and test the schema `0.1` fixture/commit replay boundary.
-5. [ ] Implement explicit finality and complete certificate/version binding.
-6. [ ] Freeze independent EmptyBench oracle outputs and cross-version canonical
+5. [x] Implement explicit finality under ADR-0008.
+6. [ ] Complete certificate/version and governed profile binding.
+7. [ ] Freeze independent EmptyBench oracle outputs and cross-version canonical
    vectors before accepting schema `1.0`.
+
+## 2026-08-21 Candidate Addendum
+
+ADR-0008 adds a nullable source-requirement horizon to the schema `1.0`
+candidate and makes it non-relaxable under policy `1.0-candidate.2`. A permit
+now requires the reported source index to reach that query-bound horizon. This
+closes the evaluator's wait-only finality defect but does not satisfy the
+profile, certificate, independent-oracle, external-review, or schema-freeze
+criteria above.

@@ -12,10 +12,11 @@ with different coverage and pagination sufficiency for one declared source:
 The core demonstration uses local synthetic JSON only. Docker, network access, API keys, and a model are not required.
 
 The schema `1.0` candidate now implements single required-versus-observed source
-accounting, query binding, and a missing-source seed pair. The checked-in
-operator pair still changes pagination only. An explicit finality horizon,
-independent oracle, and the remaining identity/adapter/auth/finality benchmark
-families are target behavior, not a frozen-corpus claim.
+accounting, query binding, an explicit requirement-owned finality horizon, and
+missing-source and finality seed pairs. The checked-in operator pair still
+changes pagination only. A governed source-profile basis, independent oracle,
+and the remaining identity/adapter/auth benchmark families are target behavior,
+not a frozen-corpus claim.
 
 ## Safety boundary
 
@@ -119,7 +120,7 @@ Each disqualifying case needs a covered control with the same visible result.
 | Missing partition | One required partition incomplete | `PARTIAL`; reject negative |
 | Stale evidence | Freshness limit exceeded at supplied evaluation time | `STALE`; reject negative |
 | Inaccessible evidence | Required source cannot be read under declared boundary | `INACCESSIBLE`; reject negative |
-| Pending finality | Evaluation precedes late-arrival/finality horizon | `PENDING_WINDOW`; reject negative |
+| Pending finality | Reported source index remains before the declared late-arrival/finality horizon, even if evaluation time has advanced | `PENDING_WINDOW`; reject negative |
 | Source/query failure | Disqualifying structured error remains | `FAILED`; reject negative |
 | Contradictory evidence | Required observations cannot both be true under policy | `CONTRADICTORY`; reject negative |
 | Positive match | At least one in-scope match | `PRESENT`; reject negative |

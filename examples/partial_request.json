@@ -4,7 +4,7 @@
   "evaluated_at": "2026-08-21T12:05:00Z",
   "policy": {
     "policy_id": "esio-p0-safety-floor",
-    "policy_version": "1.0-candidate.1"
+    "policy_version": "1.0-candidate.2"
   },
   "envelope": {
     "schema_version": "1.0",
@@ -27,9 +27,10 @@
           "system": "github-search",
           "locator": "repositories/search",
           "adapter_id": "github-search-adapter",
-          "adapter_version": "example-0.2",
+          "adapter_version": "example-0.3",
           "authorization_context_id": "public-search-adapter-context",
           "accessible_population": "public-repositories-visible-to-adapter",
+          "finality_horizon": "2026-08-21T12:04:00Z",
           "detection_assumptions": [
             "repository is indexed by the declared search endpoint"
           ]
@@ -53,23 +54,23 @@
       "permission_limited": false,
       "query_errors": []
     },
-    "coverage_query_fingerprint": "sha256:8b058cd455be9b3fe33c8a9cbf8fa7e7f1954ae8a6c360b816997702530060ac",
+    "coverage_query_fingerprint": "sha256:06ee8f42d510a86fc819cf76a56c98edcfd9867330783622c0ad17aabc863a15",
     "matched_count": 0,
-    "observed_at": "2026-08-21T12:00:00Z",
+    "observed_at": "2026-08-21T12:04:00Z",
     "valid_until": "2026-08-21T13:00:00Z",
     "source_observations": [
       {
         "source_id": "github-public-repositories",
         "status": "OBSERVED",
         "authorization_context_id": "public-search-adapter-context",
-        "query_fingerprint": "sha256:8b058cd455be9b3fe33c8a9cbf8fa7e7f1954ae8a6c360b816997702530060ac",
+        "query_fingerprint": "sha256:06ee8f42d510a86fc819cf76a56c98edcfd9867330783622c0ad17aabc863a15",
         "accessible_population": "public-repositories-visible-to-adapter",
         "descriptor": {
           "system": "github-search",
           "locator": "repositories/search",
           "adapter_id": "github-search-adapter",
-          "adapter_version": "example-0.2",
-          "index_as_of": "2026-08-21T12:00:00Z"
+          "adapter_version": "example-0.3",
+          "index_as_of": "2026-08-21T12:04:00Z"
         },
         "errors": []
       }

@@ -13,6 +13,11 @@ All notable project changes should be recorded here. Dates use ISO 8601.
 - A sixth EmptyBench seed pair that holds the empty result constant while removing the required source observation.
 - Historical schema `0.1` replay fixture, pinned baseline metadata, and downgrade/relabel rejection tests.
 - ADR-0007 defining schema, policy, evaluator, profile, certificate, canonicalization, and package-version boundaries.
+- ADR-0008 defining requirement-owned source finality, the inclusive chronology,
+  the wait-only threat, compatibility behavior, and remaining profile trust boundary.
+- A seventh EmptyBench pair that holds the query, horizon, evaluation time, and
+  visible zero constant while moving the reported source index one microsecond
+  below versus exactly to the finality horizon.
 
 ### Hardened
 
@@ -38,6 +43,15 @@ All notable project changes should be recorded here. Dates use ISO 8601.
 - Required observed-source index chronology through the query interval while explicitly retaining late-arrival finality as an unresolved limitation in permitted output.
 - Made setup fail when project, imported-module, and installed-distribution versions disagree.
 - Rejected literal placeholder values in safety-bearing subject, query, exclusion, source/adapter identity, authorization-context, population, and detection-assumption declarations.
+- Added a query-bound `finality_horizon` to source requirements, made it
+  non-relaxable under policy `1.0-candidate.2`, and required the reported source
+  index to reach the horizon before a scoped negative can pass.
+- Added exact missing/null, malformed, below/equal/above, wait-only,
+  offset-normalization, fingerprint/digest, downgrade, stable-reason-order, and
+  CLI finality tests without introducing an evaluator wall-clock dependency.
+- Moved the active implementation to package `0.3.0` and evaluator
+  `esio-evaluator-1.0-candidate.2`; preserved canonicalization profile `0.1`
+  and the immutable schema `0.1` replay baseline.
 
 ### Boundaries
 

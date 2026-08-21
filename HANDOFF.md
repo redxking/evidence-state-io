@@ -14,6 +14,8 @@ The repository is expected to contain:
 - architecture decisions and a laptop-first deployment design;
 - a typed evidence-envelope model;
 - explicit required-versus-observed source accounting for the schema `1.0` candidate;
+- a query-bound finality horizon and source-index closure check that cannot be
+  satisfied by waiting on an old snapshot;
 - a deterministic coverage evaluator and negative-claim gate;
 - a command-line interface suitable for scripts and demonstrations;
 - paired benchmark fixtures covering at least one supported-negative and one partial-coverage case;
@@ -77,9 +79,9 @@ Unless evidence changes the plan, work in this order:
 
 1. Preserve the first local schema `0.1` freeze and the tested schema `1.0`
    source-accounting boundary without calling the candidate frozen.
-2. Add a supplied finality horizon and exact below/equal/above boundary
-   behavior; this is the active implementation item.
-3. Complete the deterministic evidence certificate and bind schema, policy, evaluator, profile, and certificate versions; keep digest and signature semantics separate.
+2. Preserve and adversarially extend the supplied finality-horizon contract;
+   do not treat its declared service basis as independently validated.
+3. Complete the deterministic evidence certificate and bind schema, policy, evaluator, profile, and certificate versions; keep digest and signature semantics separate. This is the active implementation item.
 4. Freeze a minimum paired EmptyBench corpus with a separately governed scoring oracle.
 5. Establish baseline model/tool behavior on that frozen corpus and apply the go/no-go thresholds without reinterpretation.
 6. If the gate passes, add one real read-only adapter and a source-coverage profile under owner-approved authority and data boundaries.

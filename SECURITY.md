@@ -39,9 +39,10 @@ The local operator can replace code, policy, fixtures, outputs, and digests. The
 
 These are required end-state properties. Current implementation status and
 known gaps are recorded in `docs/TRACEABILITY.md`. The schema `1.0` candidate
-now performs bounded single-source accounting and query binding; credential-like
-field detection, explicit finality, profile governance, independent source
-attestation, and multi-source composition are not complete.
+now performs bounded single-source accounting, query binding, and deterministic
+comparison of a declared finality horizon with the reported source index.
+Credential-like field detection, governed finality/profile truth, independent
+source attestation, and multi-source composition are not complete.
 
 1. Unknown or malformed evidence-bearing input is rejected, not coerced.
 2. No disqualifying state permits `PERMIT_SCOPED_NEGATIVE`.
@@ -77,7 +78,7 @@ It does not claim to withstand a privileged attacker controlling the host, inter
 | Completion spoofing | Adapter hides continuation token or failed shard | Independent completion fields, consistency checks, adapter contract tests | A malicious adapter can lie unless corroborated |
 | Wrong-observation substitution | Coverage or an observation from another query/source is relabeled for the current query | Exact source/adapter/auth/population matching and canonical query fingerprints on coverage and observation | A malicious producer can still forge a self-consistent envelope without independent attestation |
 | Permission laundering | Empty accessible subset is described as the whole population | Explicit authorization/access boundary and policy | Registry owner may overstate accessible population |
-| Staleness/finality bypass | Caller supplies favorable current time or omits late-arrival horizon | Explicit evaluation time and policy; boundary tests; certificate binding | Trusted time is not established in P0 |
+| Staleness/finality bypass | Caller advances evaluation time while reusing a pre-horizon empty snapshot, or omits the horizon | Non-relaxable declared horizon; reported index must reach it; explicit evaluation time; exact boundary tests | Horizon and index declarations are not authenticated or profile-validated in P0 |
 | State confusion | Unknown state coerced to success or generic empty | Closed enums, unsupported-version rejection, invariant tests | Future compatibility requires careful versioning |
 | Parser resource exhaustion | Deep/large JSON or huge arrays | Input-size and nesting limits, bounded collections, predictable errors | The CLI bounds bytes, nesting, numeric tokens, and integer magnitude; comprehensive collection and semantic limits require continued testing |
 | Output injection | Untrusted text reaches terminal/log | JSON encoding; diagnostics separation; no shell interpolation | Human viewers may still render hostile strings unsafely |

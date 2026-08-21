@@ -103,12 +103,14 @@ A query must identify enough scope to evaluate coverage:
 - exclusions;
 - exactly one schema `1.0` candidate source requirement, including source ID,
   system, locator, adapter ID/version, accessible population, and nonempty
-  detection assumptions.
+  detection assumptions; and
+- a declared source-specific finality horizon resolved for the query interval.
 
 The normalized query has a canonical SHA-256 fingerprint. Both runtime source
 observations and aggregate coverage must carry that fingerprint. Multiple
 sources, per-source coverage, fields/projection structure, profile references,
-and an explicit finality horizon remain later contract work.
+authenticated horizon/index assertions, and finality composition remain later
+contract work.
 
 A free-form natural-language question alone is not a query specification.
 
@@ -146,8 +148,9 @@ An empty record list is only an observation. It is not an evidence-state verdict
 
 The active candidate implements source/adapter identity, authorization-context,
 population, status, error, query-fingerprint, and index-timestamp checks. It does
-not yet implement a profile registry, independently attested source identity, or
-explicit finality semantics.
+not yet implement a profile registry or independently attested source identity,
+horizon, or index watermark. Candidate.2 does deterministically require the
+reported index to reach the declared query-bound horizon.
 
 ### Evaluation result
 
@@ -186,7 +189,7 @@ Explanatory language may be generated outside the trusted decision path, but it 
 3. The query model creates a canonical fingerprint; the envelope rejects coverage or observations bound to another query.
 4. Source accounting compares declared identity, adapter, authorization context, accessible population, status, and errors.
 5. Coverage evaluation checks the query-bound aggregate coverage facts under the named policy.
-6. The gate checks the producer-supplied aggregate state, matches, source and coverage assessments, freshness, index chronology, and validity. Only an entirely reason-free request permits a scoped negative.
+6. The gate checks the producer-supplied aggregate state, matches, source and coverage assessments, freshness, finality horizon, index chronology, and validity. Only an entirely reason-free request permits a scoped negative. Waiting cannot repair an index that remains before the horizon.
 7. The current decision includes the normalized-request digest and evaluator version. The complete certificate builder is not yet implemented.
 8. The CLI writes machine-readable output to stdout and structured invalid-input diagnostics to stderr.
 9. Replaying the same normalized request reproduces the same decision and digest.
@@ -195,7 +198,7 @@ Explanatory language may be generated outside the trusted decision path, but it 
 
 - Domain functions receive `evaluation_time`; they do not read the wall clock.
 - Timestamps use RFC 3339 with an explicit offset and are normalized before comparison.
-- Policies define boundary behavior, including whether equality at a freshness or finality limit is accepted.
+- Policy candidate.2 accepts equality at the finality, index, observation, evaluation, and validity boundaries; tests exercise the adjacent microsecond values.
 - JSON canonicalization rejects values that do not have portable representations.
 - Collections that are semantically unordered are sorted by stable identifiers before hashing.
 - Reason-code ordering is defined and tested.

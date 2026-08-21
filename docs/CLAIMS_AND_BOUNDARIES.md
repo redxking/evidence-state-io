@@ -155,7 +155,8 @@ A signed false statement remains false. The gate must never elevate insufficient
 
 - Every evaluation uses an explicit evaluation time; ambient wall-clock dependence is not evidence.
 - Freshness is a policy condition, not a guarantee that the underlying data did not change.
-- Finality is a declared source assumption or service property and must be versioned.
+- Finality is a declared source assumption or service property and must be versioned. Candidate.2 binds the per-query declared horizon into the query fingerprint and request digest, then requires the reported source index to reach it.
+- That deterministic comparison does not validate the service's lateness model, authenticate the index watermark, or prove that corrections, retractions, or exceptional late arrivals cannot occur. Governed source-profile identity/version/digest remains a freeze requirement.
 - A certificate is a point-in-time result. It must not be replayed as current after its validity window.
 - Clock synchronization, timestamp provenance, and cross-system causal ordering are dependencies outside P0 unless explicitly measured.
 

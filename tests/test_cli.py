@@ -10,6 +10,7 @@ import sys
 import unittest
 
 from evidence_state_io.cli import MAX_INPUT_BYTES, main
+from tests.helpers import refresh_query_fingerprints
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -34,7 +35,7 @@ class CliTests(unittest.TestCase):
     def test_demo_all_runs_seed_suite(self) -> None:
         code, stdout, _ = self.invoke(["demo", "--all"])
         self.assertEqual(code, 0)
-        self.assertEqual(json.loads(stdout)["summary"]["total"], 12)
+        self.assertEqual(json.loads(stdout)["summary"]["total"], 14)
 
     def test_evaluate_full_request_allows_covered_case(self) -> None:
         code, stdout, stderr = self.invoke(
@@ -52,6 +53,47 @@ class CliTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertFalse(payload["allowed"])
         self.assertIn("COVERAGE_POLICY_NOT_MET", payload["reasons"])
+
+    def test_evaluate_missing_finality_horizon_fails_closed(self) -> None:
+        full = json.loads((EXAMPLES / "covered_request.json").read_text())
+        del full["envelope"]["query"]["source_requirements"][0][
+            "finality_horizon"
+        ]
+        refresh_query_fingerprints(full)
+        code, stdout, stderr = self.invoke(
+            ["evaluate", "--input", "-"], json.dumps(full)
+        )
+        self.assertEqual(code, 0)
+        self.assertEqual(stderr, "")
+        payload = json.loads(stdout)
+        self.assertFalse(payload["allowed"])
+        self.assertIn("FINALITY_HORIZON_UNDECLARED", payload["reasons"])
+
+    def test_evaluate_pre_horizon_index_fails_closed_without_process_error(self) -> None:
+        full = json.loads((EXAMPLES / "covered_request.json").read_text())
+        full["envelope"]["source_observations"][0]["descriptor"][
+            "index_as_of"
+        ] = "2026-08-21T12:03:59.999999Z"
+        code, stdout, stderr = self.invoke(
+            ["evaluate", "--input", "-"], json.dumps(full)
+        )
+        self.assertEqual(code, 0)
+        self.assertEqual(stderr, "")
+        payload = json.loads(stdout)
+        self.assertFalse(payload["allowed"])
+        self.assertIn("INDEX_PRECEDES_FINALITY_HORIZON", payload["reasons"])
+
+    def test_finality_horizon_before_query_end_is_invalid_input(self) -> None:
+        full = json.loads((EXAMPLES / "covered_request.json").read_text())
+        full["envelope"]["query"]["source_requirements"][0][
+            "finality_horizon"
+        ] = "2026-08-21T11:59:59.999999Z"
+        code, stdout, stderr = self.invoke(
+            ["evaluate", "--input", "-"], json.dumps(full)
+        )
+        self.assertEqual(code, 2)
+        self.assertEqual(stdout, "")
+        self.assertIn("finality_horizon must not precede", stderr)
 
     def test_bare_envelope_requires_explicit_evaluation_time(self) -> None:
         full = json.loads((EXAMPLES / "covered_request.json").read_text())

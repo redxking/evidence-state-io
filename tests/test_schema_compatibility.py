@@ -8,9 +8,11 @@ import unittest
 
 from evidence_state_io import (
     CANONICALIZATION_PROFILE,
+    GateReason,
     ModelValidationError,
     NegativeClaimRequest,
     canonical_digest,
+    evaluate_negative_claim,
 )
 from evidence_state_io.cli import main
 
@@ -29,6 +31,9 @@ FROZEN_RAW_DIGEST = (
 )
 FROZEN_INPUT_DIGEST = (
     "sha256:da688bad283bb84fd88ef6bfba35893f61266d61cf01f07ac9bf852b0255b554"
+)
+LEGACY_SCHEMA_1_QUERY_FINGERPRINT = (
+    "sha256:8b058cd455be9b3fe33c8a9cbf8fa7e7f1954ae8a6c360b816997702530060ac"
 )
 
 # Schema 0.1 materialized these policy defaults before calculating a decision's
@@ -146,6 +151,35 @@ class SchemaCompatibilityTests(unittest.TestCase):
         request = NegativeClaimRequest.from_dict(load_json(ACTIVE_FIXTURE))
         self.assertEqual(request.envelope.schema_version, "1.0")
         self.assertEqual(CANONICALIZATION_PROFILE, FROZEN_PROFILE)
+
+    def test_pre_finality_schema_1_0_binding_is_diagnosed_not_reauthored(self) -> None:
+        candidate = load_json(ACTIVE_FIXTURE)
+        requirement = candidate["envelope"]["query"]["source_requirements"][0]
+        requirement.pop("finality_horizon")
+        requirement["adapter_version"] = "example-0.2"
+        observation = candidate["envelope"]["source_observations"][0]
+        observation["descriptor"].update(
+            adapter_version="example-0.2",
+            index_as_of="2026-08-21T12:00:00Z",
+        )
+        candidate["envelope"]["observed_at"] = "2026-08-21T12:00:00Z"
+        candidate["envelope"][
+            "coverage_query_fingerprint"
+        ] = LEGACY_SCHEMA_1_QUERY_FINGERPRINT
+        observation["query_fingerprint"] = LEGACY_SCHEMA_1_QUERY_FINGERPRINT
+
+        parsed = NegativeClaimRequest.from_dict(candidate)
+        result = evaluate_negative_claim(parsed)
+
+        self.assertNotIn(
+            "finality_horizon",
+            parsed.envelope.query.source_requirements[0].to_dict(),
+        )
+        self.assertFalse(result.allowed)
+        self.assertEqual(
+            result.reasons,
+            (GateReason.FINALITY_HORIZON_UNDECLARED,),
+        )
 
 
 if __name__ == "__main__":

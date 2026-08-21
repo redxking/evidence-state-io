@@ -336,7 +336,7 @@ def _request_dict(
     timed_out: bool = False,
     permission_limited: bool = False,
     valid_until: str | None = "2026-08-21T13:00:00Z",
-    index_as_of: str | None = "2026-08-21T12:00:00Z",
+    index_as_of: str | None = "2026-08-21T12:04:00Z",
     source_observations: Sequence[Mapping[str, Any]] | None = None,
     source_requirements: Sequence[Mapping[str, Any]] | None = None,
     mode: str = "SCOPED",
@@ -352,9 +352,10 @@ def _request_dict(
                 "system": "github-search",
                 "locator": "repositories/search",
                 "adapter_id": "github-search-adapter",
-                "adapter_version": "seed-0.2",
+                "adapter_version": "seed-0.3",
                 "authorization_context_id": authorization_context_id,
                 "accessible_population": "public-repositories-visible-to-adapter",
+                "finality_horizon": "2026-08-21T12:04:00Z",
                 "detection_assumptions": [
                     "repository is indexed by the declared search endpoint"
                 ],
@@ -386,7 +387,7 @@ def _request_dict(
                     "system": "github-search",
                     "locator": "repositories/search",
                     "adapter_id": "github-search-adapter",
-                    "adapter_version": "seed-0.2",
+                    "adapter_version": "seed-0.3",
                     "index_as_of": index_as_of,
                 },
                 "errors": [],
@@ -401,7 +402,7 @@ def _request_dict(
         "evaluated_at": "2026-08-21T12:05:00Z",
         "policy": {
             "policy_id": "esio-p0-safety-floor",
-            "policy_version": "1.0-candidate.1",
+            "policy_version": "1.0-candidate.2",
             **dict({} if policy is None else policy),
         },
         "envelope": {
@@ -427,7 +428,7 @@ def _request_dict(
             },
             "coverage_query_fingerprint": query_fingerprint,
             "matched_count": 0,
-            "observed_at": "2026-08-21T12:00:00Z",
+            "observed_at": "2026-08-21T12:04:00Z",
             "valid_until": valid_until,
             "source_observations": effective_observations,
             "errors": [],
@@ -481,7 +482,7 @@ def seed_case_dicts() -> list[dict[str, Any]]:
             "pair_id": "fresh-vs-stale",
             "variant": "stale",
             "description": "The same empty result is evaluated after its validity window.",
-            "request": _request_dict(valid_until="2026-08-21T12:01:00Z"),
+            "request": _request_dict(valid_until="2026-08-21T12:04:30Z"),
             "expected_allowed": False,
             "expected_reasons": ["RESULT_EXPIRED"],
         },
@@ -569,6 +570,32 @@ def seed_case_dicts() -> list[dict[str, Any]]:
             "request": _request_dict(source_observations=[]),
             "expected_allowed": False,
             "expected_reasons": ["REQUIRED_SOURCE_MISSING"],
+        },
+        {
+            "case_id": "finality-snapshot-at-horizon",
+            "pair_id": "finality-snapshot-at-vs-before-horizon",
+            "variant": "at-horizon",
+            "description": "The required source snapshot was current at the declared finality horizon.",
+            "request": _request_dict(
+                index_as_of="2026-08-21T12:04:00Z",
+            ),
+            "expected_allowed": True,
+            "expected_reasons": [],
+        },
+        {
+            "case_id": "finality-snapshot-before-horizon",
+            "pair_id": "finality-snapshot-at-vs-before-horizon",
+            "variant": "before-horizon",
+            "description": "The same visible empty result came from a snapshot one microsecond before finality.",
+            "request": _request_dict(
+                state="PENDING_WINDOW",
+                index_as_of="2026-08-21T12:03:59.999999Z",
+            ),
+            "expected_allowed": False,
+            "expected_reasons": [
+                "STATE_NOT_ABSENT_WITHIN_SCOPE",
+                "INDEX_PRECEDES_FINALITY_HORIZON",
+            ],
         },
     ]
 

@@ -301,18 +301,23 @@ class EvidenceStateModelTests(unittest.TestCase):
     def test_query_end_equal_to_observation_is_valid(self) -> None:
         data = request_dict()["envelope"]
         data["query"]["time_end"] = data["observed_at"]
+        wrapper = {"envelope": data}
+        refresh_query_fingerprints(wrapper)
         EvidenceEnvelope.from_dict(data)
 
     def test_query_end_after_observation_is_rejected(self) -> None:
         data = request_dict()["envelope"]
-        data["query"]["time_end"] = "2026-08-21T12:00:00.000001Z"
+        data["query"]["time_end"] = "2026-08-21T12:04:00.000001Z"
+        data["query"]["source_requirements"][0]["finality_horizon"] = (
+            "2026-08-21T12:04:00.000001Z"
+        )
         with self.assertRaisesRegex(ModelValidationError, "must not be after observed_at"):
             EvidenceEnvelope.from_dict(data)
 
     def test_source_index_after_observation_is_rejected(self) -> None:
         data = request_dict()["envelope"]
         data["source_observations"][0]["descriptor"]["index_as_of"] = (
-            "2026-08-21T12:00:00.000001Z"
+            "2026-08-21T12:04:00.000001Z"
         )
         with self.assertRaisesRegex(
             ModelValidationError,

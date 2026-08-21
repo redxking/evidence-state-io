@@ -34,8 +34,8 @@ from .sources import (
 
 MAX_SUBJECT_LENGTH = 160
 DEFAULT_POLICY_ID = "esio-p0-safety-floor"
-DEFAULT_POLICY_VERSION = "1.0-candidate.1"
-EVALUATOR_VERSION = "esio-evaluator-1.0-candidate.1"
+DEFAULT_POLICY_VERSION = "1.0-candidate.2"
+EVALUATOR_VERSION = "esio-evaluator-1.0-candidate.2"
 _ABSOLUTE_SUBJECT_PATTERN = re.compile(
     r"\b(?:nothing|none|anywhere|everywhere|always|never)\b"
     r"|\bno\b.{0,80}\bexists?\b"
@@ -54,9 +54,11 @@ class GateReason(str, Enum):
     VALIDITY_UNDECLARED = "VALIDITY_UNDECLARED"
     RESULT_EXPIRED = "RESULT_EXPIRED"
     OBSERVATION_TOO_OLD = "OBSERVATION_TOO_OLD"
+    FINALITY_HORIZON_UNDECLARED = "FINALITY_HORIZON_UNDECLARED"
     INDEX_TIMESTAMP_UNDECLARED = "INDEX_TIMESTAMP_UNDECLARED"
     INDEX_TIME_AFTER_EVALUATION = "INDEX_TIME_AFTER_EVALUATION"
     INDEX_PRECEDES_QUERY_END = "INDEX_PRECEDES_QUERY_END"
+    INDEX_PRECEDES_FINALITY_HORIZON = "INDEX_PRECEDES_FINALITY_HORIZON"
     INDEX_TOO_OLD = "INDEX_TOO_OLD"
     REQUIRED_SOURCE_MISSING = "REQUIRED_SOURCE_MISSING"
     REQUIRED_SOURCE_NOT_OBSERVED = "REQUIRED_SOURCE_NOT_OBSERVED"
@@ -121,6 +123,7 @@ class NegativeClaimPolicy:
     require_valid_until: bool = True
     max_observation_age_seconds: int | None = None
     require_index_as_of: bool = True
+    require_finality_horizon: bool = True
     max_index_age_seconds: int | None = None
     reject_envelope_errors: bool = True
 
@@ -140,7 +143,12 @@ class NegativeClaimPolicy:
             )
         if not isinstance(self.coverage, CoveragePolicy):
             raise ModelValidationError("policy.coverage must be a CoveragePolicy")
-        for name in ("require_valid_until", "require_index_as_of", "reject_envelope_errors"):
+        for name in (
+            "require_valid_until",
+            "require_index_as_of",
+            "require_finality_horizon",
+            "reject_envelope_errors",
+        ):
             if not isinstance(getattr(self, name), bool):
                 raise ModelValidationError(f"policy.{name} must be a boolean")
         if self.require_valid_until is not True:
@@ -154,6 +162,10 @@ class NegativeClaimPolicy:
         if self.require_index_as_of is not True:
             raise ModelValidationError(
                 "policy.require_index_as_of cannot relax the P0 safety floor"
+            )
+        if self.require_finality_horizon is not True:
+            raise ModelValidationError(
+                "policy.require_finality_horizon cannot relax the P0 safety floor"
             )
         _optional_seconds(
             self.max_observation_age_seconds, "policy.max_observation_age_seconds"
@@ -171,6 +183,7 @@ class NegativeClaimPolicy:
             "require_valid_until",
             "max_observation_age_seconds",
             "require_index_as_of",
+            "require_finality_horizon",
             "max_index_age_seconds",
             "reject_envelope_errors",
         }
@@ -198,6 +211,11 @@ class NegativeClaimPolicy:
             require_index_as_of=_strict_bool(
                 value.get("require_index_as_of"), "policy.require_index_as_of", True
             ),
+            require_finality_horizon=_strict_bool(
+                value.get("require_finality_horizon"),
+                "policy.require_finality_horizon",
+                True,
+            ),
             max_index_age_seconds=_optional_seconds(
                 value.get("max_index_age_seconds"), "policy.max_index_age_seconds"
             ),
@@ -216,6 +234,7 @@ class NegativeClaimPolicy:
             "require_valid_until": self.require_valid_until,
             "max_observation_age_seconds": self.max_observation_age_seconds,
             "require_index_as_of": self.require_index_as_of,
+            "require_finality_horizon": self.require_finality_horizon,
             "max_index_age_seconds": self.max_index_age_seconds,
             "reject_envelope_errors": self.reject_envelope_errors,
         }
@@ -361,6 +380,26 @@ def _qualified_claim(
         sort_keys=True,
         separators=(",", ":"),
     )
+    required_source = next(
+        requirement
+        for requirement in envelope.query.source_requirements
+        if requirement.role is SourceRole.REQUIRED
+    )
+    source_observation = next(
+        observation
+        for observation in envelope.source_observations
+        if observation.source_id == required_source.source_id
+        and observation.status is SourceObservationStatus.OBSERVED
+    )
+    finality_horizon = required_source.finality_horizon
+    index_as_of = source_observation.descriptor.index_as_of
+    assert finality_horizon is not None
+    assert index_as_of is not None
+    finality_text = (
+        " The source reported an index state at "
+        f"{datetime_to_json(index_as_of)}, which reached the declared finality "
+        f"horizon {datetime_to_json(finality_horizon)}."
+    )
     return (
         f"The subject {json.dumps(request.subject, ensure_ascii=False)} had zero observed "
         "matches within the declared query scope "
@@ -369,10 +408,10 @@ def _qualified_claim(
         f" The declared required-source set was {source_text}."
         f" The claim was evaluated at {datetime_to_json(request.evaluated_at)}"
         f"{validity_text}"
-        f"{permission_text} This conclusion is conditional on the declared scope, "
+        f"{permission_text}{finality_text} This conclusion is conditional on the declared scope, "
         "coverage, source state, and validity window; it is not proof of absence "
-        "outside that scope. The schema 1.0 candidate checks source-index "
-        "chronology but does not establish a late-arrival finality horizon."
+        "outside that scope. The finality declaration is not independently "
+        "attested or profile-governed and does not prove ingestion completeness."
     )
 
 
@@ -431,14 +470,23 @@ def evaluate_negative_claim(request: NegativeClaimRequest) -> GateDecision:
     elif request.evaluated_at > envelope.valid_until:
         add_reason(GateReason.RESULT_EXPIRED)
 
-    required_ids = {
-        requirement.source_id
+    required_requirements = tuple(
+        requirement
         for requirement in envelope.query.source_requirements
         if requirement.role is SourceRole.REQUIRED
+    )
+    observations_by_id = {
+        observation.source_id: observation
+        for observation in envelope.source_observations
     }
-    for observation in envelope.source_observations:
+    for requirement in required_requirements:
+        finality_horizon = requirement.finality_horizon
+        if finality_horizon is None and policy.require_finality_horizon:
+            add_reason(GateReason.FINALITY_HORIZON_UNDECLARED)
+
+        observation = observations_by_id.get(requirement.source_id)
         if (
-            observation.source_id not in required_ids
+            observation is None
             or observation.status is not SourceObservationStatus.OBSERVED
         ):
             continue
@@ -446,18 +494,21 @@ def evaluate_negative_claim(request: NegativeClaimRequest) -> GateDecision:
         if index_as_of is None:
             if policy.require_index_as_of or policy.max_index_age_seconds is not None:
                 add_reason(GateReason.INDEX_TIMESTAMP_UNDECLARED)
-        elif index_as_of < envelope.query.time_end:
-            add_reason(GateReason.INDEX_PRECEDES_QUERY_END)
-        elif index_as_of > request.evaluated_at:
-            add_reason(GateReason.INDEX_TIME_AFTER_EVALUATION)
-        elif (
-            policy.max_index_age_seconds is not None
-            and _timedelta_exceeds_seconds(
-                request.evaluated_at - index_as_of,
-                policy.max_index_age_seconds,
-            )
-        ):
-            add_reason(GateReason.INDEX_TOO_OLD)
+        else:
+            if index_as_of < envelope.query.time_end:
+                add_reason(GateReason.INDEX_PRECEDES_QUERY_END)
+            if finality_horizon is not None and index_as_of < finality_horizon:
+                add_reason(GateReason.INDEX_PRECEDES_FINALITY_HORIZON)
+            if index_as_of > request.evaluated_at:
+                add_reason(GateReason.INDEX_TIME_AFTER_EVALUATION)
+            elif (
+                policy.max_index_age_seconds is not None
+                and _timedelta_exceeds_seconds(
+                    request.evaluated_at - index_as_of,
+                    policy.max_index_age_seconds,
+                )
+            ):
+                add_reason(GateReason.INDEX_TOO_OLD)
 
     allowed = not reasons
     limitations = (
@@ -465,7 +516,7 @@ def evaluate_negative_claim(request: NegativeClaimRequest) -> GateDecision:
         "ABSENT_WITHIN_SCOPE never proves global or absolute absence.",
         "The gate does not independently verify source honesty or inaccessible data.",
         "The current evaluator does not establish multi-source coverage composition.",
-        "The schema 1.0 candidate checks source-index chronology but does not establish late-arrival finality or completeness.",
+        "The gate compares a source-reported index time with a declared finality horizon; the declaration is not independently attested or profile-governed and does not prove ingestion completeness.",
         "The SHA-256 input digest is integrity metadata, not a signature; mutation detection requires a trusted expected digest.",
     )
     return GateDecision(

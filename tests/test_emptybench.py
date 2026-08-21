@@ -22,16 +22,67 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 class EmptyBenchTests(unittest.TestCase):
-    def test_seed_suite_has_six_pairs_and_twelve_cases(self) -> None:
+    def test_seed_suite_has_seven_pairs_and_fourteen_cases(self) -> None:
         cases = seed_cases()
-        self.assertEqual(len(cases), 12)
-        self.assertEqual(len({case.pair_id for case in cases}), 6)
+        self.assertEqual(len(cases), 14)
+        self.assertEqual(len({case.pair_id for case in cases}), 7)
 
     def test_all_seed_expectations_pass(self) -> None:
         report = run_seed_emptybench(all_cases=True)
         self.assertTrue(report.all_passed)
-        self.assertEqual(report.passed, 12)
+        self.assertEqual(report.passed, 14)
         self.assertEqual(report.benchmark, "EmptyBench-seed")
+
+    def test_finality_pair_preserves_visible_facts_and_crosses_snapshot_boundary(self) -> None:
+        cases = [
+            case
+            for case in seed_cases()
+            if case.pair_id == "finality-snapshot-at-vs-before-horizon"
+        ]
+        self.assertEqual(len(cases), 2)
+        control, fault = cases
+        control_request = control.request.to_dict()
+        fault_request = fault.request.to_dict()
+        control_envelope = control_request["envelope"]
+        fault_envelope = fault_request["envelope"]
+
+        self.assertEqual(control_request["subject"], fault_request["subject"])
+        self.assertEqual(control_request["mode"], fault_request["mode"])
+        self.assertEqual(
+            control_request["evaluated_at"], fault_request["evaluated_at"]
+        )
+        self.assertEqual(control_envelope["query"], fault_envelope["query"])
+        self.assertEqual(
+            control_envelope["observed_at"], fault_envelope["observed_at"]
+        )
+        self.assertEqual(
+            control_envelope["matched_count"], fault_envelope["matched_count"]
+        )
+        self.assertEqual(control_envelope["notes"], fault_envelope["notes"])
+        self.assertEqual(
+            control_envelope["query"]["source_requirements"][0][
+                "finality_horizon"
+            ],
+            "2026-08-21T12:04:00Z",
+        )
+        self.assertEqual(
+            control_envelope["source_observations"][0]["descriptor"]["index_as_of"],
+            "2026-08-21T12:04:00Z",
+        )
+        self.assertEqual(
+            fault_envelope["source_observations"][0]["descriptor"]["index_as_of"],
+            "2026-08-21T12:03:59.999999Z",
+        )
+
+        report = run_emptybench(cases)
+        self.assertTrue(report.all_passed)
+        self.assertEqual(
+            report.outcomes[1].actual_reasons,
+            (
+                "STATE_NOT_ABSENT_WITHIN_SCOPE",
+                "INDEX_PRECEDES_FINALITY_HORIZON",
+            ),
+        )
 
     def test_demo_is_covered_vs_partial_pair(self) -> None:
         cases = demo_cases()
