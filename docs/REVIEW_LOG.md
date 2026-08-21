@@ -310,6 +310,8 @@ state was rejected.
 
 - Reviewed implementation checkpoint:
   `7deaea1dd79eacd2c4f3ebbef87a314e5293f1f6`.
+- Documentation/custody checkpoint:
+  `bac04fabfa5dbcf6a7e639217ee345f9c8ceb645`.
 - Python 3.13 source suite: 244/244.
 - Python 3.13 installed-package suite with `PYTHONPATH` unset: 244/244.
 - Python 3.11 source unittest discovery: 244/244.

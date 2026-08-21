@@ -74,6 +74,8 @@ results:
 
 - Finality implementation checkpoint:
   `7deaea1dd79eacd2c4f3ebbef87a314e5293f1f6` (`contract: enforce explicit source finality`).
+- Finality documentation/custody checkpoint:
+  `bac04fabfa5dbcf6a7e639217ee345f9c8ceb645` (`docs: record finality checkpoint custody`).
 - Prior source-accounting checkpoint:
   `bdd7c1e15c45f8d9940fc76604b3dde1fa953faa` (`contract: bind schema 1.0 to required source evidence`).
 - `env -u PYTHONPATH ./scripts/check.sh` — passed static checks, local-link

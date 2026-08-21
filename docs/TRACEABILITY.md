@@ -4,6 +4,7 @@
 **Evidence class:** local, synthetic, self-authored
 **Verified runtime:** macOS; Python 3.13.0 with pytest 8.4.2; Python 3.11 with unittest
 **Candidate implementation:** `7deaea1dd79eacd2c4f3ebbef87a314e5293f1f6`
+**Documentation custody:** `bac04fabfa5dbcf6a7e639217ee345f9c8ceb645`
 
 This matrix distinguishes the breadth of the PRD from the smaller behavior currently implemented and locally tested. A row marked `TESTED (PARTIAL)` means the named behavior exists for the current model, while one or more acceptance criteria remain backlog work. It does not mean the entire requirement has passed.
 
