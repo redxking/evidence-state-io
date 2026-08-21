@@ -26,6 +26,7 @@
   - Policy ID/version and evaluator version are explicit; certificate-level version binding remains open.
   - The schema `0.1` fixture, digests, and pinned `b6fac87` replay boundary are preserved without auto-migration. This is historical local evidence, not a current permit.
   - Python 3.13 source and installed-package verification and Python 3.11 source-overlay verification passed 224/224; the Python 3.11 source and Python 3.13 installed seed runs passed 12/12 and were byte-identical.
+  - Candidate implementation checkpoint: `bdd7c1e15c45f8d9940fc76604b3dde1fa953faa`.
 
 - [x] ~~Initial local covered-versus-partial demonstration~~ (2026-08-21)
   - Python 3.13.0 source and installed suites and the Python 3.11 suite passed 171/171; the synthetic demonstrations passed 2/2 and 10/10.

@@ -62,6 +62,8 @@ finality watermark.
 On 2026-08-21, the current schema `1.0` candidate produced the following local
 results:
 
+- Candidate implementation checkpoint:
+  `bdd7c1e15c45f8d9940fc76604b3dde1fa953faa` (`contract: bind schema 1.0 to required source evidence`).
 - `env -u PYTHONPATH ./scripts/check.sh` — passed static checks, local-link
   checks, shell/Compose validation, source-versus-installed package snapshots,
   and deterministic demonstration parity.

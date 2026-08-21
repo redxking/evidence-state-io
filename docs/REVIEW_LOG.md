@@ -233,6 +233,8 @@ baseline, schema freeze, or source-accounting completion point.
 
 ### Repaired-candidate verification
 
+- Reviewed implementation checkpoint:
+  `bdd7c1e15c45f8d9940fc76604b3dde1fa953faa`.
 - Source suite on Python 3.13: 224/224.
 - Installed suite with `PYTHONPATH` unset on Python 3.13: 224/224.
 - Python 3.11 source-overlay unittest discovery: 224/224.
