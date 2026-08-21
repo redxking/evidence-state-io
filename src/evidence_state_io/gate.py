@@ -30,12 +30,19 @@ from .sources import (
     SourceIssueCode,
     evaluate_source_accounting,
 )
+from .profiles import (
+    ProfileAssessment,
+    ProfileIssueCode,
+    TrustedProfileContext,
+    evaluate_profile_governance,
+)
 
 
 MAX_SUBJECT_LENGTH = 160
 DEFAULT_POLICY_ID = "esio-p0-safety-floor"
-DEFAULT_POLICY_VERSION = "1.0-candidate.2"
-EVALUATOR_VERSION = "esio-evaluator-1.0-candidate.2"
+DEFAULT_POLICY_VERSION = "1.0-candidate.3"
+EVALUATOR_VERSION = "esio-evaluator-1.0-candidate.3"
+EVALUATION_INPUT_SCHEMA = "esio-evaluation-input/1.0-candidate.1"
 _ABSOLUTE_SUBJECT_PATTERN = re.compile(
     r"\b(?:nothing|none|anywhere|everywhere|always|never)\b"
     r"|\bno\b.{0,80}\bexists?\b"
@@ -45,6 +52,33 @@ _ABSOLUTE_SUBJECT_PATTERN = re.compile(
 
 
 class GateReason(str, Enum):
+    PROFILE_REFERENCE_UNDECLARED = "PROFILE_REFERENCE_UNDECLARED"
+    REGISTRY_SNAPSHOT_UNDECLARED = "REGISTRY_SNAPSHOT_UNDECLARED"
+    REGISTRY_SNAPSHOT_IDENTITY_MISMATCH = "REGISTRY_SNAPSHOT_IDENTITY_MISMATCH"
+    REGISTRY_SNAPSHOT_DIGEST_MISMATCH = "REGISTRY_SNAPSHOT_DIGEST_MISMATCH"
+    REGISTRY_SNAPSHOT_ISSUER_UNTRUSTED = "REGISTRY_SNAPSHOT_ISSUER_UNTRUSTED"
+    REGISTRY_SNAPSHOT_NOT_YET_EFFECTIVE = "REGISTRY_SNAPSHOT_NOT_YET_EFFECTIVE"
+    REGISTRY_SNAPSHOT_EXPIRED = "REGISTRY_SNAPSHOT_EXPIRED"
+    PROFILE_NOT_FOUND = "PROFILE_NOT_FOUND"
+    PROFILE_RESOLUTION_AMBIGUOUS = "PROFILE_RESOLUTION_AMBIGUOUS"
+    PROFILE_DIGEST_MISMATCH = "PROFILE_DIGEST_MISMATCH"
+    PROFILE_ISSUER_UNTRUSTED = "PROFILE_ISSUER_UNTRUSTED"
+    PROFILE_AUTHORITY_UNTRUSTED = "PROFILE_AUTHORITY_UNTRUSTED"
+    PROFILE_NOT_YET_EFFECTIVE = "PROFILE_NOT_YET_EFFECTIVE"
+    PROFILE_EXPIRED = "PROFILE_EXPIRED"
+    PROFILE_REVOKED = "PROFILE_REVOKED"
+    PROFILE_SOURCE_MISMATCH = "PROFILE_SOURCE_MISMATCH"
+    PROFILE_ADAPTER_MISMATCH = "PROFILE_ADAPTER_MISMATCH"
+    PROFILE_AUTHORIZATION_MISMATCH = "PROFILE_AUTHORIZATION_MISMATCH"
+    PROFILE_POPULATION_MISMATCH = "PROFILE_POPULATION_MISMATCH"
+    PROFILE_QUERY_APPLICABILITY_MISMATCH = "PROFILE_QUERY_APPLICABILITY_MISMATCH"
+    PROFILE_DETECTION_ASSUMPTIONS_MISMATCH = "PROFILE_DETECTION_ASSUMPTIONS_MISMATCH"
+    PROFILE_COVERAGE_BASIS_MISMATCH = "PROFILE_COVERAGE_BASIS_MISMATCH"
+    PROFILE_RETENTION_EXCEEDED = "PROFILE_RETENTION_EXCEEDED"
+    PROFILE_BLIND_INTERVAL_INTERSECTS_QUERY = "PROFILE_BLIND_INTERVAL_INTERSECTS_QUERY"
+    PROFILE_OBSERVATION_TOO_OLD = "PROFILE_OBSERVATION_TOO_OLD"
+    PROFILE_INDEX_TOO_OLD = "PROFILE_INDEX_TOO_OLD"
+    FINALITY_HORIZON_PROFILE_MISMATCH = "FINALITY_HORIZON_PROFILE_MISMATCH"
     ABSOLUTE_NEGATIVE_UNSUPPORTED = "ABSOLUTE_NEGATIVE_UNSUPPORTED"
     STATE_NOT_ABSENT_WITHIN_SCOPE = "STATE_NOT_ABSENT_WITHIN_SCOPE"
     NONZERO_MATCHES = "NONZERO_MATCHES"
@@ -89,6 +123,10 @@ _SOURCE_REASON_MAP = {
     SourceIssueCode.REQUIRED_SOURCE_AUTHORIZATION_MISMATCH: GateReason.REQUIRED_SOURCE_AUTHORIZATION_MISMATCH,
     SourceIssueCode.REQUIRED_SOURCE_POPULATION_MISMATCH: GateReason.REQUIRED_SOURCE_POPULATION_MISMATCH,
     SourceIssueCode.REQUIRED_SOURCE_ERRORS_PRESENT: GateReason.REQUIRED_SOURCE_ERRORS_PRESENT,
+}
+
+_PROFILE_REASON_MAP = {
+    code: GateReason(code.value) for code in ProfileIssueCode
 }
 
 
@@ -323,6 +361,7 @@ class GateDecision:
     reasons: tuple[GateReason, ...]
     coverage: CoverageAssessment
     source_accounting: SourceAccountingAssessment
+    profile: ProfileAssessment
     qualified_claim: str | None
     limitations: tuple[str, ...]
     input_digest: str
@@ -337,6 +376,7 @@ class GateDecision:
             "reasons": [reason.value for reason in self.reasons],
             "coverage": self.coverage.to_dict(),
             "source_accounting": self.source_accounting.to_dict(),
+            "profile": self.profile.to_dict(),
             "qualified_claim": self.qualified_claim,
             "limitations": list(self.limitations),
             "input_digest": self.input_digest,
@@ -346,8 +386,19 @@ class GateDecision:
         }
 
 
-def _digest_request(request: NegativeClaimRequest) -> str:
-    return canonical_digest(request.to_dict())
+def _digest_evaluation_input(
+    request: NegativeClaimRequest,
+    context: TrustedProfileContext | None,
+) -> str:
+    return canonical_digest(
+        {
+            "evaluation_input_schema": EVALUATION_INPUT_SCHEMA,
+            "request": request.to_dict(),
+            "trusted_profile_context": (
+                None if context is None else context.to_dict()
+            ),
+        }
+    )
 
 
 def _qualified_claim(
@@ -410,12 +461,16 @@ def _qualified_claim(
         f"{validity_text}"
         f"{permission_text}{finality_text} This conclusion is conditional on the declared scope, "
         "coverage, source state, and validity window; it is not proof of absence "
-        "outside that scope. The finality declaration is not independently "
-        "attested or profile-governed and does not prove ingestion completeness."
+        "outside that scope. The finality horizon was derived from the exact "
+        "locally governed profile pinned by the query. That configuration binding "
+        "does not authenticate the profile assertions or prove ingestion completeness."
     )
 
 
-def evaluate_negative_claim(request: NegativeClaimRequest) -> GateDecision:
+def evaluate_negative_claim(
+    request: NegativeClaimRequest,
+    context: TrustedProfileContext | None = None,
+) -> GateDecision:
     """Return a deterministic allow/deny decision for a negative claim.
 
     Absolute claims are never authorized.  A scoped claim is authorized only
@@ -433,11 +488,19 @@ def evaluate_negative_claim(request: NegativeClaimRequest) -> GateDecision:
         envelope.query.source_requirements,
         envelope.source_observations,
     )
+    profile_assessment = evaluate_profile_governance(
+        envelope,
+        request.evaluated_at,
+        context,
+    )
     reasons: list[GateReason] = []
 
     def add_reason(reason: GateReason) -> None:
         if reason not in reasons:
             reasons.append(reason)
+
+    for issue in profile_assessment.issues:
+        add_reason(_PROFILE_REASON_MAP[issue.code])
 
     if request.mode is ClaimMode.ABSOLUTE:
         add_reason(GateReason.ABSOLUTE_NEGATIVE_UNSUPPORTED)
@@ -512,12 +575,13 @@ def evaluate_negative_claim(request: NegativeClaimRequest) -> GateDecision:
 
     allowed = not reasons
     limitations = (
-        "The decision is conditional on source-declared scope and coverage evidence.",
+        "The decision is conditional on source-declared evidence and a separately supplied, locally governed profile registry snapshot.",
         "ABSENT_WITHIN_SCOPE never proves global or absolute absence.",
         "The gate does not independently verify source honesty or inaccessible data.",
         "The current evaluator does not establish multi-source coverage composition.",
-        "The gate compares a source-reported index time with a declared finality horizon; the declaration is not independently attested or profile-governed and does not prove ingestion completeness.",
-        "The SHA-256 input digest is integrity metadata, not a signature; mutation detection requires a trusted expected digest.",
+        "The gate compares a source-reported index time with a profile-derived finality horizon; profile governance does not attest source behavior and does not prove ingestion completeness.",
+        "Profile owner, issuer, and approval identities are declarative under P0 configuration custody and are not cryptographically authenticated.",
+        "The SHA-256 composite input digest is integrity metadata, not a signature; mutation detection requires a separately trusted expected digest.",
     )
     return GateDecision(
         allowed=allowed,
@@ -525,7 +589,8 @@ def evaluate_negative_claim(request: NegativeClaimRequest) -> GateDecision:
         reasons=tuple(reasons),
         coverage=assessment,
         source_accounting=source_assessment,
+        profile=profile_assessment,
         qualified_claim=_qualified_claim(request, assessment) if allowed else None,
         limitations=limitations,
-        input_digest=_digest_request(request),
+        input_digest=_digest_evaluation_input(request, context),
     )

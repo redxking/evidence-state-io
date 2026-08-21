@@ -6,7 +6,29 @@ from dataclasses import dataclass, field
 from typing import Any, Iterable, Mapping, Sequence
 
 from .gate import GateDecision, GateReason, NegativeClaimRequest, evaluate_negative_claim
-from .models import ModelValidationError, QueryScope, bounded_single_line
+from .models import (
+    ModelValidationError,
+    PopulationBasis,
+    QueryScope,
+    bounded_single_line,
+    parse_datetime,
+)
+from .profiles import (
+    COVERAGE_FINALITY_PROFILE_SCHEMA,
+    FINALITY_METHOD,
+    PROFILE_REGISTRY_SNAPSHOT_SCHEMA,
+    PROFILE_TRUST_SELECTION_SCHEMA,
+    CoverageFinalityProfile,
+    ProfileApplicability,
+    ProfileCoverage,
+    ProfileFinality,
+    ProfileRegistryRecord,
+    ProfileRegistrySnapshot,
+    ProfileRegistryStatus,
+    ProfileSource,
+    ProfileTrustSelection,
+    TrustedProfileContext,
+)
 
 
 MAX_BENCHMARK_ID_LENGTH = 128
@@ -279,10 +301,11 @@ def _run_validated_emptybench(
     cases: tuple[EmptyBenchCase, ...],
     *,
     benchmark: str,
+    context: TrustedProfileContext,
 ) -> EmptyBenchReport:
     outcomes: list[EmptyBenchOutcome] = []
     for case in cases:
-        decision = evaluate_negative_claim(case.request)
+        decision = evaluate_negative_claim(case.request, context)
         actual_reasons = tuple(reason.value for reason in decision.reasons)
         passed = (
             decision.allowed is case.expected_allowed
@@ -304,11 +327,22 @@ def _run_validated_emptybench(
     return EmptyBenchReport(benchmark=benchmark, outcomes=tuple(outcomes))
 
 
-def run_emptybench(cases: Iterable[EmptyBenchCase]) -> EmptyBenchReport:
+def run_emptybench(
+    cases: Iterable[EmptyBenchCase],
+    context: TrustedProfileContext,
+) -> EmptyBenchReport:
     """Run a caller-supplied corpus after enforcing the paired-case contract."""
 
     validated = _validate_case_pairs(cases)
-    return _run_validated_emptybench(validated, benchmark="EmptyBench-custom")
+    if not isinstance(context, TrustedProfileContext):
+        raise ModelValidationError(
+            "EmptyBench requires an application-controlled TrustedProfileContext"
+        )
+    return _run_validated_emptybench(
+        validated,
+        benchmark="EmptyBench-custom",
+        context=context,
+    )
 
 
 def run_seed_emptybench(*, all_cases: bool = False) -> EmptyBenchReport:
@@ -316,7 +350,101 @@ def run_seed_emptybench(*, all_cases: bool = False) -> EmptyBenchReport:
 
     cases = seed_cases() if all_cases else demo_cases()
     validated = _validate_case_pairs(cases)
-    return _run_validated_emptybench(validated, benchmark="EmptyBench-seed")
+    return _run_validated_emptybench(
+        validated,
+        benchmark="EmptyBench-seed",
+        context=seed_profile_context(),
+    )
+
+
+def seed_profile_context() -> TrustedProfileContext:
+    """Return the package-owned deterministic profile context for synthetic cases."""
+
+    profile = CoverageFinalityProfile(
+        profile_schema=COVERAGE_FINALITY_PROFILE_SCHEMA,
+        profile_id="github-search-p0",
+        profile_version="1.0.0",
+        source_owner_id="example-source-owner",
+        approval_authority_id="example-assurance-board",
+        issuer_id="example-profile-publisher",
+        issued_at=parse_datetime("2026-08-20T00:00:00Z", "seed_profile.issued_at"),
+        effective_at=parse_datetime(
+            "2026-08-21T00:00:00Z", "seed_profile.effective_at"
+        ),
+        expires_at=parse_datetime(
+            "2027-01-01T00:00:00Z", "seed_profile.expires_at"
+        ),
+        source=ProfileSource(
+            source_id="github-public-repositories",
+            system="github-search",
+            locator="repositories/search",
+            adapter_id="github-search-adapter",
+            adapter_version="example-0.4",
+            authorization_context_id="public-search-adapter-context",
+            accessible_population="public-repositories-visible-to-adapter",
+        ),
+        applicability=ProfileApplicability(
+            target="GitHub repository search",
+            predicate="topic:evidence-state language:Python",
+            authorization_boundary=(
+                "public repositories visible to the adapter token"
+            ),
+            required_exclusions=("deleted repositories", "unindexed content"),
+            detection_assumptions=(
+                "repository is indexed by the declared search endpoint",
+            ),
+        ),
+        coverage=ProfileCoverage(
+            population_basis=PopulationBasis.EXACT,
+            population_units=100,
+            pages_expected=5,
+            partitions_expected=2,
+            permission_limited=False,
+            retention_seconds=86_400,
+            blind_intervals=(),
+            max_observation_age_seconds=3_600,
+            max_index_age_seconds=3_600,
+        ),
+        finality=ProfileFinality(
+            method=FINALITY_METHOD,
+            late_arrival_bound_seconds=240,
+            reopen_bound_seconds=0,
+        ),
+    )
+    record = ProfileRegistryRecord(
+        profile=profile,
+        profile_digest=None,
+        status=ProfileRegistryStatus.ACTIVE,
+        revoked_at=None,
+        revocation_effective_at=None,
+        revocation_reason_code=None,
+    )
+    snapshot = ProfileRegistrySnapshot(
+        snapshot_schema=PROFILE_REGISTRY_SNAPSHOT_SCHEMA,
+        registry_id="example-coverage-registry",
+        snapshot_id="seed-2026-08-21",
+        snapshot_version="1",
+        issuer_id="example-registry-publisher",
+        as_of=parse_datetime("2026-08-21T00:00:00Z", "seed_snapshot.as_of"),
+        next_update_at=parse_datetime(
+            "2027-01-01T00:00:00Z", "seed_snapshot.next_update_at"
+        ),
+        records=(record,),
+        snapshot_digest=None,
+    )
+    assert snapshot.snapshot_digest is not None
+    trust = ProfileTrustSelection(
+        trust_schema=PROFILE_TRUST_SELECTION_SCHEMA,
+        registry_id=snapshot.registry_id,
+        snapshot_id=snapshot.snapshot_id,
+        snapshot_version=snapshot.snapshot_version,
+        snapshot_digest=snapshot.snapshot_digest,
+        trusted_snapshot_issuer_ids=(snapshot.issuer_id,),
+        trusted_profile_issuer_ids=(profile.issuer_id,),
+        trusted_approval_authority_ids=(profile.approval_authority_id,),
+        trust_selection_digest=None,
+    )
+    return TrustedProfileContext(snapshot=snapshot, trust_selection=trust)
 
 
 def _request_dict(
@@ -344,6 +472,8 @@ def _request_dict(
     authorization_context_id: str = "public-search-adapter-context",
     policy: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
+    profile_context = seed_profile_context()
+    profile = profile_context.snapshot.records[0].profile
     effective_requirements = (
         [
             {
@@ -352,13 +482,19 @@ def _request_dict(
                 "system": "github-search",
                 "locator": "repositories/search",
                 "adapter_id": "github-search-adapter",
-                "adapter_version": "seed-0.3",
+                "adapter_version": "example-0.4",
                 "authorization_context_id": authorization_context_id,
                 "accessible_population": "public-repositories-visible-to-adapter",
                 "finality_horizon": "2026-08-21T12:04:00Z",
                 "detection_assumptions": [
                     "repository is indexed by the declared search endpoint"
                 ],
+                "profile_ref": {
+                    "registry_id": profile_context.snapshot.registry_id,
+                    "profile_id": profile.profile_id,
+                    "profile_version": profile.profile_version,
+                    "profile_digest": profile.profile_digest,
+                },
             }
         ]
         if source_requirements is None
@@ -387,7 +523,7 @@ def _request_dict(
                     "system": "github-search",
                     "locator": "repositories/search",
                     "adapter_id": "github-search-adapter",
-                    "adapter_version": "seed-0.3",
+                    "adapter_version": "example-0.4",
                     "index_as_of": index_as_of,
                 },
                 "errors": [],
@@ -402,7 +538,7 @@ def _request_dict(
         "evaluated_at": "2026-08-21T12:05:00Z",
         "policy": {
             "policy_id": "esio-p0-safety-floor",
-            "policy_version": "1.0-candidate.2",
+            "policy_version": "1.0-candidate.3",
             **dict({} if policy is None else policy),
         },
         "envelope": {
@@ -487,53 +623,47 @@ def seed_case_dicts() -> list[dict[str, Any]]:
             "expected_reasons": ["RESULT_EXPIRED"],
         },
         {
-            "case_id": "declared-complete",
-            "pair_id": "declared-vs-unknown-coverage",
-            "variant": "declared",
-            "description": "Unknown population has an explicit source-attested lower bound.",
-            "request": _request_dict(
-                population_basis="UNKNOWN",
-                population_units=None,
-                declared_lower_bound=1.0,
-            ),
+            "case_id": "governed-population-match",
+            "pair_id": "governed-population-match-vs-mismatch",
+            "variant": "matching-denominator",
+            "description": "The exact runtime denominator matches the governed profile.",
+            "request": _request_dict(),
             "expected_allowed": True,
             "expected_reasons": [],
         },
         {
-            "case_id": "unknown-coverage",
-            "pair_id": "declared-vs-unknown-coverage",
-            "variant": "unknown",
-            "description": "Zero matches with no population denominator or coverage bound.",
+            "case_id": "governed-population-mismatch",
+            "pair_id": "governed-population-match-vs-mismatch",
+            "variant": "mismatched-denominator",
+            "description": "The runtime denominator differs from the exact governed profile.",
             "request": _request_dict(
-                population_basis="UNKNOWN",
-                population_units=None,
-                declared_lower_bound=None,
+                population_units=101,
             ),
             "expected_allowed": False,
-            "expected_reasons": ["COVERAGE_POLICY_NOT_MET"],
+            "expected_reasons": [
+                "PROFILE_COVERAGE_BASIS_MISMATCH",
+                "COVERAGE_POLICY_NOT_MET",
+            ],
         },
         {
-            "case_id": "authorized-scope-declared",
-            "pair_id": "declared-vs-rejected-access-limit",
-            "variant": "declared-access",
-            "description": "Permission-limited search is qualified to a declared boundary.",
-            "request": _request_dict(permission_limited=True),
+            "case_id": "governed-access-match",
+            "pair_id": "governed-access-match-vs-mismatch",
+            "variant": "matching-access",
+            "description": "The runtime access limitation matches the governed profile.",
+            "request": _request_dict(),
             "expected_allowed": True,
             "expected_reasons": [],
         },
         {
-            "case_id": "access-limit-rejected",
-            "pair_id": "declared-vs-rejected-access-limit",
-            "variant": "strict-policy",
-            "description": "Local policy rejects even explicitly declared access limitations.",
+            "case_id": "governed-access-mismatch",
+            "pair_id": "governed-access-match-vs-mismatch",
+            "variant": "mismatched-access",
+            "description": "The runtime permission-limited state differs from the governed profile.",
             "request": _request_dict(
                 permission_limited=True,
-                policy={
-                    "coverage": {"allow_permission_limited_scope": False},
-                },
             ),
             "expected_allowed": False,
-            "expected_reasons": ["COVERAGE_POLICY_NOT_MET"],
+            "expected_reasons": ["PROFILE_AUTHORIZATION_MISMATCH"],
         },
         {
             "case_id": "completed-without-timeout",

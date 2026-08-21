@@ -15,14 +15,19 @@ from evidence_state_io import (
     evaluate_negative_claim,
 )
 
-from tests.helpers import refresh_query_fingerprints, request, request_dict
+from tests.helpers import (
+    refresh_query_fingerprints,
+    request,
+    request_dict,
+    trusted_context,
+)
 from evidence_state_io.models import datetime_to_json
 
 
 def policy_dict(**changes):
     return {
         "policy_id": "esio-p0-safety-floor",
-        "policy_version": "1.0-candidate.2",
+        "policy_version": "1.0-candidate.3",
         **changes,
     }
 
@@ -31,7 +36,9 @@ def decision(mutator=None):
     data = request_dict()
     if mutator:
         mutator(data)
-    return evaluate_negative_claim(NegativeClaimRequest.from_dict(data))
+    return evaluate_negative_claim(
+        NegativeClaimRequest.from_dict(data), trusted_context()
+    )
 
 
 class NegativeClaimGateTests(unittest.TestCase):
@@ -40,7 +47,7 @@ class NegativeClaimGateTests(unittest.TestCase):
         self.assertTrue(result.allowed)
         self.assertEqual(result.decision, "PERMIT_SCOPED_NEGATIVE")
         self.assertEqual(result.reasons, ())
-        self.assertEqual(result.evaluator_version, "esio-evaluator-1.0-candidate.2")
+        self.assertEqual(result.evaluator_version, "esio-evaluator-1.0-candidate.3")
         self.assertTrue(result.source_accounting.meets_policy)
 
     def test_allowed_text_remains_explicitly_conditional(self) -> None:
@@ -52,7 +59,8 @@ class NegativeClaimGateTests(unittest.TestCase):
         self.assertIn('"source_id":"github-public-repositories"', result.qualified_claim)
         self.assertIn("public repositories visible to the adapter", result.qualified_claim)
         self.assertIn("reached the declared finality horizon", result.qualified_claim)
-        self.assertIn("not independently attested or profile-governed", result.qualified_claim)
+        self.assertIn("derived from the exact locally governed profile", result.qualified_claim)
+        self.assertIn("does not authenticate the profile assertions", result.qualified_claim)
         self.assertTrue(
             any("does not prove ingestion completeness" in item for item in result.limitations)
         )
@@ -171,7 +179,9 @@ class NegativeClaimGateTests(unittest.TestCase):
             declared_lower_bound=Decimal("0.999999999999"),
         )
         envelope = replace(base.envelope, coverage=coverage)
-        result = evaluate_negative_claim(replace(base, envelope=envelope))
+        result = evaluate_negative_claim(
+            replace(base, envelope=envelope), trusted_context()
+        )
         self.assertIsInstance(coverage.declared_lower_bound, float)
         self.assertFalse(result.allowed)
         self.assertIn(GateReason.COVERAGE_POLICY_NOT_MET, result.reasons)
@@ -340,8 +350,8 @@ class NegativeClaimGateTests(unittest.TestCase):
         )
         query = replace(
             base.envelope.query,
-            time_start=early,
-            time_end=early,
+            time_start=early - timedelta(minutes=4),
+            time_end=early - timedelta(minutes=4),
             source_requirements=(requirement,),
         )
         descriptor = replace(
@@ -373,14 +383,14 @@ class NegativeClaimGateTests(unittest.TestCase):
         serialized = candidate.to_dict()
         self.assertEqual(serialized["envelope"]["observed_at"], "2026-11-01T05:30:00Z")
         self.assertEqual(serialized["evaluated_at"], "2026-11-01T06:30:00Z")
-        result = evaluate_negative_claim(candidate)
+        result = evaluate_negative_claim(candidate, trusted_context())
         self.assertFalse(result.allowed)
         self.assertIsNone(result.qualified_claim)
         self.assertIn(GateReason.RESULT_EXPIRED, result.reasons)
         self.assertIn(GateReason.OBSERVATION_TOO_OLD, result.reasons)
         self.assertIn(GateReason.INDEX_TOO_OLD, result.reasons)
         equality_result = evaluate_negative_claim(
-            replace(candidate, evaluated_at=early)
+            replace(candidate, evaluated_at=early), trusted_context()
         )
         self.assertTrue(equality_result.allowed)
         self.assertNotEqual(equality_result.input_digest, result.input_digest)
@@ -564,13 +574,12 @@ class NegativeClaimGateTests(unittest.TestCase):
         with self.assertRaisesRegex(ModelValidationError, "exactly one REQUIRED"):
             decision(mutate)
 
-    def test_permission_limited_claim_names_access_boundary(self) -> None:
+    def test_permission_limit_must_match_governed_profile(self) -> None:
         result = decision(
             lambda data: data["envelope"]["coverage"].update(permission_limited=True)
         )
-        self.assertTrue(result.allowed)
-        assert result.qualified_claim is not None
-        self.assertIn("Only data accessible", result.qualified_claim)
+        self.assertFalse(result.allowed)
+        self.assertIn(GateReason.PROFILE_AUTHORIZATION_MISMATCH, result.reasons)
 
     def test_decision_digest_is_stable(self) -> None:
         self.assertEqual(decision().input_digest, decision().input_digest)

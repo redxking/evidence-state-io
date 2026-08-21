@@ -1,0 +1,17 @@
+{
+  "trust_schema": "esio-profile-trust-selection/1.0-candidate.1",
+  "registry_id": "example-coverage-registry",
+  "snapshot_id": "seed-2026-08-21",
+  "snapshot_version": "1",
+  "snapshot_digest": "sha256:da9963d7867b9b7a0bc93581a9e2f2543969371fabc1d6d73446664d585af1e5",
+  "trusted_snapshot_issuer_ids": [
+    "example-registry-publisher"
+  ],
+  "trusted_profile_issuer_ids": [
+    "example-profile-publisher"
+  ],
+  "trusted_approval_authority_ids": [
+    "example-assurance-board"
+  ],
+  "trust_selection_digest": "sha256:a941970b4dd661698b2f8925a6e451907bba31b237c2a84f070ee6cf1cc63cde"
+}

@@ -19,6 +19,14 @@ EXAMPLES = PROJECT_ROOT / "examples"
 
 class CliTests(unittest.TestCase):
     def invoke(self, argv, stdin_text=""):
+        argv = list(argv)
+        if argv and argv[0] in {"evaluate", "emptybench"}:
+            if "--registry" not in argv:
+                argv.extend(
+                    ["--registry", str(EXAMPLES / "profile_registry.json")]
+                )
+            if "--trust" not in argv:
+                argv.extend(["--trust", str(EXAMPLES / "profile_trust.json")])
         stdout = StringIO()
         stderr = StringIO()
         code = main(argv, stdin=StringIO(stdin_text), stdout=stdout, stderr=stderr)
@@ -277,6 +285,10 @@ class CliTests(unittest.TestCase):
                 "evaluate",
                 "--input",
                 "-",
+                "--registry",
+                str(EXAMPLES / "profile_registry.json"),
+                "--trust",
+                str(EXAMPLES / "profile_trust.json"),
             ],
             cwd=PROJECT_ROOT,
             env=environment,

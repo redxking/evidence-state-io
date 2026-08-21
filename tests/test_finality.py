@@ -14,7 +14,12 @@ from evidence_state_io import (
 )
 from evidence_state_io.models import datetime_to_json
 
-from tests.helpers import refresh_query_fingerprints, request, request_dict
+from tests.helpers import (
+    refresh_query_fingerprints,
+    request,
+    request_dict,
+    trusted_context,
+)
 
 
 UTC = timezone.utc
@@ -23,7 +28,7 @@ UTC = timezone.utc
 def policy_dict(**changes):
     return {
         "policy_id": "esio-p0-safety-floor",
-        "policy_version": "1.0-candidate.2",
+        "policy_version": "1.0-candidate.3",
         **changes,
     }
 
@@ -42,7 +47,9 @@ def bind_horizon(data, value):
 
 
 def evaluate(data):
-    return evaluate_negative_claim(NegativeClaimRequest.from_dict(data))
+    return evaluate_negative_claim(
+        NegativeClaimRequest.from_dict(data), trusted_context()
+    )
 
 
 def set_timeline(
@@ -139,7 +146,7 @@ class FinalityContractTests(unittest.TestCase):
 
     def test_index_below_equal_and_above_finality_horizon(self) -> None:
         query_end = datetime(2026, 8, 21, 12, 0, tzinfo=UTC)
-        horizon = query_end + timedelta(minutes=1)
+        horizon = query_end + timedelta(minutes=4)
         observed = horizon + timedelta(minutes=1)
         evaluated = observed + timedelta(minutes=1)
         valid_until = evaluated + timedelta(minutes=1)
@@ -165,7 +172,7 @@ class FinalityContractTests(unittest.TestCase):
                 self.assertEqual(result.reasons, reasons)
 
     def test_evaluation_below_equal_and_above_horizon_uses_only_supplied_time(self) -> None:
-        query_end = datetime(2026, 8, 21, 11, 59, tzinfo=UTC)
+        query_end = datetime(2026, 8, 21, 11, 56, tzinfo=UTC)
         horizon = datetime(2026, 8, 21, 12, 0, tzinfo=UTC)
 
         below = set_timeline(
@@ -202,7 +209,7 @@ class FinalityContractTests(unittest.TestCase):
 
     def test_waiting_does_not_upgrade_an_index_captured_before_horizon(self) -> None:
         query_end = datetime(2026, 8, 21, 12, 0, tzinfo=UTC)
-        horizon = query_end + timedelta(minutes=5)
+        horizon = query_end + timedelta(minutes=4)
         index_time = horizon - timedelta(minutes=1)
         observation_time = index_time
 
@@ -231,7 +238,7 @@ class FinalityContractTests(unittest.TestCase):
         instant = datetime(2026, 8, 21, 12, 0, tzinfo=UTC)
         data = set_timeline(
             request_dict(),
-            query_end=instant,
+            query_end=instant - timedelta(minutes=4),
             horizon=instant,
             index_as_of=instant,
             observed_at=instant,
@@ -252,8 +259,8 @@ class FinalityContractTests(unittest.TestCase):
 
         utc_request = NegativeClaimRequest.from_dict(utc_data)
         offset_request = NegativeClaimRequest.from_dict(offset_data)
-        utc_result = evaluate_negative_claim(utc_request)
-        offset_result = evaluate_negative_claim(offset_request)
+        utc_result = evaluate_negative_claim(utc_request, trusted_context())
+        offset_result = evaluate_negative_claim(offset_request, trusted_context())
 
         self.assertEqual(utc_request, offset_request)
         self.assertEqual(
@@ -268,7 +275,7 @@ class FinalityContractTests(unittest.TestCase):
     def test_horizon_mutation_requires_rebinding_and_changes_fingerprint_and_digest(self) -> None:
         original_data = request_dict()
         original = NegativeClaimRequest.from_dict(original_data)
-        original_result = evaluate_negative_claim(original)
+        original_result = evaluate_negative_claim(original, trusted_context())
 
         stale = deepcopy(original_data)
         source_requirement(stale)["finality_horizon"] = "2026-08-21T12:01:00Z"
@@ -283,10 +290,14 @@ class FinalityContractTests(unittest.TestCase):
         rebound["envelope"]["observed_at"] = "2026-08-21T12:01:00Z"
         refresh_query_fingerprints(rebound)
         rebound_request = NegativeClaimRequest.from_dict(rebound)
-        rebound_result = evaluate_negative_claim(rebound_request)
+        rebound_result = evaluate_negative_claim(rebound_request, trusted_context())
 
         self.assertTrue(original_result.allowed)
-        self.assertTrue(rebound_result.allowed)
+        self.assertFalse(rebound_result.allowed)
+        self.assertEqual(
+            rebound_result.reasons,
+            (GateReason.FINALITY_HORIZON_PROFILE_MISMATCH,),
+        )
         self.assertNotEqual(
             original.envelope.query.fingerprint(),
             rebound_request.envelope.query.fingerprint(),
@@ -310,7 +321,7 @@ class FinalityContractTests(unittest.TestCase):
 
     def test_reason_order_preserves_query_end_and_finality_index_failures(self) -> None:
         query_end = datetime(2026, 8, 21, 12, 0, tzinfo=UTC)
-        horizon = query_end + timedelta(minutes=1)
+        horizon = query_end + timedelta(minutes=4)
         data = set_timeline(
             request_dict(),
             query_end=query_end,
@@ -342,6 +353,7 @@ class FinalityContractTests(unittest.TestCase):
         self.assertEqual(
             result.reasons,
             (
+                GateReason.FINALITY_HORIZON_PROFILE_MISMATCH,
                 GateReason.STATE_NOT_ABSENT_WITHIN_SCOPE,
                 GateReason.INDEX_PRECEDES_FINALITY_HORIZON,
             ),
@@ -369,12 +381,15 @@ class FinalityContractTests(unittest.TestCase):
         )
         candidate = replace(base, envelope=envelope)
 
-        result = evaluate_negative_claim(candidate)
+        result = evaluate_negative_claim(candidate, trusted_context())
 
         self.assertFalse(result.allowed)
         self.assertEqual(
             result.reasons,
-            (GateReason.INDEX_PRECEDES_FINALITY_HORIZON,),
+            (
+                GateReason.FINALITY_HORIZON_PROFILE_MISMATCH,
+                GateReason.INDEX_PRECEDES_FINALITY_HORIZON,
+            ),
         )
         self.assertEqual(
             NegativeClaimRequest.from_dict(candidate.to_dict()),

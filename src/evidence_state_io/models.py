@@ -354,6 +354,69 @@ def datetime_to_json(value: datetime) -> str:
 
 
 @dataclass(frozen=True, slots=True)
+class CoverageProfileReference:
+    """Exact immutable profile identity pinned into one source requirement."""
+
+    registry_id: str
+    profile_id: str
+    profile_version: str
+    profile_digest: str
+
+    def __post_init__(self) -> None:
+        for name in ("registry_id", "profile_id", "profile_version"):
+            object.__setattr__(
+                self,
+                name,
+                bounded_ascii_identifier(
+                    getattr(self, name), f"profile_ref.{name}"
+                ),
+            )
+        object.__setattr__(
+            self,
+            "profile_digest",
+            _sha256_digest(self.profile_digest, "profile_ref.profile_digest"),
+        )
+
+    @classmethod
+    def from_dict(
+        cls,
+        value: Any,
+        path: str = "profile_ref",
+    ) -> "CoverageProfileReference":
+        data = _mapping(value, path)
+        allowed = {
+            "registry_id",
+            "profile_id",
+            "profile_version",
+            "profile_digest",
+        }
+        _reject_unknown(data, allowed, path)
+        _require_fields(data, allowed, path)
+        return cls(
+            registry_id=bounded_ascii_identifier(
+                data["registry_id"], f"{path}.registry_id"
+            ),
+            profile_id=bounded_ascii_identifier(
+                data["profile_id"], f"{path}.profile_id"
+            ),
+            profile_version=bounded_ascii_identifier(
+                data["profile_version"], f"{path}.profile_version"
+            ),
+            profile_digest=_sha256_digest(
+                data["profile_digest"], f"{path}.profile_digest"
+            ),
+        )
+
+    def to_dict(self) -> dict[str, str]:
+        return {
+            "registry_id": self.registry_id,
+            "profile_id": self.profile_id,
+            "profile_version": self.profile_version,
+            "profile_digest": self.profile_digest,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class SourceRequirement:
     """A versioned declaration of one source's role and accessible scope."""
 
@@ -367,6 +430,7 @@ class SourceRequirement:
     accessible_population: str
     detection_assumptions: tuple[str, ...]
     finality_horizon: datetime | None = None
+    profile_ref: CoverageProfileReference | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -455,6 +519,12 @@ class SourceRequirement:
                     "source_requirement.finality_horizon",
                 ),
             )
+        if self.profile_ref is not None and not isinstance(
+            self.profile_ref, CoverageProfileReference
+        ):
+            raise ModelValidationError(
+                "source_requirement.profile_ref must be a CoverageProfileReference"
+            )
 
     @classmethod
     def from_dict(
@@ -474,9 +544,10 @@ class SourceRequirement:
             "accessible_population",
             "detection_assumptions",
             "finality_horizon",
+            "profile_ref",
         }
         _reject_unknown(data, allowed, path)
-        _require_fields(data, allowed - {"finality_horizon"}, path)
+        _require_fields(data, allowed - {"finality_horizon", "profile_ref"}, path)
         try:
             role = SourceRole(data["role"])
         except (TypeError, ValueError) as exc:
@@ -515,6 +586,13 @@ class SourceRequirement:
                 data.get("finality_horizon"),
                 f"{path}.finality_horizon",
             ),
+            profile_ref=(
+                None
+                if data.get("profile_ref") is None
+                else CoverageProfileReference.from_dict(
+                    data["profile_ref"], f"{path}.profile_ref"
+                )
+            ),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -531,6 +609,8 @@ class SourceRequirement:
         }
         if self.finality_horizon is not None:
             payload["finality_horizon"] = datetime_to_json(self.finality_horizon)
+        if self.profile_ref is not None:
+            payload["profile_ref"] = self.profile_ref.to_dict()
         return payload
 
 

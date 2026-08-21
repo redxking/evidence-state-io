@@ -11,14 +11,19 @@ from evidence_state_io.emptybench import (
     EmptyBenchCase,
     demo_cases,
     parse_cases,
-    run_emptybench,
+    run_emptybench as _run_emptybench,
     run_seed_emptybench,
     seed_case_dicts,
     seed_cases,
+    seed_profile_context,
 )
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
+def run_emptybench(cases):
+    return _run_emptybench(cases, seed_profile_context())
 
 
 class EmptyBenchTests(unittest.TestCase):

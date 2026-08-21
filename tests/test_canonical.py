@@ -11,9 +11,16 @@ from evidence_state_io import (
     canonical_json_bytes,
     verify_canonical_digest,
 )
-from evidence_state_io.gate import NegativeClaimRequest, evaluate_negative_claim
+from evidence_state_io.gate import (
+    NegativeClaimRequest,
+    evaluate_negative_claim as _evaluate_negative_claim,
+)
 
-from tests.helpers import refresh_query_fingerprints, request_dict
+from tests.helpers import refresh_query_fingerprints, request_dict, trusted_context
+
+
+def evaluate_negative_claim(request: NegativeClaimRequest):
+    return _evaluate_negative_claim(request, trusted_context())
 
 
 class CanonicalDigestTests(unittest.TestCase):
@@ -66,7 +73,7 @@ class CanonicalDigestTests(unittest.TestCase):
         second = evaluate_negative_claim(NegativeClaimRequest.from_dict(mutated))
 
         self.assertTrue(first.allowed)
-        self.assertTrue(second.allowed)
+        self.assertFalse(second.allowed)
         self.assertNotEqual(first.input_digest, second.input_digest)
         self.assertNotEqual(
             original["envelope"]["coverage_query_fingerprint"],

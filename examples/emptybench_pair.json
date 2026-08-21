@@ -1,175 +1,201 @@
 {
   "cases": [
     {
-      "case_id": "covered-example",
-      "pair_id": "covered-vs-partial-example",
-      "variant": "covered",
-      "description": "Complete traversal supports only a qualified scoped absence.",
+      "case_id": "covered-complete",
+      "description": "Zero matches after complete exact-population traversal.",
       "expected_allowed": true,
       "expected_reasons": [],
+      "pair_id": "covered-vs-partial",
       "request": {
-        "subject": "repositories matching the query",
-        "mode": "SCOPED",
-        "evaluated_at": "2026-08-21T12:05:00Z",
-        "policy": {
-          "policy_id": "esio-p0-safety-floor",
-          "policy_version": "1.0-candidate.2"
-        },
         "envelope": {
-          "schema_version": "1.0",
-          "state": "ABSENT_WITHIN_SCOPE",
-          "query": {
-            "target": "GitHub repository search",
-            "predicate": "topic:evidence-state language:Python",
-            "authorization_boundary": "public repositories visible to the adapter token",
-            "authorization_context_id": "public-search-adapter-context",
-            "time_start": "2026-08-21T00:00:00Z",
-            "time_end": "2026-08-21T12:00:00Z",
-            "exclusions": ["deleted repositories", "unindexed content"],
-            "source_requirements": [
-              {
-                "source_id": "github-public-repositories",
-                "role": "REQUIRED",
-                "system": "github-search",
-                "locator": "repositories/search",
-                "adapter_id": "github-search-adapter",
-                "adapter_version": "example-0.3",
-                "authorization_context_id": "public-search-adapter-context",
-                "accessible_population": "public-repositories-visible-to-adapter",
-                "finality_horizon": "2026-08-21T12:04:00Z",
-                "detection_assumptions": ["repository is indexed by the declared search endpoint"]
-              }
-            ]
-          },
           "coverage": {
-            "examined_units": 100,
-            "population_basis": "EXACT",
-            "population_units": 100,
+            "continuation_token_present": false,
             "declared_lower_bound": null,
+            "examined_units": 100,
+            "interrupted": false,
             "pages_examined": 5,
             "pages_expected": 5,
             "pagination_complete": true,
-            "continuation_token_present": false,
+            "partitions_complete": true,
             "partitions_examined": 2,
             "partitions_expected": 2,
-            "partitions_complete": true,
-            "timed_out": false,
-            "interrupted": false,
             "permission_limited": false,
-            "query_errors": []
+            "population_basis": "EXACT",
+            "population_units": 100,
+            "query_errors": [],
+            "timed_out": false
           },
-          "coverage_query_fingerprint": "sha256:06ee8f42d510a86fc819cf76a56c98edcfd9867330783622c0ad17aabc863a15",
+          "coverage_query_fingerprint": "sha256:62d483bdc8708b3515bc9fe0f3340d547ddc14403026cf6b198afb40aa2f39ca",
+          "errors": [],
           "matched_count": 0,
+          "notes": [
+            "Synthetic EmptyBench seed case; not an external observation."
+          ],
           "observed_at": "2026-08-21T12:04:00Z",
-          "valid_until": "2026-08-21T13:00:00Z",
+          "query": {
+            "authorization_boundary": "public repositories visible to the adapter token",
+            "authorization_context_id": "public-search-adapter-context",
+            "exclusions": [
+              "deleted repositories",
+              "unindexed content"
+            ],
+            "predicate": "topic:evidence-state language:Python",
+            "source_requirements": [
+              {
+                "accessible_population": "public-repositories-visible-to-adapter",
+                "adapter_id": "github-search-adapter",
+                "adapter_version": "example-0.4",
+                "authorization_context_id": "public-search-adapter-context",
+                "detection_assumptions": [
+                  "repository is indexed by the declared search endpoint"
+                ],
+                "finality_horizon": "2026-08-21T12:04:00Z",
+                "locator": "repositories/search",
+                "profile_ref": {
+                  "profile_digest": "sha256:efe225188e96018fd77192b185a5013ed4f55774d3db379320467e85c1dbdc23",
+                  "profile_id": "github-search-p0",
+                  "profile_version": "1.0.0",
+                  "registry_id": "example-coverage-registry"
+                },
+                "role": "REQUIRED",
+                "source_id": "github-public-repositories",
+                "system": "github-search"
+              }
+            ],
+            "target": "GitHub repository search",
+            "time_end": "2026-08-21T12:00:00Z",
+            "time_start": "2026-08-21T00:00:00Z"
+          },
+          "schema_version": "1.0",
           "source_observations": [
             {
-              "source_id": "github-public-repositories",
-              "status": "OBSERVED",
-              "authorization_context_id": "public-search-adapter-context",
-              "query_fingerprint": "sha256:06ee8f42d510a86fc819cf76a56c98edcfd9867330783622c0ad17aabc863a15",
               "accessible_population": "public-repositories-visible-to-adapter",
+              "authorization_context_id": "public-search-adapter-context",
               "descriptor": {
-                "system": "github-search",
-                "locator": "repositories/search",
                 "adapter_id": "github-search-adapter",
-                "adapter_version": "example-0.3",
-                "index_as_of": "2026-08-21T12:04:00Z"
+                "adapter_version": "example-0.4",
+                "index_as_of": "2026-08-21T12:04:00Z",
+                "locator": "repositories/search",
+                "system": "github-search"
               },
-              "errors": []
+              "errors": [],
+              "query_fingerprint": "sha256:62d483bdc8708b3515bc9fe0f3340d547ddc14403026cf6b198afb40aa2f39ca",
+              "source_id": "github-public-repositories",
+              "status": "OBSERVED"
             }
           ],
-          "errors": [],
-          "notes": ["Synthetic example; not an external observation."]
-        }
-      }
+          "state": "ABSENT_WITHIN_SCOPE",
+          "valid_until": "2026-08-21T13:00:00Z"
+        },
+        "evaluated_at": "2026-08-21T12:05:00Z",
+        "mode": "SCOPED",
+        "policy": {
+          "policy_id": "esio-p0-safety-floor",
+          "policy_version": "1.0-candidate.3"
+        },
+        "subject": "repositories matching the query"
+      },
+      "variant": "covered"
     },
     {
-      "case_id": "partial-example",
-      "pair_id": "covered-vs-partial-example",
-      "variant": "partial",
-      "description": "An identical empty payload before traversal completion cannot support absence.",
+      "case_id": "partial-continuation",
+      "description": "Zero matches before remaining result pages were traversed.",
       "expected_allowed": false,
       "expected_reasons": [
         "STATE_NOT_ABSENT_WITHIN_SCOPE",
         "COVERAGE_POLICY_NOT_MET"
       ],
+      "pair_id": "covered-vs-partial",
       "request": {
-        "subject": "repositories matching the query",
-        "mode": "SCOPED",
-        "evaluated_at": "2026-08-21T12:05:00Z",
-        "policy": {
-          "policy_id": "esio-p0-safety-floor",
-          "policy_version": "1.0-candidate.2"
-        },
         "envelope": {
-          "schema_version": "1.0",
-          "state": "PARTIAL",
-          "query": {
-            "target": "GitHub repository search",
-            "predicate": "topic:evidence-state language:Python",
-            "authorization_boundary": "public repositories visible to the adapter token",
-            "authorization_context_id": "public-search-adapter-context",
-            "time_start": "2026-08-21T00:00:00Z",
-            "time_end": "2026-08-21T12:00:00Z",
-            "exclusions": ["deleted repositories", "unindexed content"],
-            "source_requirements": [
-              {
-                "source_id": "github-public-repositories",
-                "role": "REQUIRED",
-                "system": "github-search",
-                "locator": "repositories/search",
-                "adapter_id": "github-search-adapter",
-                "adapter_version": "example-0.3",
-                "authorization_context_id": "public-search-adapter-context",
-                "accessible_population": "public-repositories-visible-to-adapter",
-                "finality_horizon": "2026-08-21T12:04:00Z",
-                "detection_assumptions": ["repository is indexed by the declared search endpoint"]
-              }
-            ]
-          },
           "coverage": {
-            "examined_units": 60,
-            "population_basis": "EXACT",
-            "population_units": 100,
+            "continuation_token_present": true,
             "declared_lower_bound": null,
+            "examined_units": 60,
+            "interrupted": false,
             "pages_examined": 3,
             "pages_expected": 5,
             "pagination_complete": false,
-            "continuation_token_present": true,
+            "partitions_complete": true,
             "partitions_examined": 2,
             "partitions_expected": 2,
-            "partitions_complete": true,
-            "timed_out": false,
-            "interrupted": false,
             "permission_limited": false,
-            "query_errors": []
+            "population_basis": "EXACT",
+            "population_units": 100,
+            "query_errors": [],
+            "timed_out": false
           },
-          "coverage_query_fingerprint": "sha256:06ee8f42d510a86fc819cf76a56c98edcfd9867330783622c0ad17aabc863a15",
+          "coverage_query_fingerprint": "sha256:62d483bdc8708b3515bc9fe0f3340d547ddc14403026cf6b198afb40aa2f39ca",
+          "errors": [],
           "matched_count": 0,
+          "notes": [
+            "Synthetic EmptyBench seed case; not an external observation."
+          ],
           "observed_at": "2026-08-21T12:04:00Z",
-          "valid_until": "2026-08-21T13:00:00Z",
+          "query": {
+            "authorization_boundary": "public repositories visible to the adapter token",
+            "authorization_context_id": "public-search-adapter-context",
+            "exclusions": [
+              "deleted repositories",
+              "unindexed content"
+            ],
+            "predicate": "topic:evidence-state language:Python",
+            "source_requirements": [
+              {
+                "accessible_population": "public-repositories-visible-to-adapter",
+                "adapter_id": "github-search-adapter",
+                "adapter_version": "example-0.4",
+                "authorization_context_id": "public-search-adapter-context",
+                "detection_assumptions": [
+                  "repository is indexed by the declared search endpoint"
+                ],
+                "finality_horizon": "2026-08-21T12:04:00Z",
+                "locator": "repositories/search",
+                "profile_ref": {
+                  "profile_digest": "sha256:efe225188e96018fd77192b185a5013ed4f55774d3db379320467e85c1dbdc23",
+                  "profile_id": "github-search-p0",
+                  "profile_version": "1.0.0",
+                  "registry_id": "example-coverage-registry"
+                },
+                "role": "REQUIRED",
+                "source_id": "github-public-repositories",
+                "system": "github-search"
+              }
+            ],
+            "target": "GitHub repository search",
+            "time_end": "2026-08-21T12:00:00Z",
+            "time_start": "2026-08-21T00:00:00Z"
+          },
+          "schema_version": "1.0",
           "source_observations": [
             {
-              "source_id": "github-public-repositories",
-              "status": "OBSERVED",
-              "authorization_context_id": "public-search-adapter-context",
-              "query_fingerprint": "sha256:06ee8f42d510a86fc819cf76a56c98edcfd9867330783622c0ad17aabc863a15",
               "accessible_population": "public-repositories-visible-to-adapter",
+              "authorization_context_id": "public-search-adapter-context",
               "descriptor": {
-                "system": "github-search",
-                "locator": "repositories/search",
                 "adapter_id": "github-search-adapter",
-                "adapter_version": "example-0.3",
-                "index_as_of": "2026-08-21T12:04:00Z"
+                "adapter_version": "example-0.4",
+                "index_as_of": "2026-08-21T12:04:00Z",
+                "locator": "repositories/search",
+                "system": "github-search"
               },
-              "errors": []
+              "errors": [],
+              "query_fingerprint": "sha256:62d483bdc8708b3515bc9fe0f3340d547ddc14403026cf6b198afb40aa2f39ca",
+              "source_id": "github-public-repositories",
+              "status": "OBSERVED"
             }
           ],
-          "errors": [],
-          "notes": ["Synthetic example; not an external observation."]
-        }
-      }
+          "state": "PARTIAL",
+          "valid_until": "2026-08-21T13:00:00Z"
+        },
+        "evaluated_at": "2026-08-21T12:05:00Z",
+        "mode": "SCOPED",
+        "policy": {
+          "policy_id": "esio-p0-safety-floor",
+          "policy_version": "1.0-candidate.3"
+        },
+        "subject": "repositories matching the query"
+      },
+      "variant": "partial"
     }
   ]
 }

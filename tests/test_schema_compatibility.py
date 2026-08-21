@@ -15,6 +15,7 @@ from evidence_state_io import (
     evaluate_negative_claim,
 )
 from evidence_state_io.cli import main
+from tests.helpers import trusted_context
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -115,7 +116,15 @@ class SchemaCompatibilityTests(unittest.TestCase):
         stdout = StringIO()
         stderr = StringIO()
         code = main(
-            ["evaluate", "--input", str(LEGACY_FIXTURE)],
+            [
+                "evaluate",
+                "--input",
+                str(LEGACY_FIXTURE),
+                "--registry",
+                str(EXAMPLES / "profile_registry.json"),
+                "--trust",
+                str(EXAMPLES / "profile_trust.json"),
+            ],
             stdin=StringIO(),
             stdout=stdout,
             stderr=stderr,
@@ -156,6 +165,7 @@ class SchemaCompatibilityTests(unittest.TestCase):
         candidate = load_json(ACTIVE_FIXTURE)
         requirement = candidate["envelope"]["query"]["source_requirements"][0]
         requirement.pop("finality_horizon")
+        requirement.pop("profile_ref")
         requirement["adapter_version"] = "example-0.2"
         observation = candidate["envelope"]["source_observations"][0]
         observation["descriptor"].update(
@@ -169,7 +179,7 @@ class SchemaCompatibilityTests(unittest.TestCase):
         observation["query_fingerprint"] = LEGACY_SCHEMA_1_QUERY_FINGERPRINT
 
         parsed = NegativeClaimRequest.from_dict(candidate)
-        result = evaluate_negative_claim(parsed)
+        result = evaluate_negative_claim(parsed, trusted_context())
 
         self.assertNotIn(
             "finality_horizon",
@@ -178,7 +188,10 @@ class SchemaCompatibilityTests(unittest.TestCase):
         self.assertFalse(result.allowed)
         self.assertEqual(
             result.reasons,
-            (GateReason.FINALITY_HORIZON_UNDECLARED,),
+            (
+                GateReason.PROFILE_REFERENCE_UNDECLARED,
+                GateReason.FINALITY_HORIZON_UNDECLARED,
+            ),
         )
 
 

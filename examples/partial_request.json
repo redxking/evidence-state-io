@@ -4,7 +4,7 @@
   "evaluated_at": "2026-08-21T12:05:00Z",
   "policy": {
     "policy_id": "esio-p0-safety-floor",
-    "policy_version": "1.0-candidate.2"
+    "policy_version": "1.0-candidate.3"
   },
   "envelope": {
     "schema_version": "1.0",
@@ -27,13 +27,19 @@
           "system": "github-search",
           "locator": "repositories/search",
           "adapter_id": "github-search-adapter",
-          "adapter_version": "example-0.3",
+          "adapter_version": "example-0.4",
           "authorization_context_id": "public-search-adapter-context",
           "accessible_population": "public-repositories-visible-to-adapter",
           "finality_horizon": "2026-08-21T12:04:00Z",
           "detection_assumptions": [
             "repository is indexed by the declared search endpoint"
-          ]
+          ],
+          "profile_ref": {
+            "registry_id": "example-coverage-registry",
+            "profile_id": "github-search-p0",
+            "profile_version": "1.0.0",
+            "profile_digest": "sha256:efe225188e96018fd77192b185a5013ed4f55774d3db379320467e85c1dbdc23"
+          }
         }
       ]
     },
@@ -54,7 +60,7 @@
       "permission_limited": false,
       "query_errors": []
     },
-    "coverage_query_fingerprint": "sha256:06ee8f42d510a86fc819cf76a56c98edcfd9867330783622c0ad17aabc863a15",
+    "coverage_query_fingerprint": "sha256:62d483bdc8708b3515bc9fe0f3340d547ddc14403026cf6b198afb40aa2f39ca",
     "matched_count": 0,
     "observed_at": "2026-08-21T12:04:00Z",
     "valid_until": "2026-08-21T13:00:00Z",
@@ -63,13 +69,13 @@
         "source_id": "github-public-repositories",
         "status": "OBSERVED",
         "authorization_context_id": "public-search-adapter-context",
-        "query_fingerprint": "sha256:06ee8f42d510a86fc819cf76a56c98edcfd9867330783622c0ad17aabc863a15",
+        "query_fingerprint": "sha256:62d483bdc8708b3515bc9fe0f3340d547ddc14403026cf6b198afb40aa2f39ca",
         "accessible_population": "public-repositories-visible-to-adapter",
         "descriptor": {
           "system": "github-search",
           "locator": "repositories/search",
           "adapter_id": "github-search-adapter",
-          "adapter_version": "example-0.3",
+          "adapter_version": "example-0.4",
           "index_as_of": "2026-08-21T12:04:00Z"
         },
         "errors": []

@@ -1,0 +1,69 @@
+{
+  "snapshot": {
+    "snapshot_schema": "esio-profile-registry-snapshot/1.0-candidate.1",
+    "registry_id": "example-coverage-registry",
+    "snapshot_id": "seed-2026-08-21",
+    "snapshot_version": "1",
+    "issuer_id": "example-registry-publisher",
+    "as_of": "2026-08-21T00:00:00Z",
+    "next_update_at": "2027-01-01T00:00:00Z",
+    "records": [
+      {
+        "profile": {
+          "profile_schema": "esio-coverage-finality-profile/1.0-candidate.1",
+          "profile_id": "github-search-p0",
+          "profile_version": "1.0.0",
+          "source_owner_id": "example-source-owner",
+          "approval_authority_id": "example-assurance-board",
+          "issuer_id": "example-profile-publisher",
+          "issued_at": "2026-08-20T00:00:00Z",
+          "effective_at": "2026-08-21T00:00:00Z",
+          "expires_at": "2027-01-01T00:00:00Z",
+          "source": {
+            "source_id": "github-public-repositories",
+            "system": "github-search",
+            "locator": "repositories/search",
+            "adapter_id": "github-search-adapter",
+            "adapter_version": "example-0.4",
+            "authorization_context_id": "public-search-adapter-context",
+            "accessible_population": "public-repositories-visible-to-adapter"
+          },
+          "applicability": {
+            "target": "GitHub repository search",
+            "predicate": "topic:evidence-state language:Python",
+            "authorization_boundary": "public repositories visible to the adapter token",
+            "required_exclusions": [
+              "deleted repositories",
+              "unindexed content"
+            ],
+            "detection_assumptions": [
+              "repository is indexed by the declared search endpoint"
+            ]
+          },
+          "coverage": {
+            "population_basis": "EXACT",
+            "population_units": 100,
+            "pages_expected": 5,
+            "partitions_expected": 2,
+            "permission_limited": false,
+            "retention_seconds": 86400,
+            "blind_intervals": [],
+            "max_observation_age_seconds": 3600,
+            "max_index_age_seconds": 3600
+          },
+          "finality": {
+            "method": "QUERY_END_PLUS_MAX_DELAY",
+            "late_arrival_bound_seconds": 240,
+            "reopen_bound_seconds": 0
+          }
+        },
+        "profile_digest": "sha256:efe225188e96018fd77192b185a5013ed4f55774d3db379320467e85c1dbdc23",
+        "status": "ACTIVE",
+        "revoked_at": null,
+        "revocation_effective_at": null,
+        "revocation_reason_code": null
+      }
+    ]
+  },
+  "snapshot_digest": "sha256:da9963d7867b9b7a0bc93581a9e2f2543969371fabc1d6d73446664d585af1e5"
+}

@@ -20,6 +20,11 @@ from .models import (
     ModelValidationError,
     parse_datetime,
 )
+from .profiles import (
+    ProfileRegistrySnapshot,
+    ProfileTrustSelection,
+    TrustedProfileContext,
+)
 
 MAX_INPUT_BYTES = 1_048_576
 MAX_JSON_DEPTH = 128
@@ -135,7 +140,29 @@ def _write_json(value: Any, stream: TextIO, pretty: bool) -> None:
     stream.write(payload + "\n")
 
 
-def _evaluate_input(data: Any, args: argparse.Namespace) -> dict[str, Any]:
+def _trusted_profile_context(
+    args: argparse.Namespace,
+    stdin: TextIO,
+) -> TrustedProfileContext:
+    if args.registry == "-" or args.trust == "-":
+        raise ModelValidationError(
+            "--registry and --trust must be separate files; stdin is reserved for --input"
+        )
+    return TrustedProfileContext(
+        snapshot=ProfileRegistrySnapshot.from_dict(
+            _read_json(args.registry, stdin)
+        ),
+        trust_selection=ProfileTrustSelection.from_dict(
+            _read_json(args.trust, stdin)
+        ),
+    )
+
+
+def _evaluate_input(
+    data: Any,
+    args: argparse.Namespace,
+    context: TrustedProfileContext,
+) -> dict[str, Any]:
     if isinstance(data, dict) and "envelope" in data:
         supplied_overrides = [
             name
@@ -147,7 +174,9 @@ def _evaluate_input(data: Any, args: argparse.Namespace) -> dict[str, Any]:
                 "full request JSON cannot be combined with CLI overrides: "
                 + ", ".join(f"--{name.replace('_', '-')}" for name in supplied_overrides)
             )
-        return evaluate_negative_claim(NegativeClaimRequest.from_dict(data)).to_dict()
+        return evaluate_negative_claim(
+            NegativeClaimRequest.from_dict(data), context
+        ).to_dict()
 
     if args.evaluated_at is None:
         raise ModelValidationError(
@@ -171,7 +200,7 @@ def _evaluate_input(data: Any, args: argparse.Namespace) -> dict[str, Any]:
         evaluated_at=parse_datetime(args.evaluated_at, "--evaluated-at"),
         policy=NegativeClaimPolicy(),
     )
-    return evaluate_negative_claim(request).to_dict()
+    return evaluate_negative_claim(request, context).to_dict()
 
 
 def _coverage_input(data: Any) -> dict[str, Any]:
@@ -198,6 +227,16 @@ def build_parser() -> argparse.ArgumentParser:
         "evaluate", help="Evaluate one deterministic negative-claim request or envelope."
     )
     evaluate.add_argument("--input", required=True, help="JSON file, or - for stdin")
+    evaluate.add_argument(
+        "--registry",
+        required=True,
+        help="Operator-controlled profile registry snapshot JSON file",
+    )
+    evaluate.add_argument(
+        "--trust",
+        required=True,
+        help="Operator-controlled profile trust-selection JSON file",
+    )
     evaluate.add_argument(
         "--evaluated-at",
         help="ISO-8601 evaluation time; required only when --input is a bare envelope",
@@ -229,6 +268,16 @@ def build_parser() -> argparse.ArgumentParser:
         "emptybench", help="Run EmptyBench cases supplied as JSON."
     )
     benchmark.add_argument("--input", required=True, help="JSON file, or - for stdin")
+    benchmark.add_argument(
+        "--registry",
+        required=True,
+        help="Operator-controlled profile registry snapshot JSON file",
+    )
+    benchmark.add_argument(
+        "--trust",
+        required=True,
+        help="Operator-controlled profile trust-selection JSON file",
+    )
     benchmark.add_argument("--pretty", action="store_true", help="Pretty-print JSON")
 
     coverage = subparsers.add_parser(
@@ -254,7 +303,10 @@ def main(
 
     try:
         if args.command == "evaluate":
-            result = _evaluate_input(_read_json(args.input, input_stream), args)
+            context = _trusted_profile_context(args, input_stream)
+            result = _evaluate_input(
+                _read_json(args.input, input_stream), args, context
+            )
             _write_json(result, output_stream, args.pretty)
             return 0
         if args.command == "demo":
@@ -262,8 +314,9 @@ def main(
             _write_json(report.to_dict(), output_stream, args.pretty)
             return 0 if report.all_passed else 1
         if args.command == "emptybench":
+            context = _trusted_profile_context(args, input_stream)
             cases = parse_cases(_read_json(args.input, input_stream))
-            report = run_emptybench(cases)
+            report = run_emptybench(cases, context)
             _write_json(report.to_dict(), output_stream, args.pretty)
             return 0 if report.all_passed else 1
         if args.command == "coverage":
