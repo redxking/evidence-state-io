@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "evidence-state-io"
+version = "0.1.0"
+description = "Typed evidence-state envelopes and deterministic negative-claim gating"
+requires-python = ">=3.11"
+dependencies = []
+authors = [{ name = "Evidence-State I/O contributors" }]
+keywords = ["ai", "evidence", "coverage", "provenance", "tool-protocols"]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Typing :: Typed",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<9"]
+
+[project.scripts]
+evidence-state = "evidence_state_io.cli:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+evidence_state_io = ["py.typed"]

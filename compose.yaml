@@ -1,0 +1,50 @@
+name: evidence-state-io-lab
+
+services:
+  postgres:
+    profiles: ["lab"]
+    image: postgres:16-alpine
+    init: true
+    environment:
+      POSTGRES_DB: evidence_state_lab
+      POSTGRES_USER: evidence_state_lab
+      POSTGRES_PASSWORD: synthetic-local-only
+    ports:
+      - "127.0.0.1:${ESIO_LAB_POSTGRES_PORT:-55432}:5432"
+    volumes:
+      - esio-lab-postgres:/var/lib/postgresql/data
+      - ./scripts/lab/init.sql:/docker-entrypoint-initdb.d/10-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U evidence_state_lab -d evidence_state_lab"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+      start_period: 3s
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - lab
+
+  toxiproxy:
+    profiles: ["lab"]
+    image: shopify/toxiproxy:2.9.0
+    init: true
+    command: ["-host=0.0.0.0"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${ESIO_LAB_TOXIPROXY_PORT:-58474}:8474"
+      - "127.0.0.1:${ESIO_LAB_PROXY_PORT:-55433}:15432"
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - lab
+
+networks:
+  lab:
+    name: evidence-state-io-lab
+
+volumes:
+  esio-lab-postgres:
+    name: evidence-state-io-lab-postgres

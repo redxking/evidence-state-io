@@ -1,0 +1,51 @@
+{
+  "subject": "repositories matching the query",
+  "mode": "SCOPED",
+  "evaluated_at": "2026-08-21T12:05:00Z",
+  "policy": {},
+  "envelope": {
+    "schema_version": "0.1",
+    "state": "PARTIAL",
+    "query": {
+      "target": "GitHub repository search",
+      "predicate": "topic:evidence-state language:Python",
+      "authorization_boundary": "public repositories visible to the adapter token",
+      "time_start": "2026-08-21T00:00:00Z",
+      "time_end": "2026-08-21T12:00:00Z",
+      "exclusions": [
+        "deleted repositories",
+        "unindexed content"
+      ]
+    },
+    "coverage": {
+      "examined_units": 60,
+      "population_basis": "EXACT",
+      "population_units": 100,
+      "declared_lower_bound": null,
+      "pages_examined": 3,
+      "pages_expected": 5,
+      "pagination_complete": false,
+      "continuation_token_present": true,
+      "partitions_examined": 2,
+      "partitions_expected": 2,
+      "partitions_complete": true,
+      "timed_out": false,
+      "interrupted": false,
+      "permission_limited": false,
+      "query_errors": []
+    },
+    "matched_count": 0,
+    "observed_at": "2026-08-21T12:00:00Z",
+    "valid_until": "2026-08-21T13:00:00Z",
+    "source": {
+      "system": "github-search",
+      "locator": "repositories/search",
+      "adapter_version": "example-0.1",
+      "index_as_of": "2026-08-21T11:59:00Z"
+    },
+    "errors": [],
+    "notes": [
+      "Synthetic example; not an external observation."
+    ]
+  }
+}
