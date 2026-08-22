@@ -450,16 +450,15 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T17:31:30Z",
-        "commit": "3041105545c1c6a48959e0550678dc1e481835df",
+        "at": "2026-08-22T18:34:33Z",
+        "commit": "2bf9819e73b40a020de9c2c9a32542ffa50c2413",
         "dirty": false,
         "evidence_class": "externally observed GitHub, public-network, and clean-clone state",
-        "fingerprint": "sha256:fe0fa2f995035d483b4f91e0b06dd441ed156e08f314b83835ff1cbe6a056884",
+        "fingerprint": "sha256:dc70045f53946f864037651e2e6ae2279deaaf92d63c869a60c24890fc2d37c7",
         "observations": [
-          "The remote tree lists 166 blobs and `git ls-files` lists 166 tracked paths; a diff of the two sorted path lists is empty.",
-          "The remote commit SHA and its tree SHA equal the local HEAD and its tree SHA.",
+          "The remote tree lists 166 blobs and `git ls-files` lists 166 tracked paths; the sorted path lists are identical and the remote commit and tree SHAs equal the local ones.",
           "Repository visibility observed as PUBLIC through the GitHub API.",
-          "Establishes tracked-source completeness on the remote. Governance and project-management surfaces are recorded separately under MVP-ACC-024."
+          "Recorded from observations made against GitHub and the public network at this revision, not inferred from repository configuration."
         ],
         "procedure": [
           [
@@ -480,9 +479,7 @@
         "result": "PASS"
       },
       "id": "MVP-ACC-018",
-      "stale_at": "2026-08-22T18:22:16Z",
-      "stale_reason": "watched project inputs changed",
-      "status": "STALE",
+      "status": "PASS",
       "title": "Professional public GitHub repository contains all required tracked source",
       "watched_paths": [
         "**"
@@ -490,15 +487,14 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T17:31:30Z",
-        "commit": "3041105545c1c6a48959e0550678dc1e481835df",
+        "at": "2026-08-22T18:34:33Z",
+        "commit": "2bf9819e73b40a020de9c2c9a32542ffa50c2413",
         "dirty": false,
         "evidence_class": "externally observed GitHub, public-network, and clean-clone state",
-        "fingerprint": "sha256:fe0fa2f995035d483b4f91e0b06dd441ed156e08f314b83835ff1cbe6a056884",
+        "fingerprint": "sha256:dc70045f53946f864037651e2e6ae2279deaaf92d63c869a60c24890fc2d37c7",
         "observations": [
-          "`git ls-remote origin refs/heads/main` returned the accepted local commit.",
-          "The repository default branch was observed as `main`.",
-          "Every push was a fast-forward; no force push was used, and the branch ruleset blocks non-fast-forward and deletion."
+          "`git ls-remote origin refs/heads/main` returned the accepted local commit; the default branch is `main`; every push was a fast-forward.",
+          "Recorded from observations made against GitHub and the public network at this revision, not inferred from repository configuration."
         ],
         "procedure": [
           [
@@ -521,9 +517,7 @@
         "result": "PASS"
       },
       "id": "MVP-ACC-019",
-      "stale_at": "2026-08-22T18:22:16Z",
-      "stale_reason": "watched project inputs changed",
-      "status": "STALE",
+      "status": "PASS",
       "title": "Local accepted commit equals remote default branch",
       "watched_paths": [
         "**"
@@ -531,19 +525,19 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T17:31:30Z",
-        "commit": "3041105545c1c6a48959e0550678dc1e481835df",
+        "at": "2026-08-22T18:34:33Z",
+        "commit": "2bf9819e73b40a020de9c2c9a32542ffa50c2413",
         "dirty": false,
         "evidence_class": "externally observed GitHub, public-network, and clean-clone state",
-        "fingerprint": "sha256:a53ce7c711b542bb746cac627b62bd45fc462246767b0aa095c2804399d87755",
+        "fingerprint": "sha256:b0ed652333b954faf5c04065847ec0f2a5d50b1444dce8c9e56edf3a84419601",
         "observations": [
           "At the accepted commit these check runs completed with conclusion `success`: Quality, contracts, and packaging; Python 3.11; Python 3.12; Python 3.13; Compose configuration; Analyze python; Analyze javascript-typescript; Validate and package site; Deploy site.",
-          "A superseded `Deploy site` and `Validate and package site` pair shows `cancelled` at the same commit; they were replaced by the successful runs through the Pages concurrency group.",
-          "The CI wheel-isolation step now runs the installed distribution from a directory outside the checkout with a decoy `benchmarks/` beside the caller, so its success is evidence about the installed package rather than about the source tree. Before ESIO-DEF-001 was fixed this step ran from the repository root and could not have detected the defect.",
-          "Secret scanning, secret-scanning push protection, Dependabot security updates, private vulnerability reporting, and required web commit signoff were observed enabled.",
-          "`Dependency review` and `Commit signoff` run only on pull requests, were observed `success` there, and do not appear at this commit.",
-          "The branch ruleset grants the repository-admin role an `always` bypass so the bounded controller can push reconciled ledgers, so the required checks gate contributors and pull requests rather than the maintainer's own pushes.",
-          "Establishes that the declared checks passed in GitHub's hosted environment at this commit. It does not establish source truth, independent validation, or production readiness."
+          "Separately from those conclusions, the alert surface was queried: `code-scanning/alerts` and `dependabot/alerts` each report zero alerts in state `open`. A workflow concluding `success` is not the same as zero security findings, and this row asserts both. An earlier record of this row asserted only the conclusions, and two high-severity CodeQL alerts (`js/bad-tag-filter`, both now `fixed`) were open at the time.",
+          "The CI wheel-isolation step runs the installed distribution from a directory outside the checkout with a decoy `benchmarks/` beside the caller, so its success is evidence about the installed package rather than the source tree.",
+          "Secret scanning, push protection, Dependabot security updates, private vulnerability reporting, and required web commit signoff are enabled. `Dependency review` and `Commit signoff` run only on pull requests.",
+          "The branch ruleset grants the repository-admin role an `always` bypass so the bounded controller can push reconciled ledgers, so required checks gate contributors and pull requests rather than the maintainer's own pushes.",
+          "Establishes that the declared checks passed and that no security alert is open at this commit. It does not establish that the scanners found every defect.",
+          "Recorded from observations made against GitHub and the public network at this revision, not inferred from repository configuration."
         ],
         "procedure": [
           [
@@ -565,9 +559,7 @@
         "result": "PASS"
       },
       "id": "MVP-ACC-020",
-      "stale_at": "2026-08-22T18:22:16Z",
-      "stale_reason": "watched project inputs changed",
-      "status": "STALE",
+      "status": "PASS",
       "title": "Required CI and security checks pass at exact accepted commit",
       "watched_paths": [
         ".github/workflows/**",
@@ -674,17 +666,15 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T17:31:30Z",
-        "commit": "3041105545c1c6a48959e0550678dc1e481835df",
+        "at": "2026-08-22T18:34:33Z",
+        "commit": "2bf9819e73b40a020de9c2c9a32542ffa50c2413",
         "dirty": false,
         "evidence_class": "externally observed GitHub, public-network, and clean-clone state",
-        "fingerprint": "sha256:c44bb23300bf990b8034f563ab5d5cbf2d70d64615717cd7fc0a1cf3b17f0350",
+        "fingerprint": "sha256:83e4fe5d224ad57714f39b3b2fede020d421a4fe3d88a00d1b1d6e820f14ac03",
         "observations": [
-          "Wiki remote `master` is `28b98e6341e08bb432f810662c8f702842804e5b`, holding 31 files: 29 content pages plus `_Sidebar.md` and `_Footer.md`.",
-          "Every published file was compared byte for byte with the tracked `wiki/` source at this commit and none differ, so the published mirror has not drifted from the canonical source.",
-          "All 24 required pages and the 5 additional canonical pages returned HTTP 200 with rendered `markdown-body` content to unauthenticated requests. `Home` returns 301 to `/wiki`, which returns 200 with content and the custom sidebar. 29 internal wiki links resolve from Home.",
-          "The wiki Git repository did not exist beforehand and could not be created through any API; GitHub instantiates it only after a first page is created in the web interface.",
-          "Establishes that the published wiki mirrors the tracked canonical source. It does not establish that any documented claim is correct, reviewed, or read."
+          "Wiki remote `master` is `28b98e6341e08bb432f810662c8f702842804e5b`, 31 files. Every published file was compared byte for byte with the tracked `wiki/` source at this commit and none differ.",
+          "All 24 required pages and the 5 additional canonical pages return HTTP 200 with rendered content to unauthenticated requests.",
+          "Recorded from observations made against GitHub and the public network at this revision, not inferred from repository configuration."
         ],
         "procedure": [
           [
@@ -705,9 +695,7 @@
         "result": "PASS"
       },
       "id": "MVP-ACC-023",
-      "stale_at": "2026-08-22T18:22:16Z",
-      "stale_reason": "watched project inputs changed",
-      "status": "STALE",
+      "status": "PASS",
       "title": "Remote Wiki contains and renders every required page",
       "watched_paths": [
         "wiki/**",
@@ -780,22 +768,17 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T17:45:10Z",
-        "commit": "d6eebbe2fc6840b54a41d5ab2f6f587b9310fa41",
+        "at": "2026-08-22T18:34:33Z",
+        "commit": "2bf9819e73b40a020de9c2c9a32542ffa50c2413",
         "dirty": false,
-        "evidence_class": "externally observed GitHub release state and released-artifact behaviour",
-        "fingerprint": "sha256:b8052a3756d0ff7751b6412e5e7411ae3a5b1d43cf1c8138d0398980439cf13a",
+        "evidence_class": "externally observed GitHub, public-network, and clean-clone state",
+        "fingerprint": "sha256:3cc0844db1b8b2de73a049c82adc8981480de3ac59cc68444ee885d8ccc1cf6a",
         "observations": [
-          "Release `v0.6.1 - MVP research candidate` is published, not a draft, not a prerelease, `isImmutable` is true, and it is the latest release.",
-          "The annotated tag object `3200aa3f51161c40f258e7ae880eed04456cbb07` points at commit `d6eebbe2fc6840b54a41d5ab2f6f587b9310fa41`, which is an ancestor of the default branch.",
-          "Six assets are attached: the wheel, the source distribution, SHA256SUMS, EVIDENCE-MANIFEST.json, SBOM.spdx.json, and LIMITATIONS.md. Both distributions were downloaded unauthenticated and `shasum -a 256 -c SHA256SUMS` reported OK for each.",
-          "EVIDENCE-MANIFEST.json binds tag `v0.6.1`, commit `d6eebbe2fc6840b54a41d5ab2f6f587b9310fa41`, source tree `5ae4d2d5c8b67954ccb1fd3dc23e945e3fbb2508`, version `0.6.1`, a clean tracked worktree, no runtime dependencies, and the two artifact digests and sizes. The recorded tree equals `git rev-parse <commit>^{tree}`.",
-          "The SPDX SBOM declares Apache-2.0, the exact purl, and a download location pinned to the released commit. The attached LIMITATIONS.md is byte-identical to `release/LIMITATIONS.md`.",
-          "Build provenance verifies: `gh attestation verify` returns a SLSA provenance v1 statement whose subjects are both released artifacts with matching SHA-256 digests, whose source repository is this repository, and whose signer is `.github/workflows/release.yml@refs/tags/v0.6.1`.",
-          "The released wheel carries the EmptyBench corpus and oracle (2 matching entries in the wheel and 2 in the source distribution, against 0 in v0.6.0). Installed into a fresh Python 3.11 environment and run from a directory outside any checkout that also contains a decoy `benchmarks/` directory, `evidence-state --help` and `evidence-state demo --all --pretty` both succeed, reporting 24/24 cases passed, 12/12 matched pairs discriminated, zero unsafe permits, and zero false rejections, byte-identical to the same command run from the repository root. This is the direct check that ESIO-DEF-001 is fixed in the published artifact rather than only in the source tree.",
-          "The release workflow's own gate required every acceptance row other than MVP-ACC-025 to be PASS at the tagged commit, and verified stable SemVer, tag-to-package-version equality, and default-branch ancestry.",
-          "`v0.6.0` remains published and immutable and still carries ESIO-DEF-001. Its release notes now open with a warning that names the defect, states that its artifacts should not be used, and links this release. The tag ruleset blocks deletion, update, and non-fast-forward on `refs/tags/v*` with no bypass actor, which is why the defective release could not be withdrawn.",
-          "Establishes the release binding and that the published artifact behaves correctly wherever it is run. It does not establish source truth, independent custody, benchmark freezing, external reproduction, or production readiness."
+          "Release `v0.6.1` is published and immutable; its annotated tag `3200aa3f51161c40f258e7ae880eed04456cbb07` points at commit `d6eebbe2fc6840b54a41d5ab2f6f587b9310fa41`, an ancestor of this revision. Six assets, verified checksums, an evidence manifest binding tag/commit/tree/artifact digests, an SPDX SBOM, limitations byte-identical to `release/LIMITATIONS.md`, and SLSA provenance v1 signed by `release.yml@refs/tags/v0.6.1`.",
+          "The released wheel carries the packaged EmptyBench artifacts and, installed into a fresh environment and run from a directory outside any checkout containing a decoy `benchmarks/`, reports 24/24 cases, 12/12 pairs discriminated, zero unsafe permits, zero false rejections, byte-identical to the repository-root run.",
+          "This revision is ahead of the released commit by changes that do not alter shipped runtime behaviour: a test-only tag-matching fix and a development-dependency pin. No release is cut for them, and no further release is authorized without a further owner decision.",
+          "`v0.6.0` remains published and immutable, carries ESIO-DEF-001, and its notes open with a warning naming the defect and linking `v0.6.1`.",
+          "Recorded from observations made against GitHub and the public network at this revision, not inferred from repository configuration."
         ],
         "procedure": [
           [
@@ -843,14 +826,10 @@
             "release/LIMITATIONS.md"
           ]
         ],
-        "released_commit": "d6eebbe2fc6840b54a41d5ab2f6f587b9310fa41",
-        "released_tag": "v0.6.1",
         "result": "PASS"
       },
       "id": "MVP-ACC-025",
-      "stale_at": "2026-08-22T18:22:16Z",
-      "stale_reason": "watched project inputs changed",
-      "status": "STALE",
+      "status": "PASS",
       "title": "Tagged MVP release binds notes checksums manifest SBOM limitations and accepted commit",
       "watched_paths": [
         "CHANGELOG.md",
@@ -888,16 +867,16 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T17:31:30Z",
-        "commit": "3041105545c1c6a48959e0550678dc1e481835df",
+        "at": "2026-08-22T18:34:33Z",
+        "commit": "2bf9819e73b40a020de9c2c9a32542ffa50c2413",
         "dirty": false,
         "evidence_class": "externally observed GitHub, public-network, and clean-clone state",
-        "fingerprint": "sha256:fe0fa2f995035d483b4f91e0b06dd441ed156e08f314b83835ff1cbe6a056884",
+        "fingerprint": "sha256:dc70045f53946f864037651e2e6ae2279deaaf92d63c869a60c24890fc2d37c7",
         "observations": [
-          "A fresh clone of the published remote at this commit, in a directory unrelated to the development worktree, completed setup, the test suite, the local demo, the benchmark, the site build, and the static checks with exit status 0.",
-          "EmptyBench from the clean clone reported 24/24 cases passed, 12/12 matched pairs discriminated, zero unsafe permits, and zero false rejections.",
-          "The site built from that clean clone is byte-identical to the deployed Pages assets.",
-          "This is reproduction from the published remote on the same machine and operating system. It is not independent reproduction by another party, on other hardware, or in another environment."
+          "A fresh clone of the published remote at this commit, in an unrelated directory, completed setup, the test suite, the local demo, the benchmark, the site build, and the static checks with exit status 0, reporting 24/24 cases, 12/12 pairs discriminated, zero unsafe permits, zero false rejections.",
+          "That clean clone resolves pytest 9.1.1, which is the version the acceptance gate exercises, so the recorded evidence describes what a fresh install actually receives.",
+          "This is reproduction from the published remote on the same machine and operating system. It is not independent reproduction by another party or environment.",
+          "Recorded from observations made against GitHub and the public network at this revision, not inferred from repository configuration."
         ],
         "procedure": [
           [
@@ -932,9 +911,7 @@
         "result": "PASS"
       },
       "id": "MVP-ACC-027",
-      "stale_at": "2026-08-22T18:22:16Z",
-      "stale_reason": "watched project inputs changed",
-      "status": "STALE",
+      "status": "PASS",
       "title": "Independent clean clone reproduces setup tests benchmark and local demo",
       "watched_paths": [
         "**"

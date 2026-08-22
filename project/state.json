@@ -1,24 +1,24 @@
 {
   "acceptance_ledger": "project/acceptance.json",
-  "lifecycle": "MVP_NOT_ACCEPTED",
+  "lifecycle": "MVP_ACCEPTED_AND_PUBLISHED",
   "progress_log": "project/progress.jsonl",
   "project": "Evidence-State I/O",
   "repository": {
     "local": {
       "branch": "main",
-      "commit": "4230eb6af1fbf6f14fb5583b17135621538e18cc",
-      "dirty": false
+      "commit": "2bf9819e73b40a020de9c2c9a32542ffa50c2413",
+      "dirty": true
     },
     "remote": {
-      "commit": "66431e4eb2cebd31aa499ffd8c1601b06583048d",
+      "commit": "2bf9819e73b40a020de9c2c9a32542ffa50c2413",
       "default_branch": "main",
       "name": "origin",
-      "observed_at": "2026-08-22T18:22:16Z",
+      "observed_at": "2026-08-22T18:34:33Z",
       "reachable": true,
       "url": "https://github.com/redxking/evidence-state-io"
     }
   },
   "schema": "esio-project-state/1.0",
   "task_ledger": "project/tasks.json",
-  "updated_at": "2026-08-22T18:26:55Z"
+  "updated_at": "2026-08-22T18:34:33Z"
 }
