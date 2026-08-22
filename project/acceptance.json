@@ -447,15 +447,15 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T16:07:36Z",
-        "commit": "2e30d5a98930f480d30a88620a942cfd75f13657",
+        "at": "2026-08-22T16:53:55Z",
+        "commit": "960798cb93be0c54aa449aeadca914c7924b9527",
         "dirty": false,
-        "evidence_class": "externally observed GitHub and public-network state",
-        "fingerprint": "sha256:e83de156e6aab1e7d640f131ded0c04adc9c5cedc9f4ffc3812b6bafd102e9dc",
+        "evidence_class": "externally observed GitHub, public-network, and clean-clone state",
+        "fingerprint": "sha256:7333dc48247bf5947c2265d594cd3e408a9bce317b0fd61975d6fb5edba9e5d7",
         "observations": [
           "The remote tree lists 165 blobs and `git ls-files` lists 165 tracked paths; a diff of the two sorted path lists is empty.",
           "The remote commit SHA and its tree SHA equal the local HEAD and its tree SHA.",
-          "Repository visibility observed as PUBLIC via the GitHub API.",
+          "Repository visibility observed as PUBLIC through the GitHub API.",
           "Establishes tracked-source completeness on the remote. Governance and project-management surfaces are recorded separately under MVP-ACC-024."
         ],
         "procedure": [
@@ -477,9 +477,7 @@
         "result": "PASS"
       },
       "id": "MVP-ACC-018",
-      "stale_at": "2026-08-22T16:42:51Z",
-      "stale_reason": "watched project inputs changed",
-      "status": "STALE",
+      "status": "PASS",
       "title": "Professional public GitHub repository contains all required tracked source",
       "watched_paths": [
         "**"
@@ -487,15 +485,15 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T16:07:36Z",
-        "commit": "2e30d5a98930f480d30a88620a942cfd75f13657",
+        "at": "2026-08-22T16:53:55Z",
+        "commit": "960798cb93be0c54aa449aeadca914c7924b9527",
         "dirty": false,
-        "evidence_class": "externally observed GitHub and public-network state",
-        "fingerprint": "sha256:e83de156e6aab1e7d640f131ded0c04adc9c5cedc9f4ffc3812b6bafd102e9dc",
+        "evidence_class": "externally observed GitHub, public-network, and clean-clone state",
+        "fingerprint": "sha256:7333dc48247bf5947c2265d594cd3e408a9bce317b0fd61975d6fb5edba9e5d7",
         "observations": [
           "`git ls-remote origin refs/heads/main` returned the accepted local commit.",
           "The repository default branch was observed as `main`.",
-          "No force push was used; every push was a fast-forward."
+          "Every push in this cycle was a fast-forward; no force push was used, and the branch ruleset blocks non-fast-forward and deletion."
         ],
         "procedure": [
           [
@@ -518,9 +516,7 @@
         "result": "PASS"
       },
       "id": "MVP-ACC-019",
-      "stale_at": "2026-08-22T16:42:51Z",
-      "stale_reason": "watched project inputs changed",
-      "status": "STALE",
+      "status": "PASS",
       "title": "Local accepted commit equals remote default branch",
       "watched_paths": [
         "**"
@@ -528,28 +524,28 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T16:07:36Z",
-        "commit": "2e30d5a98930f480d30a88620a942cfd75f13657",
+        "at": "2026-08-22T16:53:55Z",
+        "commit": "960798cb93be0c54aa449aeadca914c7924b9527",
         "dirty": false,
-        "evidence_class": "externally observed GitHub and public-network state",
-        "fingerprint": "sha256:18242019272664c6359dad71aa56307735703c0ef832518c4f0581c837969ea6",
+        "evidence_class": "externally observed GitHub, public-network, and clean-clone state",
+        "fingerprint": "sha256:631d363aa07ed69f4199417e29fdf7147293171cd7d30b1ad4dee24735c3f87c",
         "observations": [
-          "At the exact accepted commit, these check runs completed with conclusion `success`: Quality, contracts, and packaging; Python 3.11; Python 3.12; Python 3.13; Compose configuration; Analyze python; Analyze javascript-typescript; Validate and package site; Deploy site.",
-          "A second `Deploy site` run at the same commit shows `cancelled`; it was superseded by the Pages concurrency group and a successful run exists at the same SHA.",
-          "Secret scanning, secret-scanning push protection, and Dependabot security updates were observed enabled.",
-          "`Dependency review` and `Commit signoff` run only on pull requests; both were observed `success` on pull request #1 at head `105557b`, not at this commit.",
-          "Establishes that the declared checks passed in GitHub's hosted environment. It does not establish source truth, independent validation, or production readiness."
+          "At the accepted commit these check runs completed with conclusion `success`: Quality, contracts, and packaging; Python 3.11; Python 3.12; Python 3.13; Compose configuration; Analyze python; Analyze javascript-typescript; Validate and package site; Deploy site.",
+          "Secret scanning, secret-scanning push protection, Dependabot security updates, private vulnerability reporting, and required web commit signoff were observed enabled.",
+          "`Dependency review` and `Commit signoff` run only on pull requests. Both were observed `success` on pull request #1; they do not run on a direct push and therefore do not appear at this commit.",
+          "A branch ruleset blocks deletion and non-fast-forward and requires nine status checks, with an `always` bypass for the repository-admin role so the bounded continuation controller can push reconciled ledgers to the default branch. The required checks therefore gate contributors and pull requests, not the maintainer's own pushes. The ruleset was observed acting on a real push, which reported `Bypassed rule violations`.",
+          "Establishes that the declared checks passed in GitHub's hosted environment at this commit. It does not establish source truth, independent validation, or production readiness."
         ],
         "procedure": [
           [
             "gh",
             "api",
-            "repos/redxking/evidence-state-io/commits/2e30d5a98930f480d30a88620a942cfd75f13657/check-runs"
+            "repos/redxking/evidence-state-io/commits/<commit>/check-runs"
           ],
           [
             "gh",
             "api",
-            "repos/redxking/evidence-state-io/actions/runs?head_sha=2e30d5a98930f480d30a88620a942cfd75f13657"
+            "repos/redxking/evidence-state-io/actions/runs?head_sha=<commit>"
           ],
           [
             "gh",
@@ -560,9 +556,7 @@
         "result": "PASS"
       },
       "id": "MVP-ACC-020",
-      "stale_at": "2026-08-22T16:42:51Z",
-      "stale_reason": "watched project inputs changed",
-      "status": "STALE",
+      "status": "PASS",
       "title": "Required CI and security checks pass at exact accepted commit",
       "watched_paths": [
         ".github/workflows/**",
@@ -575,18 +569,19 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T16:07:36Z",
-        "commit": "2e30d5a98930f480d30a88620a942cfd75f13657",
+        "at": "2026-08-22T16:53:55Z",
+        "commit": "960798cb93be0c54aa449aeadca914c7924b9527",
         "dirty": false,
-        "evidence_class": "externally observed GitHub and public-network state",
+        "evidence_class": "externally observed GitHub, public-network, and clean-clone state",
         "fingerprint": "sha256:7fde2a47e2090766d8b46c870196e774ac823dfa8e91b96b6bd2194e19cb2f20",
         "observations": [
-          "GitHub Pages is configured with `build_type: workflow`; the `Pages` workflow completed `success` and a `github-pages` deployment exists at the accepted commit.",
-          "All nine deployed assets were fetched unauthenticated and their SHA-256 digests match, byte for byte, the site built from an independent clean clone of the remote at this commit.",
+          "GitHub Pages is configured with `build_type: workflow`. The `Pages` workflow completed `success` and the newest `github-pages` deployment is bound to the accepted commit.",
+          "All nine deployed assets were fetched unauthenticated and their SHA-256 digests match, byte for byte, a site built from an independent clean clone of the published remote at this commit.",
           "Those exact deployed bytes were driven in Chromium. Seven published scenarios behaved as documented: valid -> PERMIT_SCOPED_NEGATIVE / ABSENT_WITHIN_SCOPE; incomplete -> REJECT_NEGATIVE / PARTIAL; stale -> REJECT_NEGATIVE / ABSENT_WITHIN_SCOPE; ambiguous -> REJECT_NEGATIVE / NOT_OBSERVED; conflicting -> REJECT_NEGATIVE / CONTRADICTORY; tampered -> REJECT_UNVERIFIED_INPUT; invalid -> REJECT_INVALID_INPUT.",
+          "The demonstration keeps input rejection distinct from a gate rejection, so a malformed or tampered request is never presented as an evidential rejection of the negative claim.",
           "No console error, page error, or failed request was recorded, and no internal anchor was broken.",
           "The run control is reachable by keyboard alone and activates with Enter.",
-          "At a 375px viewport the document scroll width equals the client width; the earlier 495px horizontal overflow was fixed at commit 8fa182f.",
+          "At a 375px viewport the document scroll width equals the client width. An earlier 495px horizontal overflow caused by the decorative hero radial was fixed and re-measured.",
           "Establishes deployed-artifact behaviour in one browser engine at two viewports. It is not a cross-browser test, an accessibility audit, or assistive-technology testing."
         ],
         "procedure": [
@@ -608,7 +603,7 @@
             "node",
             "playwright",
             "chromium",
-            "deployed-assets"
+            "<deployed-assets>"
           ]
         ],
         "result": "PASS"
@@ -624,15 +619,15 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T16:07:36Z",
-        "commit": "2e30d5a98930f480d30a88620a942cfd75f13657",
+        "at": "2026-08-22T16:53:55Z",
+        "commit": "960798cb93be0c54aa449aeadca914c7924b9527",
         "dirty": false,
-        "evidence_class": "externally observed GitHub and public-network state",
+        "evidence_class": "externally observed GitHub, public-network, and clean-clone state",
         "fingerprint": "sha256:02d10194bd8bbc7418fb061f98a8a604966db1224efd429b46ff2518590be510",
         "observations": [
-          "The site root, the 404 document, and the demo fixtures each returned HTTP 200 to unauthenticated requests made from outside the owner's machine and without any GitHub credential.",
-          "The repository was observed PUBLIC via the GitHub API.",
-          "Establishes public reachability of the repository and site at this time. It does not establish availability guarantees or that any reader has used them."
+          "The site root, the 404 document, and the demo fixtures each returned HTTP 200 to unauthenticated requests made without any GitHub credential.",
+          "The repository, its wiki pages, and the linked roadmap project were each reached unauthenticated and returned rendered content.",
+          "Establishes public reachability at this time. It does not establish availability guarantees or that any reader has used them."
         ],
         "procedure": [
           [
@@ -648,9 +643,12 @@
             "https://redxking.github.io/evidence-state-io/demo-fixtures.json"
           ],
           [
-            "gh",
-            "api",
-            "repos/redxking/evidence-state-io"
+            "curl",
+            "https://github.com/redxking/evidence-state-io/wiki/<page>"
+          ],
+          [
+            "curl",
+            "https://github.com/users/redxking/projects/9"
           ]
         ],
         "result": "PASS"
@@ -664,22 +662,45 @@
       ]
     },
     {
-      "blocked_reason": "The GitHub Wiki Git repository does not exist and cannot be created without a human action.",
       "evidence": {
-        "at": "2026-08-22T16:07:36Z",
-        "commit": "2e30d5a98930f480d30a88620a942cfd75f13657",
+        "at": "2026-08-22T16:53:55Z",
+        "commit": "960798cb93be0c54aa449aeadca914c7924b9527",
         "dirty": false,
-        "evidence_class": "externally observed GitHub state",
+        "evidence_class": "externally observed GitHub, public-network, and clean-clone state",
+        "fingerprint": "sha256:72f780aac71696d39c7d33dbecf85b65a02e3fc87d021e728575797aa57f68f3",
         "observations": [
-          "`git ls-remote git@github.com:redxking/evidence-state-io.wiki.git` and the authenticated HTTPS equivalent both returned `Repository not found`.",
-          "`has_wiki` is enabled on the repository, but GitHub creates the wiki Git repository only after a first page exists, and no REST or GraphQL API creates that page.",
-          "The canonical source in `wiki/` is present and its inventory is enforced by `scripts/public_release_gate.py`, which returned PASS.",
-          "Unblocking requires one page to be created at https://github.com/redxking/evidence-state-io/wiki, after which the canonical source can be pushed over it."
+          "The wiki Git repository did not exist and could not be created through any API; GitHub instantiates it only after a first page is created in the web interface. That page was created, then the canonical `wiki/` directory was pushed over it.",
+          "Wiki remote `master` is `28b98e6341e08bb432f810662c8f702842804e5b`, holding 31 files: 29 content pages plus `_Sidebar.md` and `_Footer.md`.",
+          "Every published file was compared byte for byte with the tracked `wiki/` source and the file sets are identical, so the published mirror has not drifted from the canonical source.",
+          "All 24 required pages and the 5 additional canonical pages returned HTTP 200 with rendered `markdown-body` content to unauthenticated requests. `Home` returns 301 to `/wiki`, which returns 200 with content and the custom sidebar. 29 internal wiki links resolve from Home.",
+          "Establishes that the published wiki mirrors the tracked canonical source. It does not establish that any documented claim is correct, reviewed, or read."
         ],
-        "result": "BLOCKED"
+        "procedure": [
+          [
+            "git",
+            "clone",
+            "git@github.com:redxking/evidence-state-io.wiki.git"
+          ],
+          [
+            "git",
+            "push",
+            "origin",
+            "master"
+          ],
+          [
+            "curl",
+            "https://github.com/redxking/evidence-state-io/wiki/<page>"
+          ],
+          [
+            "cmp",
+            "wiki/<page>.md",
+            "<published-page>.md"
+          ]
+        ],
+        "result": "PASS"
       },
       "id": "MVP-ACC-023",
-      "status": "BLOCKED",
+      "status": "PASS",
       "title": "Remote Wiki contains and renders every required page",
       "watched_paths": [
         "wiki/**",
@@ -687,23 +708,57 @@
       ]
     },
     {
-      "blocked_reason": "The maintainer's GitHub token lacks the `project` scope, so the GitHub Project cannot be created or populated.",
       "evidence": {
-        "at": "2026-08-22T16:07:36Z",
-        "commit": "2e30d5a98930f480d30a88620a942cfd75f13657",
+        "at": "2026-08-22T16:53:55Z",
+        "commit": "960798cb93be0c54aa449aeadca914c7924b9527",
         "dirty": false,
-        "evidence_class": "externally observed GitHub state",
+        "evidence_class": "externally observed GitHub, public-network, and clean-clone state",
+        "fingerprint": "sha256:c83720cd788b9c2b26498bd479399c70953e288b8b991139b942a40eea44f3cd",
         "observations": [
-          "`gh project list --owner redxking` failed with `your authentication token is missing required scopes [read:project]`; the active token carries `gist, read:org, repo, workflow`.",
-          "Observed complete at this commit: 27 labels; milestone #1 `v0.6.0 - MVP research candidate`; six bounded MVP issues (#2-#7) linked to that milestone and to acceptance identifiers; five issue forms and a pull-request template; CODEOWNERS; Dependabot configuration and active update pull requests; Discussions enabled with six categories; repository description, homepage, and ten topics; secret scanning, push protection, and Dependabot security updates enabled.",
-          "Observed complete: branch ruleset `Default branch protection` (deletion, non-fast-forward, linear history, nine required status checks, repository-admin bypass) and tag ruleset `Release tag immutability` (deletion, non-fast-forward, update blocked on `refs/tags/v*`, no bypass actor). The branch ruleset was observed acting on a real push, which reported `Bypassed rule violations`.",
-          "The repository-admin bypass on the branch ruleset is deliberate: the bounded continuation controller pushes reconciled ledgers directly to the default branch. Required checks therefore gate contributors and pull requests, not the maintainer's own pushes.",
-          "Unblocking requires an interactive `gh auth refresh -s project`."
+          "27 labels; milestone #1 `v0.6.0 - MVP research candidate`; six bounded MVP issues (#2-#7) linked to that milestone and to acceptance identifiers, of which #2 and #3 are closed with their evidence recorded in comments.",
+          "Five issue forms with blank issues disabled, a pull-request template, CODEOWNERS, and Dependabot configuration with active update pull requests.",
+          "Discussions enabled with six categories; repository description, homepage, and ten topics set.",
+          "Secret scanning, secret-scanning push protection, Dependabot security updates, private vulnerability reporting, and required web commit signoff enabled. `secret_scanning_non_provider_patterns` and `secret_scanning_validity_checks` remain disabled; enabling them through the API did not take effect on this repository.",
+          "Branch ruleset `Default branch protection`: deletion, non-fast-forward, and required linear history blocked, nine required status checks, with an `always` bypass for the repository-admin role so the bounded controller can push reconciled ledgers. Required checks therefore gate contributors and pull requests, not the maintainer's own pushes.",
+          "Tag ruleset `Release tag immutability`: deletion, update, and non-fast-forward blocked on `refs/tags/v*` with no bypass actor, so an authorised release tag cannot be moved or removed without first changing the ruleset.",
+          "Public GitHub Project `Evidence-State I/O roadmap` at https://github.com/users/redxking/projects/9, reachable unauthenticated, listed under Repository projects on this repository's Projects tab, carrying issues #2-#7. Its README states that item state is work state, not validated evidence. It was created through the web interface because the maintainer's CLI token lacks the `project` scope; `gh project` and the GraphQL project fields remain unavailable from the command line.",
+          "Establishes that the governance, security, community, and project-management surfaces exist and are populated. It does not establish that any item is validated, that the rules were exercised against an adversary, or that a closed issue is evidence."
         ],
-        "result": "BLOCKED"
+        "procedure": [
+          [
+            "gh",
+            "label",
+            "list"
+          ],
+          [
+            "gh",
+            "api",
+            "repos/redxking/evidence-state-io/milestones"
+          ],
+          [
+            "gh",
+            "issue",
+            "list"
+          ],
+          [
+            "gh",
+            "api",
+            "repos/redxking/evidence-state-io/rulesets"
+          ],
+          [
+            "gh",
+            "api",
+            "repos/redxking/evidence-state-io"
+          ],
+          [
+            "curl",
+            "https://github.com/users/redxking/projects/9"
+          ]
+        ],
+        "result": "PASS"
       },
       "id": "MVP-ACC-024",
-      "status": "BLOCKED",
+      "status": "PASS",
       "title": "Issues Project milestones workflows security Discussions metadata and rules are populated",
       "watched_paths": [
         ".github/**",
@@ -754,13 +809,13 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T16:07:36Z",
-        "commit": "2e30d5a98930f480d30a88620a942cfd75f13657",
+        "at": "2026-08-22T16:53:55Z",
+        "commit": "960798cb93be0c54aa449aeadca914c7924b9527",
         "dirty": false,
-        "evidence_class": "externally observed GitHub and public-network state",
-        "fingerprint": "sha256:e83de156e6aab1e7d640f131ded0c04adc9c5cedc9f4ffc3812b6bafd102e9dc",
+        "evidence_class": "externally observed GitHub, public-network, and clean-clone state",
+        "fingerprint": "sha256:7333dc48247bf5947c2265d594cd3e408a9bce317b0fd61975d6fb5edba9e5d7",
         "observations": [
-          "A fresh clone of the remote at this commit, in a directory unrelated to the development worktree, completed setup, the test suite, the local demo, the benchmark, and the static checks with exit status 0.",
+          "A fresh clone of the published remote at this commit, in a directory unrelated to the development worktree, completed setup, the test suite, the local demo, the benchmark, the site build, and the static checks with exit status 0.",
           "EmptyBench from the clean clone reported 24/24 cases passed, 12/12 matched pairs discriminated, zero unsafe permits, and zero false rejections.",
           "The site built from that clean clone is byte-identical to the deployed Pages assets.",
           "This is reproduction from the published remote on the same machine and operating system. It is not independent reproduction by another party, on other hardware, or in another environment."
@@ -787,15 +842,18 @@
             "--pretty"
           ],
           [
+            "scripts/build_site.py",
+            "--output",
+            "<dir>"
+          ],
+          [
             "./scripts/check.sh"
           ]
         ],
         "result": "PASS"
       },
       "id": "MVP-ACC-027",
-      "stale_at": "2026-08-22T16:42:51Z",
-      "stale_reason": "watched project inputs changed",
-      "status": "STALE",
+      "status": "PASS",
       "title": "Independent clean clone reproduces setup tests benchmark and local demo",
       "watched_paths": [
         "**"

@@ -82,8 +82,10 @@
       "id": "MVP-TASK-002",
       "next_action": "Push the coherent candidate, configure the remote, and verify CI at the exact commit.",
       "priority": 2,
-      "status": "pending",
-      "title": "Publish and verify the accepted candidate"
+      "status": "verified",
+      "title": "Publish and verify the accepted candidate",
+      "verified_at": "2026-08-22T16:53:55Z",
+      "verified_commit": "960798cb93be0c54aa449aeadca914c7924b9527"
     },
     {
       "acceptance": [
@@ -91,7 +93,6 @@
         "MVP-ACC-022",
         "MVP-ACC-023"
       ],
-      "blocked_reason": "MVP-ACC-023 is BLOCKED: the GitHub Wiki Git repository does not exist and cannot be created through any API. One page must be created in the web UI before the canonical wiki/ source can be published. MVP-ACC-021 and MVP-ACC-022 are PASS.",
       "dependencies": [
         "MVP-TASK-002"
       ],
@@ -101,14 +102,15 @@
       "id": "MVP-TASK-003",
       "next_action": "Deploy Pages, exercise the live browser demo, and publish and inspect every required Wiki page.",
       "priority": 3,
-      "status": "blocked",
-      "title": "Verify public Pages, demo, and Wiki"
+      "status": "verified",
+      "title": "Verify public Pages, demo, and Wiki",
+      "verified_at": "2026-08-22T16:53:55Z",
+      "verified_commit": "960798cb93be0c54aa449aeadca914c7924b9527"
     },
     {
       "acceptance": [
         "MVP-ACC-024"
       ],
-      "blocked_reason": "MVP-ACC-024 is BLOCKED: the maintainer's GitHub token lacks the `project` scope, so the GitHub Project cannot be created or populated. Every other surface in this row was observed complete.",
       "dependencies": [
         "MVP-TASK-002"
       ],
@@ -118,8 +120,10 @@
       "id": "MVP-TASK-004",
       "next_action": "Populate and verify repository governance, security, community, and project-management surfaces.",
       "priority": 4,
-      "status": "blocked",
-      "title": "Complete professional GitHub configuration"
+      "status": "verified",
+      "title": "Complete professional GitHub configuration",
+      "verified_at": "2026-08-22T16:53:55Z",
+      "verified_commit": "960798cb93be0c54aa449aeadca914c7924b9527"
     },
     {
       "acceptance": [
@@ -127,7 +131,6 @@
         "MVP-ACC-025",
         "MVP-ACC-027"
       ],
-      "blocked_reason": "Blocked by MVP-TASK-003 and MVP-TASK-004. The release workflow refuses to publish while any acceptance row is not PASS, and the owner must authorise the version tag.",
       "dependencies": [
         "MVP-TASK-003",
         "MVP-TASK-004"
@@ -138,7 +141,7 @@
       "id": "MVP-TASK-005",
       "next_action": "Reproduce from a clean remote clone, bind final documentation and manifests, and create the exact tagged release.",
       "priority": 5,
-      "status": "blocked",
+      "status": "pending",
       "title": "Close remote reproduction and release custody"
     }
   ]
