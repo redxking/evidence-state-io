@@ -64,8 +64,8 @@
       "priority": 1,
       "status": "verified",
       "title": "Verify the complete local MVP gate",
-      "verified_at": "2026-08-22T16:28:42Z",
-      "verified_commit": "e356fd67e323d8ef0fc98b0489f77d30baa22e02"
+      "verified_at": "2026-08-22T16:35:27Z",
+      "verified_commit": "f65a8c153708e10b1478f9198fa11bc815da0a34"
     },
     {
       "acceptance": [
@@ -82,10 +82,8 @@
       "id": "MVP-TASK-002",
       "next_action": "Push the coherent candidate, configure the remote, and verify CI at the exact commit.",
       "priority": 2,
-      "status": "verified",
-      "title": "Publish and verify the accepted candidate",
-      "verified_at": "2026-08-22T16:08:03Z",
-      "verified_commit": "2e30d5a98930f480d30a88620a942cfd75f13657"
+      "status": "pending",
+      "title": "Publish and verify the accepted candidate"
     },
     {
       "acceptance": [
