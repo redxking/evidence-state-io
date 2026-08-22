@@ -135,7 +135,9 @@ binding remain open.
   invalidated. A `STALE` acceptance row previously sat behind a task still
   marked `verified`, so the bounded controller would never re-establish that
   evidence and would advance to a dependent task instead. The reconciled event
-  records `reopened_tasks`.
+  records `reopened_tasks`. A task that declares no separate
+  `pass_criteria` owns every acceptance row it links, which is how externally
+  verified tasks are recorded, so those are reopened too.
 - The hero section now clips its decorative radial pseudo-element. `.hero::after`
   is 520px wide at `right: -120px`, which made the page body scroll
   horizontally on a narrow viewport: at 375px the document scroll width was

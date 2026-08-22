@@ -741,3 +741,25 @@ than it is.
 This establishes the state of the published surfaces at a known commit. It does
 not establish that any published claim is correct, that anyone has read the
 wiki, or that the roadmap reflects validated work.
+
+### Externally verified tasks and staleness (2026-08-22)
+
+Recording the externally observed publication evidence exposed the same
+staleness gap one level out. `MVP-TASK-002` through `MVP-TASK-005` run in
+`external` mode: the controller never sets their rows itself, so those rows are
+recorded by hand and the task is marked `verified` by hand. Those tasks declare
+`acceptance` but no separate `pass_criteria`, and the reopen rule introduced
+earlier keyed only on `pass_criteria`. A documentation change therefore left
+three externally recorded rows `STALE` behind a task still marked `verified`,
+and `next_task` returned nothing at all.
+
+`reconcile` now treats a task with no declared `pass_criteria` as owning every
+acceptance row it links, so an externally verified task is reopened on the same
+terms as a machine-verified one. A regression asserts that a verified task
+without `pass_criteria` is reopened and loses its verification stamps when a row
+it links goes `STALE`.
+
+This closes the rule for both task modes. It does not change what any row
+means, and it does not make an externally recorded row into machine-verified
+evidence: those rows still depend on observations a human or agent made against
+GitHub and recorded deliberately.

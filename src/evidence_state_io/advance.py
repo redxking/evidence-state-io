@@ -259,12 +259,15 @@ class ProjectController:
         # A verified task whose evidence has just been invalidated is no longer
         # verified.  Reopen it so the next bounded run re-establishes the
         # evidence instead of leaving a STALE row behind a "verified" task.
+        # A task that declares no separate pass criteria owns every acceptance
+        # row it links, which is how externally verified tasks are recorded.
         stale_identifiers = set(stale)
         reopened: list[str] = []
         for record in self.tasks["tasks"]:
             if record.get("status") != "verified":
                 continue
-            if stale_identifiers.intersection(record.get("pass_criteria", [])):
+            owned = record.get("pass_criteria") or record.get("acceptance", [])
+            if stale_identifiers.intersection(owned):
                 record["status"] = "pending"
                 record.pop("verified_at", None)
                 record.pop("verified_commit", None)

@@ -273,6 +273,31 @@ class AdvanceTests(unittest.TestCase):
         self.assertNotIn("verified_commit", task)
         self.assertEqual(controller.next_task()["id"], "T-1")
 
+    def test_stale_evidence_reopens_an_externally_verified_task(self) -> None:
+        """A task with no separate pass criteria owns every row it links."""
+        self.tasks["tasks"][0]["status"] = "verified"
+        self.tasks["tasks"][0]["verified_at"] = "2026-08-22T00:00:00Z"
+        self.tasks["tasks"][0]["verified_commit"] = "0" * 40
+        self.assertNotIn("pass_criteria", self.tasks["tasks"][0])
+        self.acceptance["criteria"][0]["status"] = "PASS"
+        self.acceptance["criteria"][0]["evidence"] = {
+            "at": "2026-08-22T00:00:00Z",
+            "result": "PASS",
+            "fingerprint": fingerprint(self.repo, ["src/**"]),
+        }
+        self._write_ledgers()
+        (self.repo / "src" / "value.txt").write_text("changed\n", encoding="utf-8")
+
+        controller = ProjectController(self.repo)
+        event = controller.reconcile()
+
+        self.assertEqual(event["stale_criteria"], ["A-1"])
+        self.assertEqual(event["reopened_tasks"], ["T-1"])
+        task = controller.tasks["tasks"][0]
+        self.assertEqual(task["status"], "pending")
+        self.assertNotIn("verified_at", task)
+        self.assertNotIn("verified_commit", task)
+
 
 if __name__ == "__main__":
     unittest.main()
