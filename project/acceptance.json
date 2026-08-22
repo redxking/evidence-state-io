@@ -772,20 +772,75 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T17:31:30Z",
-        "commit": "3041105545c1c6a48959e0550678dc1e481835df",
+        "at": "2026-08-22T17:45:10Z",
+        "commit": "d6eebbe2fc6840b54a41d5ab2f6f587b9310fa41",
         "dirty": false,
-        "evidence_class": "prior release evidence invalidated by a watched-input change",
+        "evidence_class": "externally observed GitHub release state and released-artifact behaviour",
+        "fingerprint": "sha256:b8052a3756d0ff7751b6412e5e7411ae3a5b1d43cf1c8138d0398980439cf13a",
         "observations": [
-          "The `v0.6.0` release was observed complete and correctly bound: immutable, annotated tag pointing at its accepted commit, six assets, verified checksums, and an evidence manifest binding tag, commit, tree, and artifact digests.",
-          "That evidence no longer describes this revision. `CHANGELOG.md` and `.github/workflows/release.yml` are watched inputs for this row and both changed when ESIO-DEF-001 was fixed, so the row was invalidated rather than carried forward.",
-          "`v0.6.0` remains published and immutable and still carries ESIO-DEF-001: its wheel ships no EmptyBench artifacts and its `evidence-state demo` fails outside a checkout.",
-          "This row is recorded again only from a release published at this revision."
+          "Release `v0.6.1 - MVP research candidate` is published, not a draft, not a prerelease, `isImmutable` is true, and it is the latest release.",
+          "The annotated tag object `3200aa3f51161c40f258e7ae880eed04456cbb07` points at commit `d6eebbe2fc6840b54a41d5ab2f6f587b9310fa41`, which is an ancestor of the default branch.",
+          "Six assets are attached: the wheel, the source distribution, SHA256SUMS, EVIDENCE-MANIFEST.json, SBOM.spdx.json, and LIMITATIONS.md. Both distributions were downloaded unauthenticated and `shasum -a 256 -c SHA256SUMS` reported OK for each.",
+          "EVIDENCE-MANIFEST.json binds tag `v0.6.1`, commit `d6eebbe2fc6840b54a41d5ab2f6f587b9310fa41`, source tree `5ae4d2d5c8b67954ccb1fd3dc23e945e3fbb2508`, version `0.6.1`, a clean tracked worktree, no runtime dependencies, and the two artifact digests and sizes. The recorded tree equals `git rev-parse <commit>^{tree}`.",
+          "The SPDX SBOM declares Apache-2.0, the exact purl, and a download location pinned to the released commit. The attached LIMITATIONS.md is byte-identical to `release/LIMITATIONS.md`.",
+          "Build provenance verifies: `gh attestation verify` returns a SLSA provenance v1 statement whose subjects are both released artifacts with matching SHA-256 digests, whose source repository is this repository, and whose signer is `.github/workflows/release.yml@refs/tags/v0.6.1`.",
+          "The released wheel carries the EmptyBench corpus and oracle (2 matching entries in the wheel and 2 in the source distribution, against 0 in v0.6.0). Installed into a fresh Python 3.11 environment and run from a directory outside any checkout that also contains a decoy `benchmarks/` directory, `evidence-state --help` and `evidence-state demo --all --pretty` both succeed, reporting 24/24 cases passed, 12/12 matched pairs discriminated, zero unsafe permits, and zero false rejections, byte-identical to the same command run from the repository root. This is the direct check that ESIO-DEF-001 is fixed in the published artifact rather than only in the source tree.",
+          "The release workflow's own gate required every acceptance row other than MVP-ACC-025 to be PASS at the tagged commit, and verified stable SemVer, tag-to-package-version equality, and default-branch ancestry.",
+          "`v0.6.0` remains published and immutable and still carries ESIO-DEF-001. Its release notes now open with a warning that names the defect, states that its artifacts should not be used, and links this release. The tag ruleset blocks deletion, update, and non-fast-forward on `refs/tags/v*` with no bypass actor, which is why the defective release could not be withdrawn.",
+          "Establishes the release binding and that the published artifact behaves correctly wherever it is run. It does not establish source truth, independent custody, benchmark freezing, external reproduction, or production readiness."
         ],
-        "result": "UNVERIFIED"
+        "procedure": [
+          [
+            "gh",
+            "release",
+            "view",
+            "v0.6.1"
+          ],
+          [
+            "gh",
+            "api",
+            "repos/redxking/evidence-state-io/git/ref/tags/v0.6.1"
+          ],
+          [
+            "curl",
+            "https://github.com/redxking/evidence-state-io/releases/download/v0.6.1/<asset>"
+          ],
+          [
+            "shasum",
+            "-a",
+            "256",
+            "-c",
+            "SHA256SUMS"
+          ],
+          [
+            "unzip",
+            "-l",
+            "evidence_state_io-0.6.1-py3-none-any.whl"
+          ],
+          [
+            "<isolated-venv>/bin/evidence-state",
+            "demo",
+            "--all",
+            "--pretty"
+          ],
+          [
+            "gh",
+            "attestation",
+            "verify",
+            "evidence_state_io-0.6.1-py3-none-any.whl"
+          ],
+          [
+            "cmp",
+            "LIMITATIONS.md",
+            "release/LIMITATIONS.md"
+          ]
+        ],
+        "released_commit": "d6eebbe2fc6840b54a41d5ab2f6f587b9310fa41",
+        "released_tag": "v0.6.1",
+        "result": "PASS"
       },
       "id": "MVP-ACC-025",
-      "status": "UNVERIFIED",
+      "status": "PASS",
       "title": "Tagged MVP release binds notes checksums manifest SBOM limitations and accepted commit",
       "watched_paths": [
         "CHANGELOG.md",

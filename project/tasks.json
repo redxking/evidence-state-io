@@ -84,8 +84,8 @@
       "priority": 2,
       "status": "verified",
       "title": "Publish and verify the accepted candidate",
-      "verified_at": "2026-08-22T17:31:30Z",
-      "verified_commit": "3041105545c1c6a48959e0550678dc1e481835df"
+      "verified_at": "2026-08-22T17:45:10Z",
+      "verified_commit": "d6eebbe2fc6840b54a41d5ab2f6f587b9310fa41"
     },
     {
       "acceptance": [
@@ -104,8 +104,8 @@
       "priority": 3,
       "status": "verified",
       "title": "Verify public Pages, demo, and Wiki",
-      "verified_at": "2026-08-22T17:31:30Z",
-      "verified_commit": "3041105545c1c6a48959e0550678dc1e481835df"
+      "verified_at": "2026-08-22T17:45:10Z",
+      "verified_commit": "d6eebbe2fc6840b54a41d5ab2f6f587b9310fa41"
     },
     {
       "acceptance": [
@@ -122,8 +122,8 @@
       "priority": 4,
       "status": "verified",
       "title": "Complete professional GitHub configuration",
-      "verified_at": "2026-08-22T17:31:30Z",
-      "verified_commit": "3041105545c1c6a48959e0550678dc1e481835df"
+      "verified_at": "2026-08-22T17:45:10Z",
+      "verified_commit": "d6eebbe2fc6840b54a41d5ab2f6f587b9310fa41"
     },
     {
       "acceptance": [
@@ -141,8 +141,10 @@
       "id": "MVP-TASK-005",
       "next_action": "Reproduce from a clean remote clone, bind final documentation and manifests, and create the exact tagged release.",
       "priority": 5,
-      "status": "pending",
-      "title": "Close remote reproduction and release custody"
+      "status": "verified",
+      "title": "Close remote reproduction and release custody",
+      "verified_at": "2026-08-22T17:45:10Z",
+      "verified_commit": "d6eebbe2fc6840b54a41d5ab2f6f587b9310fa41"
     }
   ]
 }
