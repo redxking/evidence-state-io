@@ -64,8 +64,8 @@
       "priority": 1,
       "status": "verified",
       "title": "Verify the complete local MVP gate",
-      "verified_at": "2026-08-22T17:23:49Z",
-      "verified_commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59"
+      "verified_at": "2026-08-22T18:04:54Z",
+      "verified_commit": "fbb07f469c7ae21708201f8ee99179c64290c7db"
     },
     {
       "acceptance": [
@@ -82,10 +82,8 @@
       "id": "MVP-TASK-002",
       "next_action": "Push the coherent candidate, configure the remote, and verify CI at the exact commit.",
       "priority": 2,
-      "status": "verified",
-      "title": "Publish and verify the accepted candidate",
-      "verified_at": "2026-08-22T17:45:10Z",
-      "verified_commit": "d6eebbe2fc6840b54a41d5ab2f6f587b9310fa41"
+      "status": "pending",
+      "title": "Publish and verify the accepted candidate"
     },
     {
       "acceptance": [
@@ -102,10 +100,8 @@
       "id": "MVP-TASK-003",
       "next_action": "Deploy Pages, exercise the live browser demo, and publish and inspect every required Wiki page.",
       "priority": 3,
-      "status": "verified",
-      "title": "Verify public Pages, demo, and Wiki",
-      "verified_at": "2026-08-22T17:45:10Z",
-      "verified_commit": "d6eebbe2fc6840b54a41d5ab2f6f587b9310fa41"
+      "status": "pending",
+      "title": "Verify public Pages, demo, and Wiki"
     },
     {
       "acceptance": [
@@ -141,10 +137,8 @@
       "id": "MVP-TASK-005",
       "next_action": "Reproduce from a clean remote clone, bind final documentation and manifests, and create the exact tagged release.",
       "priority": 5,
-      "status": "verified",
-      "title": "Close remote reproduction and release custody",
-      "verified_at": "2026-08-22T17:45:10Z",
-      "verified_commit": "d6eebbe2fc6840b54a41d5ab2f6f587b9310fa41"
+      "status": "pending",
+      "title": "Close remote reproduction and release custody"
     }
   ]
 }

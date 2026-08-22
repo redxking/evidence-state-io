@@ -2,12 +2,12 @@
   "criteria": [
     {
       "evidence": {
-        "at": "2026-08-22T17:23:49Z",
-        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
+        "at": "2026-08-22T18:04:54Z",
+        "commit": "fbb07f469c7ae21708201f8ee99179c64290c7db",
         "dirty": false,
         "fingerprint": "sha256:42faa7360c196e298fed146342e575874a6d59a8e419466f0e4254b6ae96bd99",
         "output_digests": [
-          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
+          "sha256:3d7fe7362b8939e7386ee3d7fafd2f5f2f785a3e549c552b66af53cc5c4c42e0"
         ],
         "procedure": [
           [
@@ -26,12 +26,12 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T17:23:49Z",
-        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
+        "at": "2026-08-22T18:04:54Z",
+        "commit": "fbb07f469c7ae21708201f8ee99179c64290c7db",
         "dirty": false,
         "fingerprint": "sha256:1ceade17f621329f85e726c8570f372bd1b435572737b8f46174af090329c4fc",
         "output_digests": [
-          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
+          "sha256:3d7fe7362b8939e7386ee3d7fafd2f5f2f785a3e549c552b66af53cc5c4c42e0"
         ],
         "procedure": [
           [
@@ -50,12 +50,12 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T17:23:49Z",
-        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
+        "at": "2026-08-22T18:04:54Z",
+        "commit": "fbb07f469c7ae21708201f8ee99179c64290c7db",
         "dirty": false,
         "fingerprint": "sha256:81156b7fd28f325da51b855c07ce5fef998619f3fcbd3adfd48b8d56ebec0d34",
         "output_digests": [
-          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
+          "sha256:3d7fe7362b8939e7386ee3d7fafd2f5f2f785a3e549c552b66af53cc5c4c42e0"
         ],
         "procedure": [
           [
@@ -76,12 +76,12 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T17:23:49Z",
-        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
+        "at": "2026-08-22T18:04:54Z",
+        "commit": "fbb07f469c7ae21708201f8ee99179c64290c7db",
         "dirty": false,
         "fingerprint": "sha256:60b3fade76df66f818997235320b4849232c842926abe1b9f86e0680a79ec67c",
         "output_digests": [
-          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
+          "sha256:3d7fe7362b8939e7386ee3d7fafd2f5f2f785a3e549c552b66af53cc5c4c42e0"
         ],
         "procedure": [
           [
@@ -100,12 +100,12 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T17:23:49Z",
-        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
+        "at": "2026-08-22T18:04:54Z",
+        "commit": "fbb07f469c7ae21708201f8ee99179c64290c7db",
         "dirty": false,
         "fingerprint": "sha256:ed2bb73aaa89aa02e687ed5f29e96bc1ae581f808bf07863b1d55342df789499",
         "output_digests": [
-          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
+          "sha256:3d7fe7362b8939e7386ee3d7fafd2f5f2f785a3e549c552b66af53cc5c4c42e0"
         ],
         "procedure": [
           [
@@ -126,12 +126,12 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T17:23:49Z",
-        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
+        "at": "2026-08-22T18:04:54Z",
+        "commit": "fbb07f469c7ae21708201f8ee99179c64290c7db",
         "dirty": false,
         "fingerprint": "sha256:1ed993ac43ee882f33323d345a11f3085dc4fac19678942de7777ab6fb94a359",
         "output_digests": [
-          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
+          "sha256:3d7fe7362b8939e7386ee3d7fafd2f5f2f785a3e549c552b66af53cc5c4c42e0"
         ],
         "procedure": [
           [
@@ -152,12 +152,12 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T17:23:49Z",
-        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
+        "at": "2026-08-22T18:04:54Z",
+        "commit": "fbb07f469c7ae21708201f8ee99179c64290c7db",
         "dirty": false,
-        "fingerprint": "sha256:b48a130303f3f375925ed1f62363053c1d573557e8cb6043f4a6f85157402b96",
+        "fingerprint": "sha256:051e931038f9aeacd3fec1698a509b270391ae7e4eb26cc9186900f8558665b3",
         "output_digests": [
-          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
+          "sha256:3d7fe7362b8939e7386ee3d7fafd2f5f2f785a3e549c552b66af53cc5c4c42e0"
         ],
         "procedure": [
           [
@@ -178,12 +178,12 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T17:23:49Z",
-        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
+        "at": "2026-08-22T18:04:54Z",
+        "commit": "fbb07f469c7ae21708201f8ee99179c64290c7db",
         "dirty": false,
-        "fingerprint": "sha256:3d9eb372a0b22c35d5db6a44ea5b2ae5eec26768fb1b1157bd87a8577a68ff62",
+        "fingerprint": "sha256:30caa390d07181450990b5cb98092ee884d2fa9cc75e05c5a50dcfc21ea49196",
         "output_digests": [
-          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
+          "sha256:3d7fe7362b8939e7386ee3d7fafd2f5f2f785a3e549c552b66af53cc5c4c42e0"
         ],
         "procedure": [
           [
@@ -207,12 +207,12 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T17:23:49Z",
-        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
+        "at": "2026-08-22T18:04:54Z",
+        "commit": "fbb07f469c7ae21708201f8ee99179c64290c7db",
         "dirty": false,
         "fingerprint": "sha256:2a93e7fa94b471e5967658f81777fd382cad7323c7079c5ae5aeffdf304b4700",
         "output_digests": [
-          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
+          "sha256:3d7fe7362b8939e7386ee3d7fafd2f5f2f785a3e549c552b66af53cc5c4c42e0"
         ],
         "procedure": [
           [
@@ -235,12 +235,12 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T17:23:49Z",
-        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
+        "at": "2026-08-22T18:04:54Z",
+        "commit": "fbb07f469c7ae21708201f8ee99179c64290c7db",
         "dirty": false,
         "fingerprint": "sha256:62204157bb0272a40482a1426db9e467a26f54d0ff7c691ca8578c962dd9986c",
         "output_digests": [
-          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
+          "sha256:3d7fe7362b8939e7386ee3d7fafd2f5f2f785a3e549c552b66af53cc5c4c42e0"
         ],
         "procedure": [
           [
@@ -261,12 +261,12 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T17:23:49Z",
-        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
+        "at": "2026-08-22T18:04:54Z",
+        "commit": "fbb07f469c7ae21708201f8ee99179c64290c7db",
         "dirty": false,
-        "fingerprint": "sha256:91a42744d5a3e8556a2ddc2bc0748706d3e11e50df2b05f5a1c641ba6f2185aa",
+        "fingerprint": "sha256:6b10bc248a81e8b4efe1350621c0e23ad213acc6452bf9faa0b2b810802db008",
         "output_digests": [
-          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
+          "sha256:3d7fe7362b8939e7386ee3d7fafd2f5f2f785a3e549c552b66af53cc5c4c42e0"
         ],
         "procedure": [
           [
@@ -286,12 +286,12 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T17:23:49Z",
-        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
+        "at": "2026-08-22T18:04:54Z",
+        "commit": "fbb07f469c7ae21708201f8ee99179c64290c7db",
         "dirty": false,
         "fingerprint": "sha256:da879c99d64551b24d39c2c56ee812fcfe974e0d4a90adc6810ef44e43ed17be",
         "output_digests": [
-          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
+          "sha256:3d7fe7362b8939e7386ee3d7fafd2f5f2f785a3e549c552b66af53cc5c4c42e0"
         ],
         "procedure": [
           [
@@ -312,12 +312,12 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T17:23:49Z",
-        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
+        "at": "2026-08-22T18:04:54Z",
+        "commit": "fbb07f469c7ae21708201f8ee99179c64290c7db",
         "dirty": false,
         "fingerprint": "sha256:ccb22e0aa4e06cbf2ef270b6e0b946edeb51de3782dfd6de5655e3f612222930",
         "output_digests": [
-          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
+          "sha256:3d7fe7362b8939e7386ee3d7fafd2f5f2f785a3e549c552b66af53cc5c4c42e0"
         ],
         "procedure": [
           [
@@ -339,12 +339,12 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T17:23:49Z",
-        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
+        "at": "2026-08-22T18:04:54Z",
+        "commit": "fbb07f469c7ae21708201f8ee99179c64290c7db",
         "dirty": false,
-        "fingerprint": "sha256:ba67ffff0e4d5f924f56740fe3dd3a4ab39aeb4fbe005ee0b1c12c4be076abd2",
+        "fingerprint": "sha256:fb8c9da3b38d47150dc0e750ecc43b2c611a235286b6be9ce71fdf3ae7821427",
         "output_digests": [
-          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
+          "sha256:3d7fe7362b8939e7386ee3d7fafd2f5f2f785a3e549c552b66af53cc5c4c42e0"
         ],
         "procedure": [
           [
@@ -367,12 +367,12 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T17:23:49Z",
-        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
+        "at": "2026-08-22T18:04:54Z",
+        "commit": "fbb07f469c7ae21708201f8ee99179c64290c7db",
         "dirty": false,
-        "fingerprint": "sha256:b25e8bdb3c49a0f50c20884b2d5abd8273de5b903b6510e36267c3dca98fee4b",
+        "fingerprint": "sha256:db3e22c51c10934c4bddbf260659f4a59a7cc3347b0bcaf24dcb37b91909b1f2",
         "output_digests": [
-          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
+          "sha256:3d7fe7362b8939e7386ee3d7fafd2f5f2f785a3e549c552b66af53cc5c4c42e0"
         ],
         "procedure": [
           [
@@ -394,12 +394,12 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T17:23:49Z",
-        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
+        "at": "2026-08-22T18:04:54Z",
+        "commit": "fbb07f469c7ae21708201f8ee99179c64290c7db",
         "dirty": false,
-        "fingerprint": "sha256:39b786ab19b02540acbd84144494ab5299a7fe75d0c3f6a3147f5ab2f164c267",
+        "fingerprint": "sha256:a2a9d654c6b98164e7fcba50f68ca354ecb8b3476435a218e5b6f01a343ac3e8",
         "output_digests": [
-          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
+          "sha256:3d7fe7362b8939e7386ee3d7fafd2f5f2f785a3e549c552b66af53cc5c4c42e0"
         ],
         "procedure": [
           [
@@ -422,12 +422,12 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T17:23:49Z",
-        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
+        "at": "2026-08-22T18:04:54Z",
+        "commit": "fbb07f469c7ae21708201f8ee99179c64290c7db",
         "dirty": false,
         "fingerprint": "sha256:e3149b716119df98184d3617b0bf29848f7d0a1caa1a6d90db96acc0b813cdc4",
         "output_digests": [
-          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
+          "sha256:3d7fe7362b8939e7386ee3d7fafd2f5f2f785a3e549c552b66af53cc5c4c42e0"
         ],
         "procedure": [
           [
@@ -480,7 +480,9 @@
         "result": "PASS"
       },
       "id": "MVP-ACC-018",
-      "status": "PASS",
+      "stale_at": "2026-08-22T17:59:52Z",
+      "stale_reason": "watched project inputs changed",
+      "status": "STALE",
       "title": "Professional public GitHub repository contains all required tracked source",
       "watched_paths": [
         "**"
@@ -519,7 +521,9 @@
         "result": "PASS"
       },
       "id": "MVP-ACC-019",
-      "status": "PASS",
+      "stale_at": "2026-08-22T17:59:52Z",
+      "stale_reason": "watched project inputs changed",
+      "status": "STALE",
       "title": "Local accepted commit equals remote default branch",
       "watched_paths": [
         "**"
@@ -561,7 +565,9 @@
         "result": "PASS"
       },
       "id": "MVP-ACC-020",
-      "status": "PASS",
+      "stale_at": "2026-08-22T17:59:52Z",
+      "stale_reason": "watched project inputs changed",
+      "status": "STALE",
       "title": "Required CI and security checks pass at exact accepted commit",
       "watched_paths": [
         ".github/workflows/**",
@@ -699,7 +705,9 @@
         "result": "PASS"
       },
       "id": "MVP-ACC-023",
-      "status": "PASS",
+      "stale_at": "2026-08-22T17:59:52Z",
+      "stale_reason": "watched project inputs changed",
+      "status": "STALE",
       "title": "Remote Wiki contains and renders every required page",
       "watched_paths": [
         "wiki/**",
@@ -840,7 +848,9 @@
         "result": "PASS"
       },
       "id": "MVP-ACC-025",
-      "status": "PASS",
+      "stale_at": "2026-08-22T17:59:52Z",
+      "stale_reason": "watched project inputs changed",
+      "status": "STALE",
       "title": "Tagged MVP release binds notes checksums manifest SBOM limitations and accepted commit",
       "watched_paths": [
         "CHANGELOG.md",
@@ -851,12 +861,12 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T17:23:49Z",
-        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
+        "at": "2026-08-22T18:04:54Z",
+        "commit": "fbb07f469c7ae21708201f8ee99179c64290c7db",
         "dirty": false,
         "fingerprint": "sha256:5d35bccc196c9f49514a671ae4af5cd555b0b8a6348f086f2c9d696ba15e4dcd",
         "output_digests": [
-          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
+          "sha256:3d7fe7362b8939e7386ee3d7fafd2f5f2f785a3e549c552b66af53cc5c4c42e0"
         ],
         "procedure": [
           [
@@ -922,7 +932,9 @@
         "result": "PASS"
       },
       "id": "MVP-ACC-027",
-      "status": "PASS",
+      "stale_at": "2026-08-22T17:59:52Z",
+      "stale_reason": "watched project inputs changed",
+      "status": "STALE",
       "title": "Independent clean clone reproduces setup tests benchmark and local demo",
       "watched_paths": [
         "**"
