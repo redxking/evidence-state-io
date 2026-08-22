@@ -45,6 +45,7 @@ evidence status.
 | Authorization-context identifier | `esio-authorization-context-identifier/1.0-candidate.1` |
 | Validation error | `esio-validation-error/1.0-candidate.1` |
 | Insufficiency remedy | `esio-insufficiency-remedy/1.0-candidate.2` |
+| Multi-source composition | `esio-multi-source-composition/1.0-candidate.1` (semantics only; not reachable from an envelope) |
 | EmptyBench corpus | `esio-emptybench-corpus/1.0-candidate.1` |
 | EmptyBench oracle | `esio-emptybench-oracle/1.0-candidate.1` |
 | EmptyBench report | `esio-emptybench-report/1.0-candidate.1` |

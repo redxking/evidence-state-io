@@ -6,6 +6,28 @@ All notable project changes should be recorded here. Dates use ISO 8601.
 
 ### Added
 
+- `esio-multi-source-composition/1.0-candidate.1` and
+  `evidence_state_io.composition`. Several required sources compose into one
+  deterministic assessment under `CORROBORATION`, where every source claims to
+  observe the same declared population.
+- Corroborated coverage composes by **maximum, never by sum**. If one source
+  covers 60% of a population and another covers 60% of the same population,
+  the union is covered somewhere between 60% and 100%, and which one depends
+  on an overlap nobody measured. Each source's bound guarantees only that
+  source, so the union is guaranteed at least the best single source and
+  nothing observed licenses more. Extra sources buy robustness, not coverage.
+- Finality binds on the slowest required source and each source must reach
+  **its own** horizon, so a laggard cannot be carried by the group. Freshness
+  binds on the stalest observation, validity on the earliest boundary, and the
+  weakest index is what gets reported.
+- Disagreement composes to `CONTRADICTORY` and rejects. There is no majority
+  rule: voting would convert a contradiction into a permit whenever the
+  fabricating side brought more sources.
+- Composition is order-independent, capped at four required sources, and
+  deliberately not yet reachable from an envelope. ADR-0015 is accepted for
+  `CORROBORATION` only; `PARTITION` and `OPTIONAL` sources are deferred with
+  reasons recorded.
+
 - `esio-insufficiency-remedy/1.0-candidate.1` and `evidence-state explain`.
   A rejection previously returned ordered reason codes and a deterministic
   insufficiency statement, both correct and neither actionable. A remedy states,

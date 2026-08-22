@@ -38,10 +38,17 @@
     binds finality to the slowest required source and freshness to the stalest,
     rejects disagreement instead of counting votes, and lets an optional source
     veto but never authorize.
-  - The ADR authorizes no implementation. It closes with three questions the
-    owner has to answer first: whether `PARTITION` ships before
-    `CORROBORATION`, whether optional sources exist in the first candidate, and
-    whether the required-source count is capped.
+  - Accepted for `CORROBORATION` only on 2026-08-22. `PARTITION` is deferred
+    because no governed profile can express a disjoint accessible
+    subpopulation yet, and admitting the mode before it can be checked would
+    mean accepting an undeclared partition. `OPTIONAL` sources are deferred
+    because every rejection they could cause is already reachable by declaring
+    the source `REQUIRED`. Required sources are capped at four.
+  - **Semantics are implemented and mutation-tested**
+    (`esio-multi-source-composition/1.0-candidate.1`). Still open: wiring them
+    to an envelope, which is a breaking change to three contracts at once —
+    `schema_version` is pinned to `1.0`, `CoverageEvidence` is a single
+    envelope-level record, and `ProfileTrustSelection` pins one profile.
 - [ ] **Evaluate an MCP interoperability profile** — Begin only after the contract survives a real read-only adapter and the frozen benchmark.
 
 ## Done

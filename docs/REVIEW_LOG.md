@@ -996,3 +996,50 @@ P0 does not have. It does not establish that any remedy's conditions can be
 met, that meeting them would produce a permit, or that the underlying fact is
 true. And at `WITH_GOVERNED_VALUES` the disclosure risk is not removed, only
 made an explicit and recorded choice.
+
+### Mutation testing the composition rules (2026-08-22)
+
+The composition rules in ADR-0015 are each a choice between a conservative
+branch and a plausible-looking one, and the plausible-looking branch is the
+error the project exists to prevent. Passing tests are weak evidence for rules
+like that: a test suite can agree with an implementation and still agree with
+its naive alternative. So the implementation was mutated into each naive form
+in turn, on disk, with the suite re-run against it and the file restored
+afterwards.
+
+| Mutation | Failures | First test to catch it |
+|---|---|---|
+| coverage by sum instead of max | 6 | `test_adding_a_source_never_increases_composed_coverage_above_the_best` |
+| coverage by mean instead of max | 4 | `test_adding_a_source_never_increases_composed_coverage_above_the_best` |
+| one shared earliest horizon for all sources | 1 | `test_each_source_must_reach_its_own_horizon_not_the_earliest` |
+| one shared latest horizon for all sources | 1 | `test_each_source_must_reach_its_own_horizon_not_the_earliest` |
+| binding horizon taken as earliest | 2 | `test_adding_a_source_never_moves_the_binding_horizon_earlier` |
+| freshest observation instead of stalest | 2 | `test_adding_a_source_never_moves_the_binding_horizon_earlier` |
+| latest validity instead of earliest | 2 | `test_adding_a_source_never_moves_the_binding_horizon_earlier` |
+| strongest index reported instead of weakest | 1 | `test_the_weakest_index_is_reported_not_the_strongest` |
+| required-source cap removed | 1 | `test_more_sources_than_the_cap_are_refused` |
+| input order respected instead of canonicalised | 1 | `test_the_assessment_is_a_property_of_the_set_not_the_order` |
+| majority vote instead of contradiction | 3 | `test_presence_against_absence_is_contradictory_not_a_vote` |
+
+Eleven mutants, eleven caught, no survivors. The baseline and the restored file
+both ran clean, and the restored file's SHA-256 matched the original byte for
+byte.
+
+Two of these are worth naming. The shared-horizon mutants are caught by a
+fixture in which one source's index is past the earliest horizon in the set but
+short of its own: a composition using a single shared horizon, in either
+direction, would permit a claim while a lagging source could still receive a
+late arrival for the queried interval. And the sum and mean mutants are caught
+by the property that adding weaker corroborating sources never moves the
+composed floor, which is the property that stops coverage being bought by
+adding sources rather than by observing more.
+
+### What this establishes and does not establish
+
+This establishes that the composition rules are pinned by the tests rather
+than merely consistent with them, and that each naive alternative is detected.
+It does not establish that the rules are the right ones — mutation testing
+measures whether a suite defends a decision, not whether the decision is
+correct. It establishes nothing about envelopes: the composition is not yet
+reachable from one, so no multi-source request can be evaluated, and no claim
+about multi-source behaviour of the gate follows from it.

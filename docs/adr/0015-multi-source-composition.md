@@ -1,6 +1,7 @@
 # ADR-0015: Multi-Source Composition
 
-**Status:** Proposed; not accepted, not implemented, and not authorization to implement
+**Status:** Accepted for local candidate implementation, `CORROBORATION` only;
+not a schema freeze, not wired into the envelope, and not a release decision
 **Date:** 2026-08-22
 **Deciders:** Project owner (pending); architecture maintainer
 
@@ -193,12 +194,42 @@ prove ingestion completeness for any constituent, and does not make a composed
 `ABSENT_WITHIN_SCOPE` mean anything beyond the union of the declared,
 governed, accessible populations over the declared interval.
 
-## Open questions for the owner
+## Owner decisions, 2026-08-22
 
-1. Is `PARTITION` worth building first, or should `CORROBORATION` ship alone?
-   Corroboration is simpler and safer but delivers less: it cannot answer a
-   question no single source covers.
-2. Should `OPTIONAL` sources exist in the first multi-source candidate at all,
-   given that their only power is to reject?
-3. Should the first candidate cap the number of required sources, so that the
-   composition surface stays reviewable?
+The three questions this ADR closed with were answered as follows.
+
+**`CORROBORATION` ships alone.** `PARTITION` is the only mode in which coverage
+accumulates, and it requires each source to declare a disjoint accessible
+subpopulation whose union equals the queried population. Nothing in the
+governed profile expresses that today, so admitting the mode before it can be
+checked would mean accepting an undeclared partition — which is exactly an
+uncovered region, and exactly what a supportable negative may not contain.
+The cost is real and is accepted: corroboration cannot answer a question that
+no single source covers, which is much of why one wants multi-source at all.
+
+**`OPTIONAL` sources are deferred.** Their only power is to reject, and every
+rejection they could cause is already reachable by declaring the source
+`REQUIRED`. A role that can never contribute to a permit is a real and useful
+concept, but it adds contract surface to the first candidate for no
+permit-side benefit. `SourceRole.OPTIONAL` continues to reject as it does
+today. The veto-never-authorize rule in section 3 remains the design for when
+the role arrives.
+
+**Required sources are capped at four.** This is a fail-closed bound chosen so
+a composed assessment stays reviewable by hand, in keeping with the other
+explicit bounds in the contract. It is not a performance limit.
+
+## Delivery
+
+Semantics land before schema. `src/evidence_state_io/composition.py`
+implements the rules above as pure functions over per-source contributions,
+under `esio-multi-source-composition/1.0-candidate.1`, and is not yet reachable
+from an envelope. The schema wiring is deliberately separate work: the
+envelope's `schema_version` is pinned to `1.0`, `CoverageEvidence` is a single
+envelope-level record, and `ProfileTrustSelection` pins one profile, so
+admitting a multi-source envelope is a breaking change to three contracts at
+once.
+
+Ordering it this way means the schema change lands on rules already pinned by
+property tests and mutation testing, rather than the semantics being settled
+under the pressure of a half-finished migration.
