@@ -76,10 +76,26 @@ jobs:
           import json
           from pathlib import Path
 
+          # MVP-ACC-025 is the row this release establishes: it binds the tag,
+          # notes, checksums, evidence manifest, SBOM, limitations, and accepted
+          # commit that only exist once the release has been published.
+          # Requiring it to be PASS before publishing would make any release
+          # impossible, so it is checked for absence of an adverse status here
+          # and recorded as PASS from the published release afterwards.
+          SELF = "MVP-ACC-025"
           ledger = json.loads(Path("project/acceptance.json").read_text(encoding="utf-8"))
-          unresolved = [row["id"] for row in ledger["criteria"] if row["status"] != "PASS"]
+          rows = {row["id"]: row["status"] for row in ledger["criteria"]}
+          if SELF not in rows:
+              raise SystemExit(f"acceptance ledger does not declare {SELF}")
+          unresolved = sorted(
+              identifier
+              for identifier, status in rows.items()
+              if identifier != SELF and status != "PASS"
+          )
           if unresolved:
               raise SystemExit("release acceptance rows are not PASS: " + ", ".join(unresolved))
+          if rows[SELF] not in {"PASS", "UNVERIFIED"}:
+              raise SystemExit(f"{SELF} is {rows[SELF]}; resolve it before releasing")
           PY
 
       - name: Build distributions

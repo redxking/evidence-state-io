@@ -157,6 +157,13 @@ binding remain open.
   every acceptance row is `PASS`. `AGENTS.md` and `HANDOFF.md` record that
   boundary.
 
+- The release workflow no longer requires `MVP-ACC-025` to be `PASS` before
+  publishing. That row is what a release establishes — tag, notes, checksums,
+  evidence manifest, SBOM, limitations, and accepted commit — so requiring it
+  in advance made every release impossible. It now refuses to publish if that
+  row is `FAIL`, `BLOCKED`, or `STALE`, and is recorded as `PASS` from the
+  published release. Every other row must still be `PASS` at the tagged commit.
+
 ### Boundaries
 
 - Initial results are local and synthetic unless explicitly recorded otherwise.

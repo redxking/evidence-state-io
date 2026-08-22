@@ -763,3 +763,27 @@ This closes the rule for both task modes. It does not change what any row
 means, and it does not make an externally recorded row into machine-verified
 evidence: those rows still depend on observations a human or agent made against
 GitHub and recorded deliberately.
+
+### Release-gate self-reference (2026-08-22)
+
+Preparing the authorized `v0.6.0` tag exposed a fifth mechanism that could not
+reach its declared outcome. The `Run release checks` step in
+`.github/workflows/release.yml` refused to publish while any row in
+`project/acceptance.json` was not `PASS`, including `MVP-ACC-025` itself.
+
+`MVP-ACC-025` is the row the release establishes: it binds the tag, generated
+notes, checksums, evidence manifest, SPDX SBOM, limitations, and accepted
+commit, none of which exist until the release has been published. Requiring it
+to be `PASS` beforehand made every release impossible, and satisfying it by
+marking the row `PASS` in advance would have been a fabricated claim about
+artifacts that did not exist.
+
+The check now excludes `MVP-ACC-025` from the all-rows requirement and instead
+refuses to publish if that row carries an adverse status — `FAIL`, `BLOCKED`,
+or `STALE`. `PASS` and `UNVERIFIED` both proceed. The row is recorded as `PASS`
+only from the published release, against the observed tag, assets, and digests.
+
+Every other row is still required to be `PASS` at the tagged commit, and the
+workflow still verifies that the tag is stable SemVer, that it matches the
+package version, and that the tagged commit is an ancestor of the default
+branch.
