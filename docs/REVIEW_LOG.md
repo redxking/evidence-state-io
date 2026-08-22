@@ -857,3 +857,39 @@ with this reproduction recorded before any fix was written. This remediation
 establishes that the installed distribution now behaves identically wherever it
 is run. It does not establish source truth, independent custody, or that any
 other gate is stronger than it was.
+
+### A green workflow is not an empty alert surface (2026-08-22)
+
+`MVP-ACC-020` was recorded as `PASS` on the basis that every required check run
+at the accepted commit reported conclusion `success`. That was true and
+verifiable, and it was not the whole question. Querying
+`repos/redxking/evidence-state-io/code-scanning/alerts` afterwards returned one
+open alert at high severity.
+
+The alert is CodeQL `js/bad-tag-filter` at `tests/test_dashboard.js`: the
+pattern used to pull the dashboard's inline scripts out of the document was
+case-sensitive, so a `<SCRIPT>` or `</SCRIPT>` region would not have matched.
+The pattern is not a sanitiser and never filtered untrusted input; it feeds the
+safe-render regression that executes those scripts under a hostile fixture. The
+consequence is narrower than the severity label but is exactly the failure this
+project is about: a script region could have dropped out of the regression's
+coverage while the regression continued to report success. Demonstrated on a
+three-tag sample, the old pattern extracted one region of three.
+
+### Remediation
+
+- Extraction is case-insensitive, and the closing tag tolerates trailing
+  whitespace.
+- A new assertion requires the number of extracted blocks to equal the number
+  of opening `<script` tags found case-insensitively, so a region that is not
+  covered fails the test instead of disappearing from it.
+- The `MVP-ACC-020` evidence now separates two distinct observations: the
+  conclusion of each required check run, and the count of open code-scanning
+  and Dependabot alerts. Its recorded procedure queries both. The earlier
+  record overstated what had been checked, and this is a correction rather than
+  an addition.
+
+This establishes that the regression covers every script region in the
+document, and that the alert surface is now part of what the row asserts. It
+does not establish that CodeQL has found every defect, nor that an empty alert
+surface means the code is safe.

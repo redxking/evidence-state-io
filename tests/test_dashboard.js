@@ -157,8 +157,17 @@ function testHostileTextUsesTextOnlySinks() {
     assert.ok(taskRegion.includes(requiredSafeSink), `missing safe text sink: ${requiredSafeSink}`);
   }
 
-  const inlineScripts = [...dashboard.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)]
-    .map((match) => match[1]).filter((script) => script.trim());
+  // Tag matching is case-insensitive.  HTML tag names are not case sensitive,
+  // so a case-sensitive pattern would silently skip a `<SCRIPT>` region and the
+  // safe-render regression below would stop covering it while still passing.
+  const scriptBlocks = [...dashboard.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script\s*>/gi)];
+  const openingTags = dashboard.match(/<script\b/gi) ?? [];
+  assert.strictEqual(
+    scriptBlocks.length,
+    openingTags.length,
+    `extracted ${scriptBlocks.length} script blocks but the document opens ${openingTags.length}; a script region is not being covered`
+  );
+  const inlineScripts = scriptBlocks.map((match) => match[1]).filter((script) => script.trim());
   assert.ok(inlineScripts.length > 0, 'dashboard inline script must be found');
   for (const script of inlineScripts) new Function(script);
 

@@ -2,6 +2,23 @@
 
 All notable project changes should be recorded here. Dates use ISO 8601.
 
+## Unreleased
+
+### Fixed
+
+- **CodeQL `js/bad-tag-filter`, high severity.** The dashboard safe-render
+  regression extracted the document's inline scripts with a case-sensitive
+  pattern, so a `<SCRIPT>` region would have been silently skipped while the
+  test still passed. On a three-tag sample the old pattern covered one region
+  of three. Extraction is now case-insensitive, and an assertion requires the
+  extracted block count to equal the number of opening `<script` tags, so
+  under-extraction fails loudly. The pattern is not a sanitiser and never
+  filtered untrusted input; the defect was in what the regression covered.
+- Recorded that a workflow concluding `success` is not the same as zero
+  security findings. `MVP-ACC-020` now separates workflow conclusions from the
+  open code-scanning and Dependabot alert surface, and its procedure queries
+  both.
+
 ## 0.6.1 - 2026-08-22
 
 ### Fixed
