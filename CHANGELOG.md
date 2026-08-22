@@ -131,6 +131,11 @@ binding remain open.
   `./scripts/setup.sh` before invoking `./scripts/check.sh`, which requires it
   in order to compare the source tree with the installed package. The
   comparison itself is unchanged.
+- Reconciliation now reopens a verified task whose evidence it has just
+  invalidated. A `STALE` acceptance row previously sat behind a task still
+  marked `verified`, so the bounded controller would never re-establish that
+  evidence and would advance to a dependent task instead. The reconciled event
+  records `reopened_tasks`.
 - The hero section now clips its decorative radial pseudo-element. `.hero::after`
   is 520px wide at `right: -120px`, which made the page body scroll
   horizontally on a narrow viewport: at 375px the document scroll width was

@@ -686,3 +686,23 @@ This establishes deployed-artifact behaviour in one browser engine at two
 viewports. It does not establish cross-browser behaviour, an accessibility
 audit, assistive-technology testing, or that any displayed conclusion is true
 of any real system.
+
+### Continuation-controller staleness review (2026-08-22)
+
+Editing a watched input after a successful verification exposed a third gap in
+the same mechanism. `reconcile` marked the affected acceptance rows `STALE` but
+left the task that produced them at `status: "verified"`. Because `next_task`
+skips verified tasks, the controller would never re-run the gate that had
+produced the invalidated evidence, and would instead select a dependent task
+whose own dependency was no longer supported.
+
+`reconcile` now reopens any verified task holding a newly stale pass criterion,
+clears its `verified_at` and `verified_commit`, and reports the affected task
+identifiers as `reopened_tasks` on the `reconciled` event. A regression drives
+verify, mutate a watched input, reconcile, and asserts the row is `STALE`, the
+task is `pending` without its verification stamps, and the task is selected
+again.
+
+This establishes that invalidated evidence is re-queued rather than silently
+retained. It does not establish that any re-run will pass, nor does it change
+what a passing gate means.

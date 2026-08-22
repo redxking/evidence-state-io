@@ -256,6 +256,20 @@ class ProjectController:
                 criterion["stale_at"] = now
                 stale.append(criterion["id"])
 
+        # A verified task whose evidence has just been invalidated is no longer
+        # verified.  Reopen it so the next bounded run re-establishes the
+        # evidence instead of leaving a STALE row behind a "verified" task.
+        stale_identifiers = set(stale)
+        reopened: list[str] = []
+        for record in self.tasks["tasks"]:
+            if record.get("status") != "verified":
+                continue
+            if stale_identifiers.intersection(record.get("pass_criteria", [])):
+                record["status"] = "pending"
+                record.pop("verified_at", None)
+                record.pop("verified_commit", None)
+                reopened.append(record["id"])
+
         remote_commit: str | None = None
         if inspect_remote:
             remote = self.state["repository"].setdefault("remote", {})
@@ -295,6 +309,7 @@ class ProjectController:
             "dirty": dirty,
             "remote_commit": remote_commit,
             "stale_criteria": stale,
+            "reopened_tasks": reopened,
         }
         if persist:
             self.save()

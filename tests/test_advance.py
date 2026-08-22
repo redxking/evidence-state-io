@@ -238,6 +238,41 @@ class AdvanceTests(unittest.TestCase):
         events = (self.repo / "project" / "progress.jsonl").read_text(encoding="utf-8")
         self.assertIn('"event":"reconciled"', events)
 
+    def test_stale_evidence_reopens_the_task_that_produced_it(self) -> None:
+        """A verified task whose evidence went STALE must not stay verified."""
+        self.tasks["tasks"][0].update(
+            {
+                "execution": {
+                    "mode": "verify",
+                    "commands": [["git", "diff-index", "--quiet", "HEAD", "--"]],
+                },
+                "pass_criteria": ["A-1"],
+            }
+        )
+        self._write_ledgers()
+        subprocess.run(["git", "add", "project"], cwd=self.repo, check=True)
+        subprocess.run(
+            ["git", "commit", "-m", "verification task"],
+            cwd=self.repo,
+            check=True,
+            capture_output=True,
+        )
+        controller = ProjectController(self.repo)
+        self.assertEqual(controller.run_task(controller.next_task())["status"], "verified")
+
+        (self.repo / "src" / "value.txt").write_text("changed\n", encoding="utf-8")
+        controller = ProjectController(self.repo)
+        event = controller.reconcile()
+
+        self.assertEqual(event["stale_criteria"], ["A-1"])
+        self.assertEqual(event["reopened_tasks"], ["T-1"])
+        self.assertEqual(controller.acceptance["criteria"][0]["status"], "STALE")
+        task = controller.tasks["tasks"][0]
+        self.assertEqual(task["status"], "pending")
+        self.assertNotIn("verified_at", task)
+        self.assertNotIn("verified_commit", task)
+        self.assertEqual(controller.next_task()["id"], "T-1")
+
 
 if __name__ == "__main__":
     unittest.main()
