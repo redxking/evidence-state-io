@@ -18,6 +18,19 @@ All notable project changes should be recorded here. Dates use ISO 8601.
   security findings. `MVP-ACC-020` now separates workflow conclusions from the
   open code-scanning and Dependabot alert surface, and its procedure queries
   both.
+- The end-tag half of the same pattern followed suit. An HTML end tag may
+  carry ignored trailing content, so `</script foo>` and `</SCRIPT\n>` both
+  close a block; the pattern now matches every form, verified against five
+  end-tag shapes.
+
+### Changed
+
+- `pytest` is pinned to `>=9,<10` rather than widened to `>=8,<10`. Every other
+  development dependency here occupies a single major band, and a range
+  spanning two majors would mean a fresh `pip install .[dev]` need not receive
+  the version the acceptance record describes. The gate now runs on pytest
+  9.1.1, which is what a fresh install resolves to. Dependabot pull request #1
+  was closed in favour of this.
 
 ## 0.6.1 - 2026-08-22
 

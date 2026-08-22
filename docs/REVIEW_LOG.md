@@ -893,3 +893,46 @@ This establishes that the regression covers every script region in the
 document, and that the alert surface is now part of what the row asserts. It
 does not establish that CodeQL has found every defect, nor that an empty alert
 surface means the code is safe.
+
+### The end-tag half of the same defect (2026-08-22)
+
+Making script extraction case-insensitive closed alert #1 and immediately
+opened alert #2, the same rule on the replacement pattern: *this regular
+expression does not match script end tags like `</script\t\n bar>`*.
+
+That is correct. An HTML end tag may carry content after the tag name, which
+the parser ignores, so `</script foo="bar">` closes a script block. The
+replacement matched only `</script\s*>`, so a block closed that way would have
+been skipped exactly as the uppercase case was. Fixing half of a tag-matching
+defect and declaring it closed would have repeated the original mistake in a
+smaller form.
+
+The end tag now uses the same shape as the opening tag,
+`<\/script(?:\s[^>]*)?>`, and the behaviour is checked against five forms:
+lowercase, uppercase, an end tag with attributes, an end tag with whitespace
+and a newline before the bracket, and an opening tag with attributes. All five
+extract exactly one block.
+
+The general warning behind the rule still stands: matching HTML with regular
+expressions is hard to do right. It is tolerable here only because the input is
+a project-controlled file, the extraction feeds a regression rather than a
+sanitiser, and an assertion now requires the extracted count to equal the
+number of opening tags, so a missed region fails loudly rather than quietly.
+
+### Dependency range discipline (2026-08-22)
+
+Dependabot proposed widening `pytest>=8,<9` to `pytest>=8,<10`. Its CI passed,
+and the change was still declined.
+
+Every development dependency in this project occupies a single major band:
+`build>=1.5,<2`, `coverage>=7.15,<8`, `mypy>=2.3,<3`, `ruff>=0.16,<0.17`. A
+range spanning two majors would mean that a fresh `pip install .[dev]` need not
+receive the version the acceptance record describes. With pytest `9.1.1`
+current, `<10` would have resolved to pytest 9 while the recorded evidence had
+been collected on pytest 8 — a quiet gap between what was tested and what a
+reader would install.
+
+`main` declares `pytest>=9,<10` instead, and the gate was re-run so the
+recorded evidence describes the version a fresh install actually receives.
+This establishes that the suite passes on pytest 9.1.1. It does not establish
+anything about pytest 10, which is why the upper bound stays.

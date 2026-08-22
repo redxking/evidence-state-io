@@ -157,10 +157,14 @@ function testHostileTextUsesTextOnlySinks() {
     assert.ok(taskRegion.includes(requiredSafeSink), `missing safe text sink: ${requiredSafeSink}`);
   }
 
-  // Tag matching is case-insensitive.  HTML tag names are not case sensitive,
-  // so a case-sensitive pattern would silently skip a `<SCRIPT>` region and the
-  // safe-render regression below would stop covering it while still passing.
-  const scriptBlocks = [...dashboard.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script\s*>/gi)];
+  // Tag matching follows the HTML rules rather than the convenient subset.
+  // Tag names are case-insensitive, and an end tag may carry ignored trailing
+  // content, so `</script foo>` and `</SCRIPT\n>` both close a block.  A
+  // pattern that misses either would silently drop a script region from the
+  // safe-render regression below while the regression kept reporting success.
+  const scriptBlocks = [
+    ...dashboard.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script(?:\s[^>]*)?>/gi)
+  ];
   const openingTags = dashboard.match(/<script\b/gi) ?? [];
   assert.strictEqual(
     scriptBlocks.length,
