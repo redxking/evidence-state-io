@@ -23,6 +23,11 @@ for script in "${REPO_ROOT}"/scripts/*.sh; do
   bash -n "${script}"
 done
 
+command -v node >/dev/null 2>&1 \
+  || fail "Node.js is required to validate the browser dashboard"
+node "${REPO_ROOT}/tests/test_dashboard.js" \
+  || fail "dashboard lossless/safe-render regression failed"
+
 TEMP_CACHE="$(mktemp -d "${TMPDIR:-/tmp}/evidence-state-io-pyc.XXXXXX")"
 cleanup() {
   case "${TEMP_CACHE}" in
@@ -104,10 +109,10 @@ if snapshot(source) != snapshot(installed):
     raise SystemExit("source and installed package file snapshots differ")
 PY
 
-SOURCE_DEMO="$("${VENV_PYTHON}" -m evidence_state_io demo)"
-INSTALLED_DEMO="$(env -u PYTHONPATH "${CLI}" demo)"
-[[ "${SOURCE_DEMO}" == "${INSTALLED_DEMO}" ]] \
-  || fail "installed package differs from the current source; rerun ./scripts/setup.sh"
+SOURCE_BENCHMARK="$("${VENV_PYTHON}" -m evidence_state_io demo --all)"
+INSTALLED_BENCHMARK="$(env -u PYTHONPATH "${CLI}" demo --all)"
+[[ "${SOURCE_BENCHMARK}" == "${INSTALLED_BENCHMARK}" ]] \
+  || fail "installed package or EmptyBench result differs from the current source; rerun ./scripts/setup.sh"
 env -u PYTHONPATH "${CLI}" --help >/dev/null
 
 if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then

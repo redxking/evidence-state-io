@@ -1361,6 +1361,126 @@ class GovernedProfileEvaluationTests(unittest.TestCase):
         )
         self.assertEqual(assessment.resolved_profile_references, ())
 
+    def test_overloaded_reference_equality_cannot_bypass_trust_selection(self) -> None:
+        class EqualityBypassReference(CoverageProfileReference):
+            def __eq__(self, other: object) -> bool:
+                return True
+
+            def __ne__(self, other: object) -> bool:
+                return False
+
+        strong = _profile()
+        weak = replace(
+            strong,
+            profile_version="0.9.0",
+            finality=replace(
+                strong.finality,
+                late_arrival_bound_seconds=0,
+                reopen_bound_seconds=0,
+            ),
+        )
+        records = tuple(
+            ProfileRegistryRecord(
+                profile=item,
+                profile_digest=None,
+                status=ProfileRegistryStatus.ACTIVE,
+                revoked_at=None,
+                revocation_effective_at=None,
+                revocation_reason_code=None,
+            )
+            for item in (strong, weak)
+        )
+        snapshot = ProfileRegistrySnapshot(
+            snapshot_schema=PROFILE_REGISTRY_SNAPSHOT_SCHEMA,
+            registry_id="local-assurance-registry",
+            snapshot_id="snapshot-two-active-profiles",
+            snapshot_version="2",
+            issuer_id="registry-publisher",
+            as_of=parse_datetime("2026-08-21T12:00:00Z", "as_of"),
+            next_update_at=parse_datetime("2026-08-21T13:00:00Z", "next"),
+            records=records,
+            snapshot_digest=None,
+        )
+        assert snapshot.snapshot_digest is not None
+        trust = ProfileTrustSelection(
+            trust_schema=PROFILE_TRUST_SELECTION_SCHEMA,
+            registry_id=snapshot.registry_id,
+            snapshot_id=snapshot.snapshot_id,
+            snapshot_version=snapshot.snapshot_version,
+            snapshot_digest=snapshot.snapshot_digest,
+            selected_profile_reference=CoverageProfileReference(
+                registry_id=snapshot.registry_id,
+                profile_id=strong.profile_id,
+                profile_version=strong.profile_version,
+                profile_digest=strong.profile_digest,
+            ),
+            trusted_snapshot_issuer_ids=(snapshot.issuer_id,),
+            trusted_profile_issuer_ids=(strong.issuer_id,),
+            trusted_approval_authority_ids=(strong.approval_authority_id,),
+            trust_selection_digest=None,
+        )
+        data = request_dict()
+        requirement_data = data["envelope"]["query"]["source_requirements"][0]
+        requirement_data["profile_ref"] = CoverageProfileReference(
+            registry_id=snapshot.registry_id,
+            profile_id=weak.profile_id,
+            profile_version=weak.profile_version,
+            profile_digest=weak.profile_digest,
+        ).to_dict()
+        requirement_data["finality_horizon"] = "2026-08-21T12:00:00Z"
+        refresh_query_fingerprints(data)
+        envelope = EvidenceEnvelope.from_dict(data["envelope"])
+        requirement = envelope.query.source_requirements[0]
+        assert requirement.profile_ref is not None
+        hostile_reference = EqualityBypassReference(
+            registry_id=requirement.profile_ref.registry_id,
+            profile_id=requirement.profile_ref.profile_id,
+            profile_version=requirement.profile_ref.profile_version,
+            profile_digest=requirement.profile_ref.profile_digest,
+        )
+        envelope = replace(
+            envelope,
+            query=replace(
+                envelope.query,
+                source_requirements=(
+                    replace(requirement, profile_ref=hostile_reference),
+                ),
+            ),
+        )
+
+        assessment = evaluate_profile_governance(
+            envelope,
+            _evaluated_at(),
+            TrustedProfileContext(snapshot=snapshot, trust_selection=trust),
+        )
+
+        self.assertEqual(
+            [item.code for item in assessment.issues],
+            [ProfileIssueCode.PROFILE_TRUST_SELECTION_MISMATCH],
+        )
+        self.assertEqual(assessment.resolved_profile_references, ())
+
+    def test_overloaded_primitive_string_cannot_enter_profile_reference(self) -> None:
+        class EqualityBypassString(str):
+            def strip(self, *args: object, **kwargs: object) -> "EqualityBypassString":
+                return self
+
+            def __eq__(self, other: object) -> bool:
+                return True
+
+            def __ne__(self, other: object) -> bool:
+                return False
+
+            __hash__ = str.__hash__
+
+        with self.assertRaisesRegex(ModelValidationError, "profile_ref.registry_id"):
+            CoverageProfileReference(
+                registry_id=EqualityBypassString("attacker-registry"),
+                profile_id="github-search-p0",
+                profile_version="1.0.0",
+                profile_digest="sha256:" + "0" * 64,
+            )
+
     def test_later_caller_selected_finality_horizon_is_rejected(self) -> None:
         profile = _profile()
         data = request_dict()

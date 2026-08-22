@@ -10,11 +10,13 @@ import sys
 import unittest
 
 from evidence_state_io.cli import MAX_INPUT_BYTES, main
+from evidence_state_io.emptybench import SEED_ORACLE_DIGEST
 from tests.helpers import refresh_query_fingerprints
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 EXAMPLES = PROJECT_ROOT / "examples"
+BENCHMARKS = PROJECT_ROOT / "benchmarks"
 
 
 class CliTests(unittest.TestCase):
@@ -27,6 +29,15 @@ class CliTests(unittest.TestCase):
                 )
             if "--trust" not in argv:
                 argv.extend(["--trust", str(EXAMPLES / "profile_trust.json")])
+        if argv and argv[0] == "emptybench":
+            if "--oracle" not in argv:
+                argv.extend(
+                    ["--oracle", str(BENCHMARKS / "emptybench-p0-oracle.json")]
+                )
+            if "--expected-oracle-digest" not in argv:
+                argv.extend(
+                    ["--expected-oracle-digest", SEED_ORACLE_DIGEST]
+                )
         if argv and argv[0] == "evaluate":
             if "--issued-at" not in argv:
                 argv.extend(["--issued-at", "2026-08-21T12:06:00Z"])
@@ -48,7 +59,7 @@ class CliTests(unittest.TestCase):
     def test_demo_all_runs_seed_suite(self) -> None:
         code, stdout, _ = self.invoke(["demo", "--all"])
         self.assertEqual(code, 0)
-        self.assertEqual(json.loads(stdout)["summary"]["total"], 14)
+        self.assertEqual(json.loads(stdout)["summary"]["total"], 24)
 
     def test_evaluate_full_request_allows_covered_case(self) -> None:
         code, stdout, stderr = self.invoke(
@@ -71,7 +82,7 @@ class CliTests(unittest.TestCase):
         self.assertEqual(payload, expected)
         self.assertEqual(
             payload["certificate_digest"],
-            "sha256:5f28ba99baf2c45828ffa04bff60c480aa9ccf131e97ad1bb4ed9347b85aff6f",
+            "sha256:5683e522aa22f08145658d49452a4c044d7cf562a6a3987da364b3322d4aab17",
         )
 
     def test_evaluate_full_request_denies_partial_case(self) -> None:
@@ -89,7 +100,7 @@ class CliTests(unittest.TestCase):
         )
         self.assertEqual(
             payload["certificate_digest"],
-            "sha256:3224a290e047bce524b307e00342f55e1ccfd3aeafe0a341caa187653dd3c059",
+            "sha256:9ad778636a8e013081d62d0a62e05e7cc0374a211444e5a951773607468f7462",
         )
 
     def test_verify_certificate_reports_replay_and_context_dimensions(self) -> None:
@@ -108,6 +119,8 @@ class CliTests(unittest.TestCase):
                 str(EXAMPLES / "profile_trust.json"),
                 "--relying-party-at",
                 "2026-08-21T12:30:00Z",
+                "--expected-digest",
+                "sha256:5683e522aa22f08145658d49452a4c044d7cf562a6a3987da364b3322d4aab17",
             ],
             certificate_json,
         )
@@ -189,7 +202,7 @@ class CliTests(unittest.TestCase):
         )
         self.assertEqual(code, 2)
         self.assertEqual(stdout, "")
-        self.assertIn("duplicate JSON object key: allowed", stderr)
+        self.assertEqual(json.loads(stderr)["error"]["code"], "JSON_DUPLICATE_KEY")
 
     def test_verify_certificate_requires_registry_and_trust_as_a_pair(self) -> None:
         code, stdout, stderr = self.invoke(
@@ -203,7 +216,7 @@ class CliTests(unittest.TestCase):
         )
         self.assertEqual(code, 2)
         self.assertEqual(stdout, "")
-        self.assertIn("must be supplied together", stderr)
+        self.assertEqual(json.loads(stderr)["error"]["code"], "CLI_ARGUMENT_INVALID")
 
     def test_relying_party_time_without_expected_context_is_unestablished(self) -> None:
         code, stdout, stderr = self.invoke(
@@ -262,7 +275,7 @@ class CliTests(unittest.TestCase):
         )
         self.assertEqual(code, 2)
         self.assertEqual(stdout, "")
-        self.assertIn("finality_horizon must not precede", stderr)
+        self.assertEqual(json.loads(stderr)["error"]["code"], "MODEL_INVALID")
 
     def test_bare_envelope_requires_explicit_evaluation_time(self) -> None:
         full = json.loads((EXAMPLES / "covered_request.json").read_text())
@@ -271,7 +284,9 @@ class CliTests(unittest.TestCase):
         )
         self.assertEqual(code, 2)
         self.assertEqual(stdout, "")
-        self.assertIn("never falls back to wall-clock time", stderr)
+        self.assertEqual(
+            json.loads(stderr)["error"]["code"], "CLI_ARGUMENT_INVALID"
+        )
 
     def test_bare_envelope_with_time_is_supported(self) -> None:
         full = json.loads((EXAMPLES / "covered_request.json").read_text())
@@ -307,7 +322,7 @@ class CliTests(unittest.TestCase):
         )
         self.assertEqual(code, 2)
         self.assertEqual(stdout, "")
-        self.assertIn("subject must be a non-empty string", stderr)
+        self.assertEqual(json.loads(stderr)["error"]["code"], "MODEL_INVALID")
 
     def test_full_request_rejects_cli_time_override(self) -> None:
         code, _, stderr = self.invoke(
@@ -320,7 +335,9 @@ class CliTests(unittest.TestCase):
             ]
         )
         self.assertEqual(code, 2)
-        self.assertIn("cannot be combined with CLI overrides", stderr)
+        self.assertEqual(
+            json.loads(stderr)["error"]["code"], "CLI_ARGUMENT_INVALID"
+        )
 
     def test_full_request_rejects_subject_override(self) -> None:
         code, _, stderr = self.invoke(
@@ -333,7 +350,9 @@ class CliTests(unittest.TestCase):
             ]
         )
         self.assertEqual(code, 2)
-        self.assertIn("--subject", stderr)
+        self.assertEqual(
+            json.loads(stderr)["error"]["code"], "CLI_ARGUMENT_INVALID"
+        )
 
     def test_full_request_rejects_mode_override(self) -> None:
         code, _, stderr = self.invoke(
@@ -346,35 +365,49 @@ class CliTests(unittest.TestCase):
             ]
         )
         self.assertEqual(code, 2)
-        self.assertIn("--mode", stderr)
+        self.assertEqual(
+            json.loads(stderr)["error"]["code"], "CLI_ARGUMENT_INVALID"
+        )
 
-    def test_emptybench_accepts_example_pair(self) -> None:
+    def test_emptybench_accepts_versioned_corpus_and_independent_oracle(self) -> None:
         code, stdout, stderr = self.invoke(
-            ["emptybench", "--input", str(EXAMPLES / "emptybench_pair.json")]
+            [
+                "emptybench",
+                "--input",
+                str(BENCHMARKS / "emptybench-p0-corpus.json"),
+            ]
         )
         self.assertEqual(code, 0)
         self.assertEqual(stderr, "")
-        self.assertEqual(json.loads(stdout)["summary"]["passed"], 2)
+        payload = json.loads(stdout)
+        self.assertEqual(payload["summary"]["passed"], 24)
+        self.assertEqual(payload["summary"]["unsafe_permits"], 0)
 
-    def test_emptybench_rejects_unsafe_case_metadata_without_partial_stdout(self) -> None:
-        raw = json.loads((EXAMPLES / "emptybench_pair.json").read_text())
-        mutations = (
-            ("case_id", "\udcff", "control characters"),
-            ("pair_id", "pair\u0000suffix", "control characters"),
-            ("description", "line one\nline two", "single line"),
-            ("variant", "v" * 129, "128-character limit"),
+    def test_emptybench_rejects_tampered_corpus_without_partial_stdout(self) -> None:
+        raw = json.loads(
+            (BENCHMARKS / "emptybench-p0-corpus.json").read_text()
         )
-        for field, value, message in mutations:
-            with self.subTest(field=field):
-                candidate = deepcopy(raw)
-                candidate["cases"][0][field] = value
-                code, stdout, stderr = self.invoke(
-                    ["emptybench", "--input", "-"], json.dumps(candidate)
-                )
-                self.assertEqual(code, 2)
-                self.assertEqual(stdout, "")
-                self.assertIn(message, stderr)
-                json.loads(stderr)
+        raw["cases"][0]["description"] = "tampered"
+        code, stdout, stderr = self.invoke(
+            ["emptybench", "--input", "-"], json.dumps(raw)
+        )
+        self.assertEqual(code, 2)
+        self.assertEqual(stdout, "")
+        self.assertEqual(json.loads(stderr)["error"]["code"], "MODEL_INVALID")
+
+    def test_emptybench_requires_external_oracle_digest(self) -> None:
+        code, stdout, stderr = self.invoke(
+            [
+                "emptybench",
+                "--input",
+                str(BENCHMARKS / "emptybench-p0-corpus.json"),
+                "--expected-oracle-digest",
+                "sha256:" + "0" * 64,
+            ]
+        )
+        self.assertEqual(code, 2)
+        self.assertEqual(stdout, "")
+        self.assertEqual(json.loads(stderr)["error"]["code"], "MODEL_INVALID")
 
     def test_coverage_command(self) -> None:
         full = json.loads((EXAMPLES / "covered_request.json").read_text())
@@ -400,7 +433,7 @@ class CliTests(unittest.TestCase):
         )
         self.assertEqual(code, 2)
         self.assertEqual(stdout, "")
-        self.assertIn("duplicate JSON object key: state", stderr)
+        self.assertEqual(json.loads(stderr)["error"]["code"], "JSON_DUPLICATE_KEY")
 
     def test_nonstandard_json_constants_are_rejected(self) -> None:
         code, stdout, stderr = self.invoke(
@@ -408,7 +441,7 @@ class CliTests(unittest.TestCase):
         )
         self.assertEqual(code, 2)
         self.assertEqual(stdout, "")
-        self.assertIn("non-standard JSON numeric constant", stderr)
+        self.assertEqual(json.loads(stderr)["error"]["code"], "JSON_NUMBER_INVALID")
 
     def test_excessive_json_integer_is_a_structured_error(self) -> None:
         source = '{"value":' + "9" * 5000 + "}"
@@ -417,7 +450,7 @@ class CliTests(unittest.TestCase):
         self.assertEqual(stdout, "")
         payload = json.loads(stderr)
         self.assertEqual(payload["error"]["type"], "ModelValidationError")
-        self.assertIn("numeric token exceeds", payload["error"]["message"])
+        self.assertEqual(payload["error"]["code"], "JSON_NUMBER_INVALID")
         self.assertNotIn("Traceback", stderr)
 
     def test_excessive_json_fraction_is_a_structured_error(self) -> None:
@@ -425,7 +458,7 @@ class CliTests(unittest.TestCase):
         code, stdout, stderr = self.invoke(["evaluate", "--input", "-"], source)
         self.assertEqual(code, 2)
         self.assertEqual(stdout, "")
-        self.assertIn("numeric token exceeds", stderr)
+        self.assertEqual(json.loads(stderr)["error"]["code"], "JSON_NUMBER_INVALID")
 
     def test_surrogateescaped_stdin_is_a_structured_error(self) -> None:
         code, stdout, stderr = self.invoke(
@@ -499,7 +532,7 @@ class CliTests(unittest.TestCase):
         code, stdout, stderr = self.invoke(["coverage", "--input", "-"], source)
         self.assertEqual(code, 2)
         self.assertEqual(stdout, "")
-        self.assertIn("at most 12 decimal places", stderr)
+        self.assertEqual(json.loads(stderr)["error"]["code"], "MODEL_INVALID")
 
     def test_lexical_fraction_above_one_is_rejected(self) -> None:
         full = json.loads((EXAMPLES / "covered_request.json").read_text())
@@ -513,7 +546,7 @@ class CliTests(unittest.TestCase):
         code, stdout, stderr = self.invoke(["coverage", "--input", "-"], source)
         self.assertEqual(code, 2)
         self.assertEqual(stdout, "")
-        self.assertIn("between 0 and 1", stderr)
+        self.assertEqual(json.loads(stderr)["error"]["code"], "MODEL_INVALID")
 
     def test_half_specified_page_counts_are_rejected_by_cli(self) -> None:
         full = json.loads((EXAMPLES / "covered_request.json").read_text())
@@ -523,7 +556,7 @@ class CliTests(unittest.TestCase):
         )
         self.assertEqual(code, 2)
         self.assertEqual(stdout, "")
-        self.assertIn("must both be present or both be null", stderr)
+        self.assertEqual(json.loads(stderr)["error"]["code"], "MODEL_INVALID")
 
     def test_submicrosecond_timestamp_is_rejected_by_cli(self) -> None:
         full = json.loads((EXAMPLES / "covered_request.json").read_text())
@@ -534,7 +567,7 @@ class CliTests(unittest.TestCase):
         )
         self.assertEqual(code, 2)
         self.assertEqual(stdout, "")
-        self.assertIn("at most 6 fractional-second digits", stderr)
+        self.assertEqual(json.loads(stderr)["error"]["code"], "MODEL_INVALID")
 
     def test_utc_normalization_overflow_is_a_structured_cli_error(self) -> None:
         full = json.loads((EXAMPLES / "covered_request.json").read_text())
@@ -546,7 +579,7 @@ class CliTests(unittest.TestCase):
         self.assertEqual(stdout, "")
         payload = json.loads(stderr)
         self.assertEqual(payload["error"]["type"], "ModelValidationError")
-        self.assertIn("representable in UTC", payload["error"]["message"])
+        self.assertEqual(payload["error"]["code"], "MODEL_INVALID")
         self.assertNotIn("Traceback", stderr)
 
     def test_deep_nesting_is_a_structured_error(self) -> None:
@@ -563,7 +596,7 @@ class CliTests(unittest.TestCase):
         code, stdout, stderr = self.invoke(["evaluate", "--input", "-"], oversized)
         self.assertEqual(code, 2)
         self.assertEqual(stdout, "")
-        self.assertIn("exceeds", stderr)
+        self.assertEqual(json.loads(stderr)["error"]["code"], "INPUT_SIZE_EXCEEDED")
         self.assertLess(len(stderr), 500)
 
     def test_module_entrypoint_runs_in_clean_subprocess(self) -> None:

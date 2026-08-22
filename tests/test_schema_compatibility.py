@@ -137,9 +137,10 @@ class SchemaCompatibilityTests(unittest.TestCase):
         self.assertEqual(stdout.getvalue(), "")
         payload = json.loads(stderr.getvalue())
         self.assertEqual(payload["error"]["type"], "ModelValidationError")
+        self.assertEqual(payload["error"]["code"], "MODEL_INVALID")
         self.assertEqual(
             payload["error"]["message"],
-            "envelope.schema_version must be the supported string value '1.0'",
+            "Input does not satisfy the active model contract",
         )
 
     def test_relabeling_schema_0_1_as_1_0_is_not_a_migration(self) -> None:

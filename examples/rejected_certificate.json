@@ -49,7 +49,7 @@
       },
       "decision": "REJECT_NEGATIVE",
       "digest_algorithm": "sha256",
-      "evaluator_version": "esio-evaluator-1.0-candidate.4",
+      "evaluator_version": "esio-evaluator-1.0-candidate.5",
       "input_digest": "sha256:01ba529295a492c68798fbcacf379f78101ae9b71688ad1365a8c90d9eb97e7a",
       "limitations": [
         "The decision is conditional on source-declared evidence and a separately supplied, locally governed profile registry snapshot.",
@@ -74,7 +74,7 @@
         ],
         "trust_selection_digest": "sha256:dcb0a00a947d4d699c114f1aea0b5b4f931f0c8b01952277164f81b656527d13"
       },
-      "qualified_claim": null,
+      "qualified_claim": "The evidence is insufficient to support the requested negative claim for subject \"repositories matching the query\" within the declared query scope. Material reasons: STATE_NOT_ABSENT_WITHIN_SCOPE, COVERAGE_POLICY_NOT_MET. This rejection does not establish that the positive opposite is true.",
       "reasons": [
         "STATE_NOT_ABSENT_WITHIN_SCOPE",
         "COVERAGE_POLICY_NOT_MET"
@@ -98,7 +98,7 @@
     "evaluated_at": "2026-08-21T12:05:00Z",
     "evaluation_input_digest": "sha256:01ba529295a492c68798fbcacf379f78101ae9b71688ad1365a8c90d9eb97e7a",
     "evaluation_input_schema": "esio-evaluation-input/1.0-candidate.2",
-    "evaluator_version": "esio-evaluator-1.0-candidate.4",
+    "evaluator_version": "esio-evaluator-1.0-candidate.5",
     "evidence_origin": "SYNTHETIC",
     "implementation": {
       "package_name": "evidence-state-io",
@@ -311,5 +311,5 @@
     },
     "wire_schema_version": "1.0"
   },
-  "certificate_digest": "sha256:3224a290e047bce524b307e00342f55e1ccfd3aeafe0a341caa187653dd3c059"
+  "certificate_digest": "sha256:9ad778636a8e013081d62d0a62e05e7cc0374a211444e5a951773607468f7462"
 }

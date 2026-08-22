@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://redxking.github.io/evidence-state-io/sitemap.xml

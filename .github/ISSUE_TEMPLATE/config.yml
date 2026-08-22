@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and design discussion
+    url: https://github.com/redxking/evidence-state-io/discussions
+    about: Use Discussions for open-ended questions, early ideas, and design exploration.
+  - name: Security reporting
+    url: https://github.com/redxking/evidence-state-io/blob/main/SECURITY.md
+    about: Follow the private reporting boundary; do not publish exploit details or sensitive data.
+  - name: Support boundary
+    url: https://github.com/redxking/evidence-state-io/blob/main/SUPPORT.md
+    about: Review supported uses, public channels, and the no-SLA pre-alpha boundary.
+  - name: Roadmap and project views
+    url: https://github.com/users/redxking/projects
+    about: Review public project views, milestones, and linked roadmap work.

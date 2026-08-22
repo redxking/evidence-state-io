@@ -1,9 +1,9 @@
 # Evidence-State I/O Claims and Evidence Boundaries
 
 **Status:** controlling claims policy
-**Version:** 0.1
-**Date:** 2026-08-21
-**Current claim level:** specified pre-alpha research prototype
+**Version:** 0.2
+**Date:** 2026-08-22
+**Current claim level:** implemented pre-alpha candidate; acceptance, benchmark, and schema freeze remain open
 
 ## Controlling statement
 
@@ -15,12 +15,14 @@ If another document conflicts with this file, use the more conservative claim un
 
 ## Current verified posture
 
-As of 2026-08-21:
+As of 2026-08-22:
 
 - The project problem, semantics, requirements, and validation plan are specified.
-- The intended implementation is a dependency-light Python library, JSON CLI, deterministic evaluator/gate, certificate, and paired EmptyBench corpus.
+- The package `0.6.0` working candidate implements the schema `1.0` candidate, policy candidate.4, evaluator candidate.5, exact application-selected profile governance under candidate.2 profile/registry/trust contracts, an unsigned candidate.2 deterministic replay certificate, and candidate.1 transition, authorization-identifier, and validation-error contracts. This statement is about the inspected implementation, not an accepted freeze or release.
 - Actual implementation and test status must be taken from `PROJECT_STATUS.md` and a named, hash-bound verification record; an intended handoff artifact is not evidence that it exists or passes.
-- No public license has been selected. The repository must not be described as open source, licensed for reuse, or approved for distribution; all rights remain with the project owner until an explicit licensing decision is recorded.
+- The relying application supplies the registry snapshot, trust selection, and exact selected profile reference outside the producer request and must keep them producer-unwritable. Their issuer, authority, source-owner, origin, revision, and time labels are declarative and unauthenticated in P0.
+- P0 certificates are self-contained and duplicate the complete request, registry/trust context, decision, and implementation metadata. They are not data-minimized and are restricted to synthetic/public-safe or owner-approved nonsensitive content.
+- The source repository is public under Apache License 2.0. Open-source availability does not establish a stable release, protocol freeze, production readiness, independent validation, or authorization for consequential use.
 - A bounded public scan found relevant adjacent protocol, conformance, caching, provenance, uncertainty, and governance work. Within the searched public sources, the team did not identify a mature, widely adopted implementation of this exact negative-claim evidence contract.
 - No design-partner, independently reproduced, operational, production, market-demand, certification, or legal-sufficiency evidence exists unless a later controlled evidence package explicitly records it.
 
@@ -111,6 +113,8 @@ Minimum evidence: E7 and the actual authorized decision. The engineering team ca
 | Local tests | “passed named local tests on commit H” | “validated,” “battle-tested,” “production ready” without qualification |
 | Synthetic benchmark | “measured on synthetic EmptyBench vX” | “external validation,” “customer-proven,” “operationally effective” |
 | Replay | “mapped captured response R correctly in replay” | “works across all live APIs,” “upstream completeness verified” |
+| P0 profile custody | “matched the exact application-selected local profile and trust context” | “profile issuer authenticated,” “registry truth verified,” “source owner approved” |
+| P0 certificate | “unsigned deterministic replay record whose named local checks passed” | “attestation,” “authorization token,” “authenticated custody,” “trusted timestamp,” “proof of source truth” |
 | Signatures | “certificate integrity and signer identity verified under trust policy P” | “evidence is true,” “tamper-proof,” “nonrepudiation” without a defined legal/technical basis |
 | Protocol relationship | “can be carried in structured tool output” | “MCP standard,” “MCP compliant extension,” or “endorsed” absent formal status |
 | Security | “resisted the named tests” | “secure,” “unbypassable,” “zero risk” |
@@ -151,14 +155,26 @@ Evidence-State I/O treats producer metadata as untrusted input unless a separate
 
 A signed false statement remains false. The gate must never elevate insufficient evidence because it is signed.
 
+### P0 profile-selection boundary
+
+The request producer may carry only an exact profile reference. The relying application separately fixes the materialized registry snapshot, trust selection, and one exact selected profile reference, and must prevent the producer from modifying or substituting them. The request reference must equal the application-selected reference and resolve exactly in the trusted snapshot; no `latest`, range, alias, fallback, automatic upgrade, or downgrade is supported.
+
+This is a local deterministic custody boundary. A matching digest detects mutation relative to separately held state, but it does not authenticate the registry publisher, profile issuer, approval authority, source owner, profile assertions, or source behavior. Trust or resolution failure prevents profile applicability and derived-finality content from contributing to the decision.
+
 ## Freshness, finality, and time boundary
 
 - Every evaluation uses an explicit evaluation time; ambient wall-clock dependence is not evidence.
 - Freshness is a policy condition, not a guarantee that the underlying data did not change.
-- Finality is a declared source assumption or service property and must be versioned. Candidate.2 binds the per-query declared horizon into the query fingerprint and request digest, then requires the reported source index to reach it.
-- That deterministic comparison does not validate the service's lateness model, authenticate the index watermark, or prove that corrections, retractions, or exceptional late arrivals cannot occur. Governed source-profile identity/version/digest remains a freeze requirement.
-- A certificate is a point-in-time result. It must not be replayed as current after its validity window.
+- Finality is a governed but unauthenticated profile assertion in the current candidate. The evaluator derives the exact horizon from the application-selected profile's late-arrival and reopen bounds, binds it into the request and composite evaluation digest, and requires the reported source index to reach it.
+- That deterministic comparison does not validate the service's lateness model, authenticate the index watermark, or prove that corrections, retractions, or exceptional late arrivals cannot occur.
+- An unsigned certificate is a point-in-time replay record. Historical reproducibility does not make it current; current local reliance requires a separately supplied expected context, a separately retained expected certificate digest, and relying-party time within the conservative validity boundary, and still does not authorize an action.
 - Clock synchronization, timestamp provenance, and cross-system causal ordering are dependencies outside P0 unless explicitly measured.
+
+## Certificate content and disclosure boundary
+
+The candidate.2 P0 certificate is self-contained so the embedded evaluation can be reproduced without a registry lookup. It therefore includes the normalized request, complete registry snapshot and trust selection, context binding, full decision, qualification, limitations, origin, and implementation identity. Its digest covers those fields, but the artifact is not signed, authenticated, independently timestamped, or data-minimized.
+
+P0 use is limited to synthetic/public-safe or explicitly approved nonsensitive content. A future P1 operational profile must separately define authenticated registry/source evidence and a redaction, reference, minimization, or selective-disclosure design. Removing or replacing embedded fields without a new versioned contract would break the current replay semantics.
 
 ## Protocol boundary
 
@@ -236,7 +252,7 @@ Never use “complete,” “done,” “validated,” or “ready” without na
 |---|---|---|---|
 | C-001 | Empty result alone is insufficient for a universal absence claim | Supported as the project’s logical/design premise and by documented pagination/access/freshness limitations | “An empty result does not by itself establish absence beyond its execution scope.” |
 | C-002 | Existing public protocol primitives do not fully specify the proposed negative-claim evidence contract | Provisional bounded-source observation | “The reviewed specifications expose useful primitives, but the exact proposed contract was not observed in the bounded scan.” |
-| C-003 | The P0 gate satisfies all invariants | Not established until named tests pass | “The gate is designed to satisfy…” |
+| C-003 | The P0 gate satisfies all invariants | Not established; named local tests support only the enumerated candidate behaviors recorded for a hash-bound revision | “The candidate passed the named tests for [enumerated behavior] on commit H”; do not generalize to all invariants |
 | C-004 | The system reduces unsupported negatives by at least 80% | Prospective acceptance threshold only | “The project will continue only if a frozen benchmark demonstrates…” |
 | C-005 | The system preserves at least 90% of valid scoped negatives | Prospective acceptance threshold only | Same prospective formulation |
 | C-006 | Real adapters can populate the contract honestly | Untested hypothesis | “Adapter feasibility will be tested.” |
@@ -254,11 +270,12 @@ Update this ledger only when a traceable evidence package exists. Preserve rejec
 - [ ] Are counts, denominators, baselines, failures, and uncertainty included for metrics?
 - [ ] Does “complete” refer only to a declared population and policy?
 - [ ] Does the wording avoid absolute absence, universal safety, novelty, and market-exclusivity claims?
-- [ ] Does it avoid converting a gate permit into truth or action authorization?
+- [ ] Does it avoid converting a gate permit, profile match, digest match, replay result, or current-local-reliance result into truth, authenticated custody, or action authorization?
+- [ ] If a certificate is shared, has every embedded request, registry/trust, decision, limitation, and implementation field been approved for that destination?
 - [ ] Does it avoid calling synthetic/replay/lab results external validation?
 - [ ] Has the whitespace scan been refreshed for a novelty or competition statement?
 - [ ] Has the project owner approved publication, external contact, licensing, and use of any non-public evidence?
 
 ## Approval boundary
 
-Only the project owner may authorize public release, licensing, external outreach, partner commitments, deployment, use of non-public data, or claims beyond the current verified posture. Researchers and agents may propose stronger claims but may not publish or adopt them until the required evidence and approval are recorded.
+Only the project owner may authorize public release, licensing, external outreach, partner commitments, deployment, use of non-public data, or claims beyond the current verified posture. P0 use remains synthetic/public-safe or owner-approved nonsensitive. Researchers and agents may propose stronger claims but may not publish or adopt them until the required evidence and approval are recorded.

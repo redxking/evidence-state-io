@@ -45,7 +45,7 @@
       },
       "decision": "PERMIT_SCOPED_NEGATIVE",
       "digest_algorithm": "sha256",
-      "evaluator_version": "esio-evaluator-1.0-candidate.4",
+      "evaluator_version": "esio-evaluator-1.0-candidate.5",
       "input_digest": "sha256:09546af5525333081591bdce7e0c1cee5c9d18bc2eb446d3e73d57abb67ca986",
       "limitations": [
         "The decision is conditional on source-declared evidence and a separately supplied, locally governed profile registry snapshot.",
@@ -91,7 +91,7 @@
     "evaluated_at": "2026-08-21T12:05:00Z",
     "evaluation_input_digest": "sha256:09546af5525333081591bdce7e0c1cee5c9d18bc2eb446d3e73d57abb67ca986",
     "evaluation_input_schema": "esio-evaluation-input/1.0-candidate.2",
-    "evaluator_version": "esio-evaluator-1.0-candidate.4",
+    "evaluator_version": "esio-evaluator-1.0-candidate.5",
     "evidence_origin": "SYNTHETIC",
     "implementation": {
       "package_name": "evidence-state-io",
@@ -304,5 +304,5 @@
     },
     "wire_schema_version": "1.0"
   },
-  "certificate_digest": "sha256:5f28ba99baf2c45828ffa04bff60c480aa9ccf131e97ad1bb4ed9347b85aff6f"
+  "certificate_digest": "sha256:5683e522aa22f08145658d49452a4c044d7cf562a6a3987da364b3322d4aab17"
 }

@@ -10,7 +10,7 @@ The first product question is whether a deterministic evidence-state gate can re
 
 ## Decision
 
-Implement P0 as one Python 3.11+ package and process with internal module boundaries for contracts, coverage resolution, evaluation, gating, certification, benchmarks, adapters, and CLI. The core library and `evidence-state` JSON CLI run without containers or network services.
+Implement P0 as one Python package supporting exactly Python 3.11, 3.12, and 3.13, with internal module boundaries for contracts, coverage resolution, evaluation, gating, certification, benchmarks, adapters, and CLI. The core library and `evidence-state` JSON CLI run without containers or network services.
 
 Optional adapters use ports defined by the application layer. Compose is reserved for an opt-in disposable fault lab.
 

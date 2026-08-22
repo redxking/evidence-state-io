@@ -1262,6 +1262,7 @@
 
   <div class="status-bar" id="status"></div>
 
+  <script src="./dashboard_model.js"></script>
   <script>
     // ===== SHARED STATE =====
     let activeMainTab = 'tasks'; // 'tasks' or 'memory'
@@ -1319,6 +1320,7 @@
 
     let taskFileHandle = null;
     let taskFileName = '';
+    let taskDocument = null;
     let sections = [];
     let tasks = {};
     let hasChanges = false;
@@ -1330,90 +1332,23 @@
     const listViewBtn = document.getElementById('listViewBtn');
     const boardViewBtn = document.getElementById('boardViewBtn');
 
-    function taskSectionId(name) {
-      return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const TaskDashboardModel = window.EvidenceStateTaskDashboardModel;
+
+    function installTaskDocument(document) {
+      taskDocument = document;
+      sections = document.sections;
+      tasks = {};
+      sections.forEach(section => { tasks[section.id] = section.tasks; });
+      return { sections, tasks };
     }
 
     function parseTaskMarkdown(content) {
-      const resultSections = [];
-      const resultTasks = {};
-      let currentSection = null;
-      let currentSectionId = null;
-
-      const lines = content.split('\n');
-      let currentTask = null;
-
-      for (const line of lines) {
-        const headerMatch = line.match(/^## \*{0,2}(.+?)\*{0,2}$/);
-        if (headerMatch) {
-          if (currentTask && currentSectionId) {
-            resultTasks[currentSectionId].push(currentTask);
-            currentTask = null;
-          }
-
-          const sectionName = headerMatch[1].trim();
-          currentSectionId = taskSectionId(sectionName);
-          currentSection = sectionName;
-
-          if (!resultTasks[currentSectionId]) {
-            resultSections.push({ id: currentSectionId, name: sectionName });
-            resultTasks[currentSectionId] = [];
-          }
-        } else if (currentSectionId && line.match(/^- \[[ xX]\]/)) {
-          if (currentTask) {
-            resultTasks[currentSectionId].push(currentTask);
-          }
-          const checked = line.match(/\[[xX]\]/) !== null;
-          let text = line.replace(/^- \[[ xX]\]\s*/, '');
-          let title = text;
-          let note = '';
-
-          const boldMatch = text.match(/^\*\*(.+?)\*\*(.*)$/);
-          if (boldMatch) {
-            title = boldMatch[1];
-            note = boldMatch[2].replace(/^\s*-\s*/, '').trim();
-          }
-
-          currentTask = {
-            id: Date.now() + Math.random(),
-            title,
-            note,
-            checked,
-            subtasks: [],
-            section: currentSectionId
-          };
-        } else if (currentTask && line.match(/^\s+- \[[ xX]\]/)) {
-          const checked = line.match(/\[[xX]\]/) !== null;
-          const text = line.replace(/^\s+- \[[ xX]\]\s*/, '');
-          currentTask.subtasks.push({ text, checked });
-        }
-      }
-
-      if (currentTask && currentSectionId) {
-        resultTasks[currentSectionId].push(currentTask);
-      }
-
-      return { sections: resultSections, tasks: resultTasks };
+      return installTaskDocument(TaskDashboardModel.parse(content));
     }
 
     function toMarkdown() {
-      let md = '# Tasks\n';
-
-      sections.forEach((section, idx) => {
-        md += `\n## ${section.name}\n`;
-        const sectionTasks = tasks[section.id] || [];
-        sectionTasks.forEach(t => {
-          const checkbox = t.checked ? '[x]' : '[ ]';
-          const note = t.note ? ` - ${t.note}` : '';
-          md += `- ${checkbox} **${t.title}**${note}\n`;
-          t.subtasks.forEach(st => {
-            const stCheckbox = st.checked ? '[x]' : '[ ]';
-            md += `  - ${stCheckbox} ${st.text}\n`;
-          });
-        });
-      });
-
-      return md.trimEnd() + '\n';
+      if (!taskDocument) return '';
+      return TaskDashboardModel.serialize(taskDocument);
     }
 
     function createCard(task) {
@@ -1422,37 +1357,58 @@
       card.draggable = true;
       card.dataset.id = task.id;
 
-      let html = `
-        <div style="display: flex; align-items: flex-start; gap: 12px;">
-          <button class="delete-btn" data-action="delete" title="Delete task">&times;</button>
-          <span class="checkbox ${task.checked ? 'checked' : ''}" data-action="toggle"></span>
-          <div class="card-title" data-action="edit-title">${task.title}</div>
-        </div>
-      `;
+      const titleRow = document.createElement('div');
+      titleRow.style.cssText = 'display: flex; align-items: flex-start; gap: 12px;';
+      const deleteButton = document.createElement('button');
+      deleteButton.className = 'delete-btn';
+      deleteButton.dataset.action = 'delete';
+      deleteButton.title = 'Delete task';
+      TaskDashboardModel.setElementText(deleteButton, '\u00d7');
+      const checkbox = document.createElement('span');
+      checkbox.className = `checkbox ${task.checked ? 'checked' : ''}`;
+      checkbox.dataset.action = 'toggle';
+      const title = document.createElement('div');
+      title.className = 'card-title';
+      title.dataset.action = 'edit-title';
+      TaskDashboardModel.setElementText(title, task.title);
+      titleRow.append(deleteButton, checkbox, title);
+      card.appendChild(titleRow);
 
-      if (task.note) {
-        html += `<div class="card-note" data-action="edit-note" style="cursor: pointer; margin-left: 30px;">${task.note}</div>`;
-      } else {
-        html += `<div class="card-note add-on-hover" data-action="edit-note" style="cursor: pointer; margin-left: 30px; font-style: italic;">+ Add note</div>`;
-      }
+      const note = document.createElement('div');
+      note.className = task.note ? 'card-note' : 'card-note add-on-hover';
+      note.dataset.action = 'edit-note';
+      note.style.cssText = 'cursor: pointer; margin-left: 30px;';
+      if (!task.note) note.style.fontStyle = 'italic';
+      TaskDashboardModel.setElementText(note, task.note || '+ Add note');
+      card.appendChild(note);
 
-      if (task.subtasks.length > 0) {
-        html += '<div class="card-subtasks" style="margin-left: 30px;">';
-        task.subtasks.forEach((st, idx) => {
-          html += `<div class="subtask">
-            <span class="checkbox ${st.checked ? 'checked' : ''}" data-action="toggle-sub" data-idx="${idx}" style="width: 16px; height: 16px; min-width: 16px; min-height: 16px;"></span>
-            <span data-action="edit-subtask" data-idx="${idx}" style="cursor: pointer;">${st.text}</span>
-          </div>`;
-        });
-        html += `<div class="subtask add-on-hover" data-action="add-subtask" style="color: var(--text-muted); cursor: pointer; font-style: italic; padding-left: 24px;">+ Add subtask</div>`;
-        html += '</div>';
-      } else {
-        html += `<div class="card-subtasks add-on-hover" style="margin-left: 30px;">
-          <div class="subtask" data-action="add-subtask" style="color: var(--text-muted); cursor: pointer; font-style: italic;">+ Add subtask</div>
-        </div>`;
-      }
-
-      card.innerHTML = html;
+      const subtasks = document.createElement('div');
+      subtasks.className = task.subtasks.length > 0 ? 'card-subtasks' : 'card-subtasks add-on-hover';
+      subtasks.style.marginLeft = '30px';
+      task.subtasks.forEach((subtask, index) => {
+        const row = document.createElement('div');
+        row.className = 'subtask';
+        const subtaskCheckbox = document.createElement('span');
+        subtaskCheckbox.className = `checkbox ${subtask.checked ? 'checked' : ''}`;
+        subtaskCheckbox.dataset.action = 'toggle-sub';
+        subtaskCheckbox.dataset.idx = String(index);
+        subtaskCheckbox.style.cssText = 'width: 16px; height: 16px; min-width: 16px; min-height: 16px;';
+        const subtaskText = document.createElement('span');
+        subtaskText.dataset.action = 'edit-subtask';
+        subtaskText.dataset.idx = String(index);
+        subtaskText.style.cursor = 'pointer';
+        TaskDashboardModel.setElementText(subtaskText, subtask.text);
+        row.append(subtaskCheckbox, subtaskText);
+        subtasks.appendChild(row);
+      });
+      const addSubtask = document.createElement('div');
+      addSubtask.className = task.subtasks.length > 0 ? 'subtask add-on-hover' : 'subtask';
+      addSubtask.dataset.action = 'add-subtask';
+      addSubtask.style.cssText = 'color: var(--text-muted); cursor: pointer; font-style: italic;';
+      if (task.subtasks.length > 0) addSubtask.style.paddingLeft = '24px';
+      TaskDashboardModel.setElementText(addSubtask, '+ Add subtask');
+      subtasks.appendChild(addSubtask);
+      card.appendChild(subtasks);
 
       card.addEventListener('dragstart', (e) => {
         card.classList.add('dragging');
@@ -1466,12 +1422,12 @@
       card.addEventListener('click', (e) => {
         const action = e.target.dataset.action;
         if (action === 'toggle') {
-          task.checked = !task.checked;
+          TaskDashboardModel.setTaskChecked(task, !task.checked);
           markChanged();
           renderTasks();
         } else if (action === 'toggle-sub') {
           const idx = parseInt(e.target.dataset.idx);
-          task.subtasks[idx].checked = !task.subtasks[idx].checked;
+          TaskDashboardModel.setSubtaskChecked(task, idx, !task.subtasks[idx].checked);
           markChanged();
           renderTasks();
         } else if (action === 'edit-title') {
@@ -1507,7 +1463,7 @@
         saved = true;
         const newTitle = input.value.trim();
         if (newTitle && newTitle !== task.title) {
-          task.title = newTitle;
+          TaskDashboardModel.setTaskTitle(task, newTitle);
           markChanged();
         }
         renderTasks();
@@ -1534,8 +1490,7 @@
       const saveEdit = () => {
         if (saved) return;
         saved = true;
-        task.note = input.value.trim();
-        markChanged();
+        if (TaskDashboardModel.setTaskNote(task, input.value)) markChanged();
         renderTasks();
       };
 
@@ -1561,8 +1516,8 @@
         if (saved) return;
         saved = true;
         const newText = input.value.trim();
-        if (newText) { task.subtasks[idx].text = newText; }
-        else { task.subtasks.splice(idx, 1); }
+        if (newText) { TaskDashboardModel.setSubtaskText(task, idx, newText); }
+        else { TaskDashboardModel.removeSubtask(task, idx); }
         markChanged();
         renderTasks();
       };
@@ -1588,7 +1543,7 @@
         if (saved) return;
         saved = true;
         const text = input.value.trim();
-        if (text) { task.subtasks.push({ text, checked: false }); markChanged(); }
+        if (text) { TaskDashboardModel.addSubtask(taskDocument, task, text); markChanged(); }
         renderTasks();
       };
 
@@ -1618,15 +1573,7 @@
         saved = true;
         const newName = input.value.trim();
         if (newName && newName !== section.name) {
-          const oldId = section.id;
-          section.name = newName;
-          const newId = taskSectionId(newName);
-          if (newId !== oldId) {
-            tasks[newId] = tasks[oldId] || [];
-            delete tasks[oldId];
-            tasks[newId].forEach(t => t.section = newId);
-            section.id = newId;
-          }
+          TaskDashboardModel.setSectionName(section, newName);
           markChanged();
         }
         renderTasks();
@@ -1642,22 +1589,33 @@
     function createColumn(id, title, items) {
       const col = document.createElement('div');
       col.className = 'column';
-      col.innerHTML = `
-        <div class="column-header">
-          <span class="column-title" data-section-id="${id}" style="cursor: pointer;">${title}</span>
-          <span class="count">${items.length}</span>
-        </div>
-        <div class="cards" data-column="${id}"></div>
-        <div class="add-card">
-          <button data-add="${id}">+ Add task</button>
-        </div>
-      `;
+      const header = document.createElement('div');
+      header.className = 'column-header';
+      const columnTitle = document.createElement('span');
+      columnTitle.className = 'column-title';
+      columnTitle.dataset.sectionId = id;
+      columnTitle.style.cursor = 'pointer';
+      TaskDashboardModel.setElementText(columnTitle, title);
+      const count = document.createElement('span');
+      count.className = 'count';
+      TaskDashboardModel.setElementText(count, items.length);
+      header.append(columnTitle, count);
 
-      col.querySelector('.column-title').addEventListener('click', (e) => {
+      const cardsContainer = document.createElement('div');
+      cardsContainer.className = 'cards';
+      cardsContainer.dataset.column = id;
+      const addCard = document.createElement('div');
+      addCard.className = 'add-card';
+      const addButton = document.createElement('button');
+      addButton.dataset.add = id;
+      TaskDashboardModel.setElementText(addButton, '+ Add task');
+      addCard.appendChild(addButton);
+      col.append(header, cardsContainer, addCard);
+
+      columnTitle.addEventListener('click', (e) => {
         if (!col.dragging) { startEditingColumnTitle(e.target, id); }
       });
 
-      const header = col.querySelector('.column-header');
       header.draggable = true;
 
       header.addEventListener('dragstart', (e) => {
@@ -1700,7 +1658,6 @@
         }
       });
 
-      const cardsContainer = col.querySelector('.cards');
       items.forEach(task => { cardsContainer.appendChild(createCard(task)); });
 
       const getDropPosition = (e) => {
@@ -1746,13 +1703,14 @@
         e.preventDefault();
         cardsContainer.classList.remove('drag-over');
         col.querySelectorAll('.drop-indicator').forEach(el => el.remove());
-        const taskId = parseFloat(e.dataTransfer.getData('text/plain'));
+        const taskId = e.dataTransfer.getData('text/plain');
+        if (!taskId) return;
         const { dropIndex } = getDropPosition(e);
         moveTask(taskId, id, dropIndex);
       });
 
-      col.querySelector(`[data-add="${id}"]`).addEventListener('click', () => {
-        addNewTask(id, col.querySelector('.cards'));
+      addButton.addEventListener('click', () => {
+        addNewTask(id, cardsContainer);
       });
 
       return col;
@@ -1774,15 +1732,9 @@
           e.preventDefault();
           const title = input.value.trim();
           if (title) {
-            if (!tasks[sectionId]) tasks[sectionId] = [];
-            tasks[sectionId].push({
-              id: Date.now() + Math.random(),
-              title,
-              note: '',
-              checked: false,
-              subtasks: [],
-              section: sectionId
-            });
+            const section = sections.find(item => item.id === sectionId);
+            const task = section && TaskDashboardModel.createTask(taskDocument, section, title);
+            if (task) section.tasks.push(task);
             markChanged();
             renderTasks();
           } else { input.remove(); }
@@ -1908,7 +1860,10 @@
       const addSectionBtn = document.createElement('div');
       addSectionBtn.className = 'column';
       addSectionBtn.style.cssText = 'background: transparent; border: 2px dashed var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; min-height: 120px;';
-      addSectionBtn.innerHTML = '<span style="color: var(--text-muted); font-size: 14px; font-weight: 500;">+ Add Section</span>';
+      const addSectionLabel = document.createElement('span');
+      addSectionLabel.style.cssText = 'color: var(--text-muted); font-size: 14px; font-weight: 500;';
+      TaskDashboardModel.setElementText(addSectionLabel, '+ Add Section');
+      addSectionBtn.appendChild(addSectionLabel);
       addSectionBtn.addEventListener('click', () => startAddingSection(addSectionBtn));
       board.appendChild(addSectionBtn);
     }
@@ -1916,7 +1871,7 @@
     function renderList() {
       listView.innerHTML = '';
 
-      if (!quickAddSection && sections.length > 0) {
+      if (!sections.some(section => section.id === quickAddSection) && sections.length > 0) {
         quickAddSection = sections[0].id;
       }
 
@@ -1926,28 +1881,27 @@
       quickAdd.style.cssText = 'border-bottom: 2px solid var(--border); margin-bottom: 24px; padding-bottom: 16px;';
 
       const sectionName = sections.find(s => s.id === quickAddSection)?.name || 'Select section';
-      quickAdd.innerHTML = `
-        <span class="checkbox" style="opacity: 0.3;"></span>
-        <input type="text" class="quick-add-input" placeholder="Add a task..." id="quickAddInput">
-        <span class="quick-add-section" id="quickAddSectionBtn">${sectionName}</span>
-      `;
+      const quickCheckbox = document.createElement('span');
+      quickCheckbox.className = 'checkbox';
+      quickCheckbox.style.opacity = '0.3';
+      const quickInput = document.createElement('input');
+      quickInput.type = 'text';
+      quickInput.className = 'quick-add-input';
+      quickInput.placeholder = 'Add a task...';
+      quickInput.id = 'quickAddInput';
+      const sectionBtn = document.createElement('span');
+      sectionBtn.className = 'quick-add-section';
+      sectionBtn.id = 'quickAddSectionBtn';
+      TaskDashboardModel.setElementText(sectionBtn, sectionName);
+      quickAdd.append(quickCheckbox, quickInput, sectionBtn);
       listView.appendChild(quickAdd);
-
-      const quickInput = document.getElementById('quickAddInput');
-      const sectionBtn = document.getElementById('quickAddSectionBtn');
 
       quickInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && quickInput.value.trim()) {
           const title = quickInput.value.trim();
-          if (!tasks[quickAddSection]) tasks[quickAddSection] = [];
-          tasks[quickAddSection].unshift({
-            id: Date.now() + Math.random(),
-            title,
-            note: '',
-            checked: false,
-            subtasks: [],
-            section: quickAddSection
-          });
+          const section = sections.find(item => item.id === quickAddSection);
+          const task = section && TaskDashboardModel.createTask(taskDocument, section, title);
+          if (task) section.tasks.unshift(task);
           quickInput.value = '';
           markChanged();
           renderTasks();
@@ -1966,12 +1920,16 @@
 
         const header = document.createElement('div');
         header.className = 'list-section-header';
-        header.innerHTML = `
-          <span class="section-title" data-section-id="${section.id}">${section.name}</span>
-          <span class="count">${sectionTasks.length}</span>
-        `;
+        const sectionTitle = document.createElement('span');
+        sectionTitle.className = 'section-title';
+        sectionTitle.dataset.sectionId = section.id;
+        TaskDashboardModel.setElementText(sectionTitle, section.name);
+        const sectionCount = document.createElement('span');
+        sectionCount.className = 'count';
+        TaskDashboardModel.setElementText(sectionCount, sectionTasks.length);
+        header.append(sectionTitle, sectionCount);
 
-        header.querySelector('.section-title').addEventListener('click', (e) => {
+        sectionTitle.addEventListener('click', (e) => {
           startEditingListSectionTitle(e.target, section);
         });
 
@@ -2029,7 +1987,7 @@
           e.preventDefault();
           sectionEl.classList.remove('drag-over');
           tasksContainer.querySelectorAll('.list-drop-indicator').forEach(el => el.remove());
-          const taskId = parseFloat(e.dataTransfer.getData('text/plain'));
+          const taskId = e.dataTransfer.getData('text/plain');
           if (!taskId) return;
           const { dropIndex } = getDropPosition(e, tasksContainer);
           moveTask(taskId, section.id, dropIndex);
@@ -2062,15 +2020,7 @@
         saved = true;
         const newName = input.value.trim();
         if (newName && newName !== section.name) {
-          const oldId = section.id;
-          section.name = newName;
-          const newId = taskSectionId(newName);
-          if (newId !== oldId) {
-            tasks[newId] = tasks[oldId] || [];
-            delete tasks[oldId];
-            tasks[newId].forEach(t => t.section = newId);
-            section.id = newId;
-          }
+          TaskDashboardModel.setSectionName(section, newName);
           markChanged();
         }
         renderTasks();
@@ -2101,10 +2051,9 @@
         saved = true;
         const name = input.value.trim();
         if (name) {
-          const id = taskSectionId(name);
-          if (!tasks[id]) {
-            sections.push({ id, name });
-            tasks[id] = [];
+          const section = TaskDashboardModel.createSection(taskDocument, name);
+          if (section) {
+            tasks[section.id] = section.tasks;
             markChanged();
           }
         }
@@ -2140,7 +2089,7 @@
       checkbox.className = `checkbox ${task.checked ? 'checked' : ''}`;
       checkbox.addEventListener('click', (e) => {
         e.stopPropagation();
-        task.checked = !task.checked;
+        TaskDashboardModel.setTaskChecked(task, !task.checked);
         markChanged();
         renderTasks();
       });
@@ -2189,7 +2138,7 @@
           stCheckbox.className = `checkbox ${st.checked ? 'checked' : ''}`;
           stCheckbox.addEventListener('click', (e) => {
             e.stopPropagation();
-            st.checked = !st.checked;
+            TaskDashboardModel.setSubtaskChecked(task, idx, !st.checked);
             markChanged();
             renderTasks();
           });
@@ -2224,8 +2173,11 @@
 
       const actions = document.createElement('div');
       actions.className = 'list-item-actions';
-      actions.innerHTML = '<button title="Delete task">&times;</button>';
-      actions.querySelector('button').addEventListener('click', (e) => {
+      const deleteButton = document.createElement('button');
+      deleteButton.title = 'Delete task';
+      TaskDashboardModel.setElementText(deleteButton, '\u00d7');
+      actions.appendChild(deleteButton);
+      deleteButton.addEventListener('click', (e) => {
         e.stopPropagation();
         deleteTask(task);
       });
@@ -2251,8 +2203,7 @@
       const saveEdit = () => {
         if (saved) return;
         saved = true;
-        task.note = input.value.trim();
-        markChanged();
+        if (TaskDashboardModel.setTaskNote(task, input.value)) markChanged();
         renderTasks();
       };
 
@@ -2278,8 +2229,8 @@
         if (saved) return;
         saved = true;
         const newText = input.value.trim();
-        if (newText) { task.subtasks[idx].text = newText; }
-        else { task.subtasks.splice(idx, 1); }
+        if (newText) { TaskDashboardModel.setSubtaskText(task, idx, newText); }
+        else { TaskDashboardModel.removeSubtask(task, idx); }
         markChanged();
         renderTasks();
       };
@@ -2306,8 +2257,7 @@
         saved = true;
         const text = input.value.trim();
         if (text) {
-          if (!task.subtasks) task.subtasks = [];
-          task.subtasks.push({ text, checked: false });
+          TaskDashboardModel.addSubtask(taskDocument, task, text);
           markChanged();
         }
         renderTasks();
@@ -2336,7 +2286,7 @@
         saved = true;
         const newTitle = input.value.trim();
         if (newTitle && newTitle !== task.title) {
-          task.title = newTitle;
+          TaskDashboardModel.setTaskTitle(task, newTitle);
           markChanged();
         }
         renderTasks();
@@ -2416,10 +2366,9 @@
         saved = true;
         const name = input.value.trim();
         if (name) {
-          const id = taskSectionId(name);
-          if (!tasks[id]) {
-            sections.push({ id, name });
-            tasks[id] = [];
+          const section = TaskDashboardModel.createSection(taskDocument, name);
+          if (section) {
+            tasks[section.id] = section.tasks;
             markChanged();
           }
         }

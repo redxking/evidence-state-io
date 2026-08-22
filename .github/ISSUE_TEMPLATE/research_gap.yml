@@ -1,0 +1,96 @@
+name: Research-gap hypothesis
+description: Propose a falsifiable gap in the conversation, technology, evidence, or research.
+title: "[Research gap]: "
+labels:
+  - "type:research"
+  - "status:triage"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A gap is a hypothesis until a bounded search and experiment survive review.
+        Distinguish absence of evidence from evidence of absence, and do not claim
+        novelty merely because a search did not find prior work.
+
+  - type: textarea
+    id: gap
+    attributes:
+      label: Gap hypothesis
+      description: State precisely what appears missing, for whom, and in what operational context.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Primary gap layer
+      options:
+        - Conversation or problem framing
+        - Formal model or contract
+        - Implementation capability
+        - Evaluation or benchmark
+        - Security, governance, or assurance
+        - Adoption, integration, or operations
+        - Research evidence or replication
+    validations:
+      required: true
+
+  - type: textarea
+    id: search
+    attributes:
+      label: Search boundary and negative evidence
+      description: List sources, repositories, terms, dates, inclusion criteria, exclusions, and what the search could not observe.
+    validations:
+      required: true
+
+  - type: textarea
+    id: closest
+    attributes:
+      label: Closest known work
+      description: Link the strongest adjacent work and explain the remaining difference without diminishing it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: value
+    attributes:
+      label: User and mission value
+      description: Identify the decision, risk, cost, or capability that would change if the gap is real.
+    validations:
+      required: true
+
+  - type: textarea
+    id: experiment
+    attributes:
+      label: Smallest falsifying experiment
+      description: Define inputs, independent oracle or ground truth, controls, metrics, thresholds, and the result that kills the hypothesis.
+    validations:
+      required: true
+
+  - type: textarea
+    id: feasibility
+    attributes:
+      label: Laptop/VM feasibility and dependencies
+      description: Separate what can run locally from data access, external validation, infrastructure, or authority that is still required.
+    validations:
+      required: true
+
+  - type: textarea
+    id: risks
+    attributes:
+      label: Novelty, safety, and claims risks
+      description: Explain likely false-positive paths, dual-use concerns, and claims that the proposed work would not establish.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Submission checks
+      options:
+        - label: I represented the search as bounded evidence, not proof that nobody is working on this.
+          required: true
+        - label: The proposed experiment is falsifiable and has a stated kill condition.
+          required: true
+        - label: All linked or embedded material is public-safe and authorized for disclosure.
+          required: true

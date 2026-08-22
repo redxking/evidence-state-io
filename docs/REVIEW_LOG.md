@@ -339,3 +339,181 @@ retraction, reopening, or cross-page inconsistency cannot occur. Governed
 profiles, multi-source composition, the complete certificate, independent
 oracle custody, external validation, operational evaluation, and production
 readiness remain open.
+
+## 2026-08-21 to 2026-08-22 — Governed-profile and certificate review
+
+**Review disposition:** checkpoints `f7d8bca` and `e8c3bea` rejected; 0.6.0
+remediation accepted as a local implementation checkpoint
+
+**Evidence class:** local, synthetic, self-authored implementation; independent
+read-only adversarial and contract review within the project team
+
+**Implementation custody:**
+`be0774680aa83052eeecab29e1a0ab38824f2860`
+
+**Documentation custody:** `PENDING FINAL CUSTODY`
+
+**Permit certificate digest:**
+`sha256:5f28ba99baf2c45828ffa04bff60c480aa9ccf131e97ad1bb4ed9347b85aff6f`
+
+**Rejection certificate digest shown in abbreviated form:**
+`sha256:3224...c059`
+
+These reviews were acceptance gates, not release reviews. Neither rejected
+checkpoint was schema-frozen, externally validated, operationally evaluated,
+or production-approved.
+
+### Rejected checkpoint `f7d8bca` — governed coverage profiles
+
+Checkpoint `f7d8bca` introduced profile, registry, and trust contracts, but its
+green tests did not close the application-selection and staged-trust boundary.
+The review found that:
+
+1. A producer could reference another profile contained in an otherwise
+   accepted registry snapshot. Trusting a snapshot was therefore broader than
+   the application's intended selection of the exact policy profile for the
+   evaluation.
+2. Snapshot trust failures did not form a complete stage boundary before
+   record resolution. Untrusted snapshot/profile content could influence
+   applicability, freshness, or finality diagnostics before trust was fully
+   established.
+3. Profile, snapshot, trust, and adapter version fields required an immutable
+   exact-version rule. Floating aliases or ranges would make later replay
+   dependent on ambient resolution.
+4. Registry chronology needed to reject a profile issued after the snapshot's
+   own `as_of` time.
+
+These were contract and trust-order defects even where the resulting decision
+remained fail-closed. The checkpoint was rejected because the declared
+application-controlled profile semantics were not actually enforced.
+
+### Profile/trust remediation in 0.6.0
+
+- Trust selection now binds one
+  `selected_profile_reference`—registry ID, profile ID, immutable version, and
+  digest—and the producer request must carry that exact reference.
+- Snapshot identity, digest, issuer, effective time, and next-update boundary
+  are checked as the first trust stage. Any failure returns before contained
+  profile semantics are used.
+- Exact record/digest resolution precedes profile-semantic use. Profile issuer,
+  approval authority, effective/expiry interval, and inclusive revocation are
+  then checked before applicability, finality, retention, blind-interval, or
+  freshness rules are applied.
+- Floating/ranged versions reject, and a snapshot cannot contain a profile
+  issued after the snapshot `as_of` time.
+- Profile, registry-snapshot, and trust-selection contracts advanced to
+  `1.0-candidate.2`. Policy/evaluator advanced to `1.0-candidate.4`; evaluation
+  input advanced to `1.0-candidate.2`. Wire schema `1.0` remains unfrozen.
+
+Focused regressions cover an alternate weaker profile in the same snapshot,
+untrusted snapshot content attempting to drive finality diagnostics, untrusted
+profile content attempting to drive finality diagnostics, exact profile digest
+selection, snapshot/profile time boundaries, revocation, and contract
+downgrades.
+
+### Rejected checkpoint `e8c3bea` — unsigned replay certificates
+
+Checkpoint `e8c3bea` introduced the self-contained unsigned certificate and a
+green local suite. Adversarial verification then reproduced four defects that
+precluded acceptance:
+
+1. **Incomplete current-use expiry.** The certificate's effective boundary
+   included envelope/snapshot/profile validity but omitted policy and profile
+   observation/index freshness deadlines. A historically reproducible permit
+   could therefore remain marked eligible for current local reliance after its
+   supporting observation or index was stale.
+2. **Lossy numeric normalization.** A high-precision `Decimal` in a parsed
+   decision could collapse through binary64 conversion to the original numeric
+   value, allowing a semantically changed input to collide with canonical
+   replay or digest expectations.
+3. **Typed-artifact parser bypass.** A frozen certificate object still
+   contained a mutable nested decision mapping. Mutating an integer-valued leaf
+   to a boolean could exploit Python's loose `True == 1` equality when the typed
+   object bypassed strict mapping reparsing.
+4. **Incomplete decision-domain validation.** Finite coverage bounds outside
+   `[0, 1]` were structurally accepted by the certificate decision parser. Replay
+   later failed, but structural support was overstated.
+
+The certificate checkpoint was rejected even though outer-digest mutation,
+embedded-binding checks, and replay blocked several direct forgeries. A failed
+attack family does not compensate for a reproduced bypass in a separate
+verification dimension.
+
+### Certificate remediation in 0.6.0
+
+- `effective_valid_until_exclusive` is now the earliest applicable evidence
+  `valid_until`, registry snapshot `next_update_at`, resolved profile expiry or
+  effective revocation, and policy/profile observation/index age deadline.
+- Every verification entry point converts a typed certificate to its public
+  representation and reparses it through the same strict structural and
+  numeric boundary used for JSON-derived mappings.
+- Decimal inputs are accepted only when they round-trip exactly through the
+  supported binary64/canonical JSON model; lossy values reject.
+- Deterministic replay compares canonical JSON bytes, preserving JSON type
+  distinctions such as integer `1` versus floating-point `1.0`.
+- Decision coverage lower/upper bounds must be finite numbers within `[0, 1]`;
+  booleans and out-of-range values are structurally unsupported.
+- The certificate builder continues to own evaluation and exposes no
+  caller-created decision parameter. Permit and rejection decisions are both
+  self-contained replay records.
+- The certificate contract advanced to
+  `esio-evidence-certificate/1.0-candidate.2`. The exact active policy,
+  evaluator, evaluation-input, profile, registry, trust, schema,
+  canonicalization, and digest identifiers are embedded and reject downgrade
+  or fallback.
+
+The verifier continues to report structural support, outer integrity, embedded
+binding integrity, deterministic replay, historical reproducibility, expected
+context, expected digest, and current local reliance separately. It has no
+aggregate `valid` flag. Expected context and expected certificate digest are
+external custody inputs; absent values remain unestablished. Issuer
+authentication and action authorization remain false.
+
+The Python dataclasses are only shallowly frozen because nested mappings can be
+mutable. The canonical serialized certificate, followed by strict reparse, is
+the immutable verification record. This is a deliberate correction to any
+earlier documentation that described the in-memory object as deeply immutable.
+
+### Custody-bound local verification result
+
+Implementation checkpoint `be0774680aa83052eeecab29e1a0ab38824f2860` passed:
+
+- `325/325` source tests on Python 3.11.16, 3.12.14, and 3.13.15;
+- `325/325` installed-package tests on virtual-environment Python 3.13.0;
+- setup after network permission was granted; and
+- byte-identical source/installed permit, rejection, and `demo --all` 14-case
+  seed-suite outputs.
+
+The permit certificate digest was
+`sha256:5f28ba99baf2c45828ffa04bff60c480aa9ccf131e97ad1bb4ed9347b85aff6f`.
+The rejection certificate digest was `sha256:3224...c059` (abbreviated here).
+Focused reruns no longer reproduced the application-profile selection,
+staged-trust, current-freshness, lossy-numeric, typed-artifact, loose numeric
+replay, or out-of-range decision defects above. Additional attempted forgeries
+also remained blocked:
+
+- mutating `allowed`, reasons, result, qualifications, limitations, or
+  implementation identity and recomputing only the outer digest failed replay
+  or embedded binding;
+- replacing the embedded context and recomputing profile/snapshot/trust,
+  evaluation-input, decision, and outer digests could create a different
+  internally reproducible record but could not match the separately retained
+  expected context or expected certificate digest;
+- supplied expected digests were compared with the recomputed certificate
+  digest, not trusted from the embedded outer value;
+- pre-issuance, expiry, revocation, snapshot-next-update, and freshness-boundary
+  current-reliance probes failed at the closed-open boundary; and
+- downgrade attempts across the active contract identifiers did not fall back
+  to another interpretation.
+
+This evidence accepts the named code revision as a local 0.6.0 implementation
+checkpoint. Documentation custody remains pending until the later documentation
+commit exists. This acceptance is not a release, schema or benchmark freeze,
+external validation claim, operational authorization, or production-readiness
+determination.
+
+The residual assurance boundary is explicit: canonical self-digests and
+deterministic replay detect inconsistency relative to retained expectations;
+they do not authenticate declarative issuers, prove source truth, monitor a
+newer registry head or revocation state, supply independent custody, or
+authorize an action.

@@ -1,11 +1,11 @@
 # Evidence-State I/O Product Requirements Document
 
 **Status:** implementation handoff, pre-alpha research prototype
-**Version:** 0.1-draft
+**Version:** 0.2-draft
 **Date:** 2026-08-21
 **Decision owner:** project owner
 **First vertical:** cyber investigation and threat hunting
-**Reference implementation:** dependency-light Python 3.11+
+**Reference implementation:** dependency-light Python 3.11-3.13
 **Distribution/licensing:** no public license has been selected; all rights remain with the project owner
 
 ## Executive decision
@@ -29,9 +29,10 @@ Evidence-State I/O makes the epistemic state of a result explicit at the tool bo
 3. **Negative-claim gate:** stable permit/reject verdict and reason codes for requested negative claims.
 4. **Qualified renderer:** wording that preserves scope and time instead of emitting “nothing exists.”
 5. **EmptyBench:** matched cases with identical visible observations but different evidence sufficiency.
-6. **Coverage Registry, later phase:** governed source profiles for population, retention, freshness, blind intervals, permissions, and detection assumptions.
+6. **P0 local profile custody:** an application-controlled materialized registry snapshot, trust selection, and exact selected profile reference for population, retention, freshness, blind intervals, permissions, detection assumptions, and finality.
+7. **P1 operational governance:** authenticated registry/source evidence, lifecycle and rollback controls, and privacy-preserving certificate handling.
 
-The contract describes evidence sufficiency. It does not prove that a producer is honest, that a query is semantically correct, that a source detects every real-world event, or that an open-world population is complete.
+The contract describes evidence sufficiency. It does not prove that a producer is honest, that a query is semantically correct, that a source detects every real-world event, or that an open-world population is complete. P0 issuer, approval-authority, source-owner, origin, implementation, and time labels are declarative rather than authenticated.
 
 ## Personas and jobs to be done
 
@@ -115,7 +116,8 @@ An **absolute negative** such as “no such event exists” is always rejected. 
 - coverage meets or exceeds the policy threshold and its derivation is available;
 - required pages and partitions are complete, with no unresolved continuation token or snapshot ambiguity;
 - no disqualifying timeout, rate-limit, query, transport, parsing, or source error remains;
-- freshness and finality conditions pass at an explicitly supplied evaluation time; and
+- freshness and finality conditions pass at an explicitly supplied evaluation time;
+- the producer's exact profile reference matches the relying application's separately supplied, producer-unwritable selected profile reference and resolves under that registry/trust context; and
 - the output renderer preserves the scope and material limitations.
 
 ## Primary workflows
@@ -129,10 +131,11 @@ An **absolute negative** such as “no such event exists” is always rejected. 
 
 ### Consumer workflow
 
-1. Supply the envelope, requested claim type, coverage policy, and evaluation time to the gate.
-2. Receive a deterministic `PERMIT_SCOPED_NEGATIVE` or `REJECT_NEGATIVE` disposition, stable reason codes, and a qualification-preserving statement.
-3. Preserve the certificate with the downstream decision record.
-4. Treat rejection as evidence insufficiency, not evidence that the positive claim is true.
+1. Fix an application-controlled registry snapshot, trust selection, and exact selected profile reference outside the producer boundary; the producer must not be able to write or replace them.
+2. Supply the request, coverage policy, explicit evaluation/issuance times, evidence-origin label, and the separate registry/trust files to the gate and certificate builder.
+3. Receive an unsigned deterministic replay certificate containing a `PERMIT_SCOPED_NEGATIVE` or `REJECT_NEGATIVE` disposition, stable reason codes, and a qualification-preserving statement.
+4. Preserve it only in approved custody. The P0 artifact embeds the full request, registry/trust context, decision, and implementation metadata and is not data-minimized.
+5. Treat rejection as evidence insufficiency, not evidence that the positive claim is true; treat a permit, digest match, or replay match as neither source truth nor action authorization.
 
 ## Requirements
 
@@ -177,10 +180,12 @@ An envelope shall represent a coverage lower bound and derivation, required/obse
 **Current candidate note:** Aggregate coverage and the single source observation
 must match the canonical normalized-query fingerprint. Optional and multi-source
 declarations are rejected until coverage can be represented and composed per
-source. The requirement now carries a declared finality horizon, which is also
-query-bound; the reported source index must reach it before a negative can pass.
-The horizon's source-service basis is not yet governed or independently
-attested.
+source. The requirement carries an exact profile reference and an exact finality
+horizon. The horizon must equal the query end plus the larger of the selected
+profile's late-arrival and reopen bounds, is query-bound, and must be reached by
+the reported source index. The local profile is application-selected but its
+publisher, authority, assertions, and source behavior are not authenticated or
+independently validated in P0.
 
 #### ESIO-P0-004: Fail-closed envelope validation
 
@@ -223,15 +228,31 @@ For a permitted scoped negative, the library shall render a statement that inclu
 - For rejected claims, the output says the evidence is insufficient and names the material reasons; it does not assert the positive opposite.
 - A prohibited-phrase test rejects configured universal formulations such as “no instances exist anywhere.”
 
+#### ESIO-P0-007A: Governed coverage/finality profile selection
+
+The evaluator shall resolve an exact request profile reference only under a separately supplied, application-controlled registry snapshot and trust selection that pin the relying application's exact selected profile reference.
+
+**Acceptance criteria**
+
+- The producer cannot embed, select, replace, or override the registry snapshot, trust selection, or application-selected profile reference used for evaluation.
+- Request and application-selected references match exactly on registry, profile ID/version, and digest; zero matches, digest mismatch, untrusted issuer/authority, invalid time, or revocation reject without fallback.
+- Floating aliases, ranges, branch names, automatic upgrade/downgrade, and nearest-version selection are rejected.
+- Snapshot trust failures stop before record resolution; profile trust/resolution failures stop before applicability, coverage, or finality content is consulted and do not populate resolved references.
+- Matching local identifiers and digests establish deterministic configuration binding only. They do not authenticate a publisher, authority, source owner, profile assertion, source index, or source observation.
+
 #### ESIO-P0-008: Deterministic evidence certificate
 
-Each evaluation shall emit a canonical certificate containing the schema, evaluator and policy versions, canonical input digest, verdict, reason codes, qualified statement, and evaluation time.
+Each evaluation shall emit a canonical unsigned replay certificate containing the certificate/schema/evaluation-input/profile/registry/trust/evaluator/policy/canonicalization/digest contracts; complete normalized request and registry/trust context; exact context bindings; evaluation and issuance times; origin; implementation identity; complete decision, reasons, qualification, and limitations; and a conservative current-use boundary.
 
 **Acceptance criteria**
 
 - Two runs on identical canonical inputs yield byte-identical certificate JSON and digest.
-- A one-field evidence or policy mutation changes the digest and triggers a tamper test failure against the prior certificate.
-- The certificate states whether evidence is synthetic, replayed, or directly observed; absence of origin classification fails closed in publishable benchmark mode.
+- A one-field request, context, version, origin, time, result, qualification, limitation, or implementation mutation changes the digest; unchanged-digest tampering and forged decisions fail the appropriate integrity or replay dimension.
+- Permit and rejection certificates reproduce byte-for-byte on every supported runtime and are retained as separate canonical vectors.
+- Verification reports structural support, outer and embedded integrity, deterministic historical replay, expected-context and expected-digest comparison, and time-bounded current local reliance separately; it never reports issuer authentication or action authorization.
+- The certificate states one exact origin label. The label is descriptive and unauthenticated; it cannot upgrade insufficient evidence.
+- The effective exclusive boundary conservatively includes evidence `valid_until`, snapshot `next_update_at`, resolved-profile expiry/revocation where applicable, and policy/profile observation and index age deadlines. Candidate.2 trust selection has no independent expiration field.
+- P0 certificates are restricted to synthetic/public-safe or owner-approved nonsensitive content because the self-contained replay payload is not data-minimized.
 
 #### ESIO-P0-009: JSON CLI and library interface
 
@@ -242,6 +263,7 @@ The reference implementation shall accept JSON from a file or standard input and
 - Valid envelope/evaluation inputs exit `0` and emit schema-valid output.
 - Invalid input, unsupported versions, or evaluation rejection use documented distinct status fields and stable process exit behavior; a rejected claim is not confused with a program crash.
 - Malformed JSON, oversized input under the configured limit, and unexpected fields are handled deterministically without stack traces or secret leakage on standard output.
+- `evaluate` requires separate operator-controlled `--registry` and `--trust` files plus explicit `--issued-at` and `--origin`; no wall-clock or origin inference is permitted. `verify-certificate` accepts separate expected registry/trust state, an expected digest, and a relying-party time without treating omitted custody evidence as success.
 
 #### ESIO-P0-010: Seed EmptyBench corpus and oracle
 
@@ -259,7 +281,7 @@ The P0 package shall run locally without network or model access and shall docum
 
 **Acceptance criteria**
 
-- A clean Python 3.11+ environment can install and execute the unit, integration, contract, and benchmark tests using the documented commands.
+- Clean Python 3.11, 3.12, and 3.13 environments can install and execute the unit, integration, contract, and benchmark tests using the documented commands. Other Python versions are not in the supported P0 set.
 - CI runs the same frozen checks and records tool/runtime versions.
 - Tests cover untrusted strings, path-like values, oversized collections, duplicate identifiers, numeric edge cases, and deterministic serialization.
 
@@ -275,15 +297,16 @@ Implement adapters for GitHub Search, SQL, and one operational-search interface 
 - Recorded/replayed contract tests include complete-zero and each adapter-specific partial/failure path.
 - No adapter labels a result `ABSENT_WITHIN_SCOPE` solely because the returned item list is empty.
 
-#### ESIO-P1-002: Coverage profiles and registry
+#### ESIO-P1-002: Authenticated coverage profiles, registry, and source evidence
 
-Support versioned source profiles covering ownership, addressable population, retention, freshness, blind intervals, permissions, finality, and detection assumptions.
+Extend the P0 materialized local context with authenticated registry heads, profile/source-owner evidence, rollback resistance, lifecycle distribution, and versioned source profiles covering ownership, addressable population, retention, freshness, blind intervals, permissions, finality, and detection assumptions.
 
 **Acceptance criteria**
 
 - A profile change changes its digest and invalidates certificates that require the prior profile unless explicitly pinned.
 - Missing or expired required profiles cause the gate to reject a scoped negative.
 - Profile review ownership and effective dates are machine-readable.
+- Authentication, delegated authority, monotonic-head/rollback behavior, revocation distribution, source-clock evidence, and compromised-credential recovery are explicitly designed and tested; a signature never upgrades insufficient evidence.
 
 #### ESIO-P1-003: Multi-source composition
 
@@ -325,6 +348,17 @@ Expand EmptyBench and run read-only, authorized shadow evaluations without contr
 - Shadow reports separate synthetic, replayed, and directly observed cases.
 - No operational action or investigation closure depends solely on the research prototype.
 
+#### ESIO-P1-007: Privacy-preserving operational certificate profile
+
+Define a separately versioned profile for non-public workflows that can minimize, redact, reference, or selectively disclose sensitive request and context fields without silently changing P0 replay semantics.
+
+**Acceptance criteria**
+
+- The profile identifies which fields remain embedded, redacted, externally referenced, or selectively disclosed and how each choice affects replay and verification.
+- References are authenticated, access-controlled, retention-bound, and fail closed when unavailable or mismatched.
+- Redaction cannot hide a safety-bearing input, reason, limitation, or trust decision from an authorized verifier.
+- P0 self-contained certificates are never relabeled as minimized operational artifacts.
+
 ### P2 — ecosystem and formalization
 
 - **ESIO-P2-001:** Formal semantics and property-based verification for state transitions, coverage composition, and non-bypass invariants.
@@ -339,9 +373,10 @@ Expand EmptyBench and run read-only, authorized shadow evaluations without contr
 - **Determinism:** model output cannot alter a gate verdict; wall-clock dependence must be explicit.
 - **Fail closed:** unknown schema, state, policy, time, source, coverage, or continuation facts cannot produce `ABSENT_WITHIN_SCOPE`.
 - **Dependency minimization:** P0 core must remain usable offline and avoid an agent-framework dependency.
-- **Data minimization:** certificates should contain digests and references rather than sensitive raw results by default.
+- **P0 certificate disclosure:** the candidate self-contained replay certificate embeds the full normalized request, registry/trust context, decision, and implementation metadata. It is not data-minimized and is limited to synthetic/public-safe or owner-approved nonsensitive content.
+- **P1 data minimization:** non-public use requires a separately versioned redaction/reference/selective-disclosure profile with authenticated custody and explicit replay consequences.
 - **Untrusted producer model:** source-provided hints and annotations are evidence inputs, not trusted proof.
-- **Backward compatibility:** incompatible semantic changes require a major schema version.
+- **Backward compatibility:** an incompatible change to an accepted frozen schema requires a major schema version. Before schema `1.0` is frozen, defect corrections still require explicit candidate-contract bumps, downgrade tests, historical hash-bound custody, and an ADR; the package version never negotiates semantics.
 - **Auditability:** every verdict must be explainable through stable reason codes, not only prose.
 - **Separation of concerns:** an evidence permit is neither action authorization nor permission to close an investigation.
 
@@ -379,7 +414,7 @@ Thresholds are frozen before the corresponding evaluation. They may be changed o
 ### Phase 0 — 0 to 30 days: falsifiable core
 
 - Preserve the accepted local schema `0.1` replay baseline; harden and later freeze the breaking schema `1.0` candidate, state invariants, policy format, reason-code taxonomy, and seed EmptyBench oracle under ADR-0007.
-- Implement the dependency-light library, CLI, deterministic gate, canonical certificate, and fault tests.
+- Complete acceptance and freeze evidence for the implemented dependency-light library, CLI, deterministic gate, governed local profile binding, unsigned canonical replay certificate, and fault tests.
 - Establish naive, prompt-only, and always-block baselines.
 
 ### Phase 1 — 31 to 60 days: real adapter pressure test
@@ -406,4 +441,13 @@ Thresholds are frozen before the corresponding evaluation. They may be changed o
 
 ## Readiness statement
 
-At this stage, Evidence-State I/O is a specified research prototype. Passing P0 tests would establish only that the implementation follows the frozen local semantics on the tested corpus. It would not establish source truth, real-world detection completeness, production safety, market demand, protocol adoption, independent validation, or legal sufficiency.
+At this stage, Evidence-State I/O is an implemented pre-alpha working candidate,
+not a frozen or released contract. Named local tests can establish only the
+enumerated deterministic behaviors for an exact hash, runtime, fixtures, and
+configuration. The seed corpus and declarative oracle are separately versioned
+and digest-bound, but both remain implementation-owned; independent
+adjudication, a preregistered frozen campaign, the final hash-bound acceptance
+record, authenticated registry/source evidence, and an operational redaction
+profile remain open. No current result establishes source truth, real-world
+detection completeness, production safety, market demand, protocol adoption,
+independent validation, legal sufficiency, or action authority.

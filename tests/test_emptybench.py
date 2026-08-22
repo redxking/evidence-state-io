@@ -1,18 +1,24 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from dataclasses import replace
 import json
 from pathlib import Path
 import unittest
 
 from evidence_state_io import ModelValidationError
+from evidence_state_io.canonical import canonical_digest
 from evidence_state_io.emptybench import (
+    EMPTYBENCH_CORPUS_SCHEMA,
+    EMPTYBENCH_ORACLE_SCHEMA,
+    EMPTYBENCH_REPORT_SCHEMA,
+    SEED_ORACLE_DIGEST,
     EmptyBenchCase,
     demo_cases,
-    parse_cases,
-    run_emptybench as _run_emptybench,
+    parse_corpus,
+    parse_oracle,
+    run_emptybench,
     run_seed_emptybench,
+    seed_benchmark,
     seed_case_dicts,
     seed_cases,
     seed_profile_context,
@@ -20,183 +26,268 @@ from evidence_state_io.emptybench import (
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+CORPUS_PATH = PROJECT_ROOT / "benchmarks" / "emptybench-p0-corpus.json"
+ORACLE_PATH = PROJECT_ROOT / "benchmarks" / "emptybench-p0-oracle.json"
 
 
-def run_emptybench(cases):
-    return _run_emptybench(cases, seed_profile_context())
+def load_corpus_dict() -> dict:
+    return json.loads(CORPUS_PATH.read_text(encoding="utf-8"))
+
+
+def load_oracle_dict() -> dict:
+    return json.loads(ORACLE_PATH.read_text(encoding="utf-8"))
+
+
+def refresh_digest(value: dict, field: str) -> str:
+    payload = deepcopy(value)
+    payload.pop(field)
+    digest = canonical_digest(payload)
+    value[field] = digest
+    return digest
 
 
 class EmptyBenchTests(unittest.TestCase):
-    def test_seed_suite_has_seven_pairs_and_fourteen_cases(self) -> None:
-        cases = seed_cases()
-        self.assertEqual(len(cases), 14)
-        self.assertEqual(len({case.pair_id for case in cases}), 7)
+    def test_seed_suite_has_twelve_matched_fault_control_pairs(self) -> None:
+        corpus, oracle = seed_benchmark()
+        self.assertEqual(len(corpus.cases), 24)
+        self.assertEqual(len({case.pair_id for case in corpus.cases}), 12)
+        self.assertEqual(
+            {case.fault_class for case in corpus.cases},
+            {
+                "PAGINATION",
+                "PARTITIONING",
+                "AUTHORIZATION",
+                "FRESHNESS",
+                "FINALITY",
+                "ERROR_HANDLING",
+                "POPULATION",
+                "SOURCE_AGREEMENT",
+                "POSITIVE_CONTROL",
+                "QUERY_SEMANTICS",
+                "SNAPSHOT",
+                "ENVELOPE_HONESTY",
+            },
+        )
+        self.assertEqual(len(oracle.assignments), 24)
 
-    def test_all_seed_expectations_pass(self) -> None:
+    def test_corpus_cases_do_not_embed_oracle_expectations(self) -> None:
+        raw = load_corpus_dict()
+        for case in raw["cases"]:
+            self.assertNotIn("expected_allowed", case)
+            self.assertNotIn("expected_reasons", case)
+            self.assertNotIn("rule_id", case)
+
+    def test_contracts_and_digests_are_explicit(self) -> None:
+        corpus, oracle = seed_benchmark()
+        self.assertEqual(corpus.corpus_schema, EMPTYBENCH_CORPUS_SCHEMA)
+        self.assertEqual(oracle.oracle_schema, EMPTYBENCH_ORACLE_SCHEMA)
+        self.assertEqual(oracle.oracle_digest, SEED_ORACLE_DIGEST)
+        self.assertEqual(oracle.corpus_digest, corpus.corpus_digest)
+
+    def test_all_seed_expectations_pass_without_unsafe_permits(self) -> None:
         report = run_seed_emptybench(all_cases=True)
         self.assertTrue(report.all_passed)
-        self.assertEqual(report.passed, 14)
-        self.assertEqual(report.benchmark, "EmptyBench-seed")
+        self.assertEqual(report.passed, 24)
+        self.assertEqual(report.benchmark, "EmptyBench-P0-seed")
+        payload = report.to_dict()
+        self.assertEqual(payload["report_schema"], EMPTYBENCH_REPORT_SCHEMA)
+        self.assertEqual(payload["summary"]["unsafe_permits"], 0)
+        self.assertEqual(payload["summary"]["false_rejections"], 0)
+        self.assertEqual(payload["summary"]["pairs_total"], 12)
+        self.assertEqual(payload["summary"]["pairs_discriminated"], 12)
 
-    def test_finality_pair_preserves_visible_facts_and_crosses_snapshot_boundary(self) -> None:
-        cases = [
-            case
-            for case in seed_cases()
-            if case.pair_id == "finality-snapshot-at-vs-before-horizon"
-        ]
+    def test_scoring_is_byte_deterministic(self) -> None:
+        first = run_seed_emptybench(all_cases=True).to_dict()
+        second = run_seed_emptybench(all_cases=True).to_dict()
+        self.assertEqual(first, second)
+        self.assertEqual(
+            json.dumps(first, sort_keys=True, separators=(",", ":")),
+            json.dumps(second, sort_keys=True, separators=(",", ":")),
+        )
+
+    def test_demo_is_the_pagination_control_fault_pair(self) -> None:
+        cases = demo_cases()
+        self.assertEqual([case.variant for case in cases], ["control", "fault"])
+        self.assertEqual({case.pair_id for case in cases}, {"pagination"})
+        report = run_seed_emptybench()
+        self.assertEqual(report.total, 2)
+        self.assertTrue(report.all_passed)
+
+    def test_finality_pair_crosses_exact_horizon_boundary(self) -> None:
+        cases = [case for case in seed_cases() if case.pair_id == "finality"]
         self.assertEqual(len(cases), 2)
         control, fault = cases
-        control_request = control.request.to_dict()
-        fault_request = fault.request.to_dict()
-        control_envelope = control_request["envelope"]
-        fault_envelope = fault_request["envelope"]
-
-        self.assertEqual(control_request["subject"], fault_request["subject"])
-        self.assertEqual(control_request["mode"], fault_request["mode"])
         self.assertEqual(
-            control_request["evaluated_at"], fault_request["evaluated_at"]
-        )
-        self.assertEqual(control_envelope["query"], fault_envelope["query"])
-        self.assertEqual(
-            control_envelope["observed_at"], fault_envelope["observed_at"]
-        )
-        self.assertEqual(
-            control_envelope["matched_count"], fault_envelope["matched_count"]
-        )
-        self.assertEqual(control_envelope["notes"], fault_envelope["notes"])
-        self.assertEqual(
-            control_envelope["query"]["source_requirements"][0][
-                "finality_horizon"
-            ],
+            control.request.envelope.source_observations[0]
+            .descriptor.to_dict()["index_as_of"],
             "2026-08-21T12:04:00Z",
         )
         self.assertEqual(
-            control_envelope["source_observations"][0]["descriptor"]["index_as_of"],
-            "2026-08-21T12:04:00Z",
-        )
-        self.assertEqual(
-            fault_envelope["source_observations"][0]["descriptor"]["index_as_of"],
+            fault.request.envelope.source_observations[0]
+            .descriptor.to_dict()["index_as_of"],
             "2026-08-21T12:03:59.999999Z",
         )
-
-        report = run_emptybench(cases)
-        self.assertTrue(report.all_passed)
+        corpus, oracle = seed_benchmark()
+        report = run_emptybench(
+            corpus,
+            oracle,
+            seed_profile_context(),
+            case_ids=[case.case_id for case in cases],
+        )
         self.assertEqual(
             report.outcomes[1].actual_reasons,
-            (
-                "STATE_NOT_ABSENT_WITHIN_SCOPE",
-                "INDEX_PRECEDES_FINALITY_HORIZON",
-            ),
+            ("STATE_NOT_ABSENT_WITHIN_SCOPE", "INDEX_PRECEDES_FINALITY_HORIZON"),
         )
 
-    def test_demo_is_covered_vs_partial_pair(self) -> None:
-        cases = demo_cases()
-        self.assertEqual([case.variant for case in cases], ["covered", "partial"])
-        self.assertEqual({case.pair_id for case in cases}, {"covered-vs-partial"})
+    def test_seed_case_compatibility_view_contains_inputs_only(self) -> None:
+        cases = seed_case_dicts()
+        self.assertEqual(len(cases), 24)
+        self.assertIn("request", cases[0])
+        self.assertNotIn("expected_allowed", cases[0])
+        self.assertNotIn("expected_reasons", cases[0])
 
-    def test_demo_pair_has_opposite_gate_results(self) -> None:
-        report = run_emptybench(demo_cases())
-        self.assertEqual(
-            [outcome.actual_allowed for outcome in report.outcomes], [True, False]
+    def test_expanded_case_rejects_embedded_expectation(self) -> None:
+        raw = deepcopy(seed_case_dicts()[0])
+        raw["expected_allowed"] = True
+        with self.assertRaisesRegex(ModelValidationError, "unknown fields"):
+            EmptyBenchCase.from_dict(raw)
+
+    def test_tampered_corpus_fails_internal_digest(self) -> None:
+        raw = load_corpus_dict()
+        raw["cases"][1]["description"] = "tampered"
+        with self.assertRaisesRegex(ModelValidationError, "corpus digest"):
+            parse_corpus(raw)
+
+    def test_recomputed_tampered_corpus_fails_oracle_binding(self) -> None:
+        raw = load_corpus_dict()
+        raw["cases"][1]["description"] = "tampered and re-digested"
+        refresh_digest(raw, "corpus_digest")
+        corpus = parse_corpus(raw)
+        with self.assertRaisesRegex(ModelValidationError, "bind the supplied corpus"):
+            parse_oracle(
+                load_oracle_dict(),
+                corpus,
+                expected_digest=SEED_ORACLE_DIGEST,
+            )
+
+    def test_swapped_case_mutations_fail_corpus_digest(self) -> None:
+        raw = load_corpus_dict()
+        raw["cases"][1]["mutations"], raw["cases"][3]["mutations"] = (
+            raw["cases"][3]["mutations"],
+            raw["cases"][1]["mutations"],
         )
+        with self.assertRaisesRegex(ModelValidationError, "corpus digest"):
+            parse_corpus(raw)
 
-    def test_parse_cases_accepts_object_or_list(self) -> None:
-        raw = seed_case_dicts()[:2]
-        self.assertEqual(parse_cases(raw), parse_cases({"cases": raw}))
+    def test_tampered_oracle_fails_internal_digest(self) -> None:
+        corpus = parse_corpus(load_corpus_dict())
+        raw = load_oracle_dict()
+        raw["rules"][1]["expected_reasons"] = ["RESULT_EXPIRED"]
+        with self.assertRaisesRegex(ModelValidationError, "oracle digest"):
+            parse_oracle(raw, corpus, expected_digest=SEED_ORACLE_DIGEST)
 
-    def test_duplicate_case_ids_are_rejected(self) -> None:
-        raw = deepcopy(seed_case_dicts()[:2])
-        raw[1]["case_id"] = raw[0]["case_id"]
-        with self.assertRaisesRegex(ModelValidationError, "must be unique"):
-            parse_cases(raw)
+    def test_recomputed_tampered_oracle_fails_retained_digest(self) -> None:
+        corpus = parse_corpus(load_corpus_dict())
+        raw = load_oracle_dict()
+        raw["rules"][1]["expected_reasons"] = ["RESULT_EXPIRED"]
+        refresh_digest(raw, "oracle_digest")
+        with self.assertRaisesRegex(ModelValidationError, "retained expected digest"):
+            parse_oracle(raw, corpus, expected_digest=SEED_ORACLE_DIGEST)
 
-    def test_direct_case_constructor_rejects_surrogate_identifier(self) -> None:
-        with self.assertRaisesRegex(ModelValidationError, "control characters"):
-            replace(seed_cases()[0], case_id="\udcff")
+    def test_missing_oracle_assignment_is_rejected_after_valid_digest(self) -> None:
+        corpus = parse_corpus(load_corpus_dict())
+        raw = load_oracle_dict()
+        raw["assignments"].pop()
+        expected = refresh_digest(raw, "oracle_digest")
+        with self.assertRaisesRegex(ModelValidationError, "missing cases"):
+            parse_oracle(raw, corpus, expected_digest=expected)
 
-    def test_case_from_dict_rejects_newline_description(self) -> None:
-        raw = deepcopy(seed_case_dicts()[0])
-        raw["description"] = "first line\ninjected line"
-        with self.assertRaisesRegex(ModelValidationError, "single line"):
-            EmptyBenchCase.from_dict(raw)
+    def test_duplicate_oracle_assignment_is_rejected(self) -> None:
+        corpus = parse_corpus(load_corpus_dict())
+        raw = load_oracle_dict()
+        raw["assignments"][-1] = deepcopy(raw["assignments"][0])
+        expected = refresh_digest(raw, "oracle_digest")
+        with self.assertRaisesRegex(ModelValidationError, "duplicate case_id"):
+            parse_oracle(raw, corpus, expected_digest=expected)
 
-    def test_case_from_dict_rejects_control_character(self) -> None:
-        raw = deepcopy(seed_case_dicts()[0])
-        raw["pair_id"] = "pair\u0000suffix"
-        with self.assertRaisesRegex(ModelValidationError, "control characters"):
-            EmptyBenchCase.from_dict(raw)
+    def test_swapped_control_fault_oracle_assignments_are_rejected(self) -> None:
+        corpus = parse_corpus(load_corpus_dict())
+        raw = load_oracle_dict()
+        raw["assignments"][0]["rule_id"], raw["assignments"][1]["rule_id"] = (
+            raw["assignments"][1]["rule_id"],
+            raw["assignments"][0]["rule_id"],
+        )
+        expected = refresh_digest(raw, "oracle_digest")
+        with self.assertRaisesRegex(ModelValidationError, "contradicts its case variant"):
+            parse_oracle(raw, corpus, expected_digest=expected)
 
-    def test_case_from_dict_rejects_oversized_variant(self) -> None:
-        raw = deepcopy(seed_case_dicts()[0])
-        raw["variant"] = "v" * 129
-        with self.assertRaisesRegex(ModelValidationError, "128-character limit"):
-            EmptyBenchCase.from_dict(raw)
+    def test_duplicate_oracle_rule_is_rejected(self) -> None:
+        corpus = parse_corpus(load_corpus_dict())
+        raw = load_oracle_dict()
+        raw["rules"][1]["rule_id"] = raw["rules"][0]["rule_id"]
+        expected = refresh_digest(raw, "oracle_digest")
+        with self.assertRaisesRegex(ModelValidationError, "rule_id values must be unique"):
+            parse_oracle(raw, corpus, expected_digest=expected)
 
-    def test_empty_case_list_is_rejected(self) -> None:
-        with self.assertRaisesRegex(ModelValidationError, "at least one"):
-            parse_cases([])
+    def test_corpus_contract_downgrade_is_rejected(self) -> None:
+        raw = load_corpus_dict()
+        raw["corpus_schema"] = "esio-emptybench-corpus/1.0-candidate.0"
+        refresh_digest(raw, "corpus_digest")
+        with self.assertRaisesRegex(ModelValidationError, "corpus_schema"):
+            parse_corpus(raw)
 
-    def test_expectation_mismatch_fails_report(self) -> None:
-        raw = deepcopy(seed_case_dicts()[:2])
-        raw[0]["request"]["envelope"]["coverage"]["timed_out"] = True
-        cases = parse_cases(raw)
-        report = run_emptybench(cases)
-        self.assertFalse(report.all_passed)
-        self.assertEqual(report.passed, 1)
+    def test_oracle_contract_downgrade_is_rejected(self) -> None:
+        corpus = parse_corpus(load_corpus_dict())
+        raw = load_oracle_dict()
+        raw["oracle_schema"] = "esio-emptybench-oracle/1.0-candidate.0"
+        expected = refresh_digest(raw, "oracle_digest")
+        with self.assertRaisesRegex(ModelValidationError, "oracle_schema"):
+            parse_oracle(raw, corpus, expected_digest=expected)
 
-    def test_custom_report_is_not_labeled_seed(self) -> None:
-        report = run_emptybench(parse_cases(seed_case_dicts()[:2]))
-        self.assertEqual(report.to_dict()["benchmark"], "EmptyBench-custom")
+    def test_duplicate_case_ids_are_rejected_after_valid_digest(self) -> None:
+        raw = load_corpus_dict()
+        raw["cases"][1]["case_id"] = raw["cases"][0]["case_id"]
+        refresh_digest(raw, "corpus_digest")
+        with self.assertRaisesRegex(ModelValidationError, "case_id values must be unique"):
+            parse_corpus(raw)
 
-    def test_singleton_pair_is_rejected(self) -> None:
+    def test_missing_case_is_rejected_after_valid_digest(self) -> None:
+        raw = load_corpus_dict()
+        raw["cases"].pop()
+        refresh_digest(raw, "corpus_digest")
         with self.assertRaisesRegex(ModelValidationError, "exactly two cases"):
-            parse_cases(seed_case_dicts()[:1])
+            parse_corpus(raw)
 
-    def test_run_emptybench_cannot_bypass_pair_validation(self) -> None:
-        with self.assertRaisesRegex(ModelValidationError, "exactly two cases"):
-            run_emptybench(case for case in seed_cases()[:1])
-
-    def test_run_emptybench_materializes_valid_generator_once(self) -> None:
-        report = run_emptybench(case for case in seed_cases()[:2])
-        self.assertTrue(report.all_passed)
-        self.assertEqual(report.total, 2)
-
-    def test_pair_with_two_allowed_controls_is_rejected(self) -> None:
-        raw = deepcopy(seed_case_dicts()[:2])
-        raw[1]["expected_allowed"] = True
-        raw[1]["expected_reasons"] = []
-        with self.assertRaisesRegex(ModelValidationError, "one allowed control"):
-            parse_cases(raw)
-
-    def test_pair_with_changed_visible_question_is_rejected(self) -> None:
-        raw = deepcopy(seed_case_dicts()[:2])
-        raw[1]["request"]["subject"] = "different records"
-        with self.assertRaisesRegex(ModelValidationError, "visible observation and question"):
-            parse_cases(raw)
-
-    def test_pair_without_sufficiency_difference_is_rejected(self) -> None:
-        raw = deepcopy(seed_case_dicts()[:2])
-        raw[1]["request"] = deepcopy(raw[0]["request"])
-        raw[1]["expected_allowed"] = False
-        raw[1]["expected_reasons"] = ["COVERAGE_POLICY_NOT_MET"]
-        with self.assertRaisesRegex(ModelValidationError, "sufficiency fact"):
-            parse_cases(raw)
-
-    def test_reason_oracle_requires_exact_equality(self) -> None:
-        cases = list(parse_cases(seed_case_dicts()[:2]))
-        cases[1] = replace(
-            cases[1], expected_reasons=("STATE_NOT_ABSENT_WITHIN_SCOPE",)
+    def test_duplicate_mutation_pointer_is_rejected(self) -> None:
+        raw = load_corpus_dict()
+        raw["cases"][1]["mutations"].append(
+            deepcopy(raw["cases"][1]["mutations"][0])
         )
-        report = run_emptybench(cases)
-        self.assertFalse(report.all_passed)
-        self.assertFalse(report.outcomes[1].passed)
+        refresh_digest(raw, "corpus_digest")
+        with self.assertRaisesRegex(ModelValidationError, "must not repeat"):
+            parse_corpus(raw)
 
-    def test_example_pair_is_valid_and_passes(self) -> None:
-        path = PROJECT_ROOT / "examples" / "emptybench_pair.json"
-        with path.open("r", encoding="utf-8") as handle:
-            report = run_emptybench(parse_cases(json.load(handle)))
-        self.assertTrue(report.all_passed)
-        self.assertEqual(report.total, 2)
+    def test_nonexistent_mutation_path_is_rejected(self) -> None:
+        raw = load_corpus_dict()
+        raw["cases"][1]["mutations"][0]["pointer"] = "/envelope/not-a-field"
+        refresh_digest(raw, "corpus_digest")
+        with self.assertRaisesRegex(ModelValidationError, "existing object field"):
+            parse_corpus(raw)
+
+    def test_case_selection_rejects_duplicates_and_unknown_ids(self) -> None:
+        corpus, oracle = seed_benchmark()
+        context = seed_profile_context()
+        with self.assertRaisesRegex(ModelValidationError, "must not contain duplicates"):
+            run_emptybench(
+                corpus,
+                oracle,
+                context,
+                case_ids=["pagination-covered", "pagination-covered"],
+            )
+        with self.assertRaisesRegex(ModelValidationError, "unknown cases"):
+            run_emptybench(corpus, oracle, context, case_ids=["does-not-exist"])
+        with self.assertRaisesRegex(ModelValidationError, "complete pairs"):
+            run_emptybench(corpus, oracle, context, case_ids=["pagination-covered"])
 
 
 if __name__ == "__main__":

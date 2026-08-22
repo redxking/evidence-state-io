@@ -7,11 +7,13 @@ name = "evidence-state-io"
 version = "0.6.0"
 description = "Typed evidence-state envelopes and deterministic negative-claim gating"
 requires-python = ">=3.11,<3.14"
+license = { file = "LICENSE" }
 dependencies = []
 authors = [{ name = "Evidence-State I/O contributors" }]
 keywords = ["ai", "evidence", "coverage", "provenance", "tool-protocols"]
 classifiers = [
   "Development Status :: 2 - Pre-Alpha",
+  "License :: OSI Approved :: Apache Software License",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",

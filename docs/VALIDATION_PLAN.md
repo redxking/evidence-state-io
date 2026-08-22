@@ -1,20 +1,59 @@
 # Evidence-State I/O Verification and Validation Plan
 
-**Status:** pre-execution plan
-**Version:** 0.1-draft
-**Date:** 2026-08-21
-**System under test:** evidence envelope, validator, coverage evaluator, negative-claim gate, renderer, certificate, CLI, adapters, and EmptyBench
+**Status:** active draft; implementation checkpoint verified locally,
+documentation custody pending, and the first frozen acceptance campaign has
+not executed
+**Version:** 0.2-draft
+**Date:** 2026-08-22
+**System under test:** evidence envelope, governed profile/registry/trust
+context, validator, coverage evaluator, negative-claim gate, renderer,
+certificate builder/verifier, CLI, adapters, and EmptyBench
 
 ## Purpose
 
 This plan defines the evidence required to decide whether Evidence-State I/O behaves as specified and whether the concept adds practical value.
 
-- **Verification asks:** Did the implementation conform to the frozen state, policy, gate, and serialization requirements?
+- **Verification asks:** Does the implementation conform to the exact candidate
+  state, policy, profile/trust, gate, certificate, and serialization contracts
+  under test?
 - **Validation asks:** Does that behavior reduce consequential unsupported negative conclusions in representative workflows without eliminating useful scoped negatives?
 
 A green local test suite answers the first question only within the tested configuration. Synthetic, replayed, VM, or lab evidence is not independent external validation, operational effectiveness, production readiness, or proof of real-world absence.
 
 The repository is pre-alpha and has no selected public license. Validation activity does not authorize distribution, external reuse, deployment, or a licensing claim.
+
+## Current candidate and custody boundary
+
+The validation target is the following exact, unfrozen 0.6.0 contract set:
+
+| Contract | Identifier |
+|---|---|
+| Wire schema | `1.0` (unfrozen candidate) |
+| Policy | `esio-p0-safety-floor` / `1.0-candidate.4` |
+| Evaluator | `esio-evaluator-1.0-candidate.5` |
+| Evaluation input | `esio-evaluation-input/1.0-candidate.2` |
+| Coverage/finality profile | `esio-coverage-finality-profile/1.0-candidate.2` |
+| Registry snapshot | `esio-profile-registry-snapshot/1.0-candidate.2` |
+| Trust selection | `esio-profile-trust-selection/1.0-candidate.2` |
+| Evidence certificate | `esio-evidence-certificate/1.0-candidate.2` |
+| Canonicalization / digest | `esio-canonical-json-0.1` / `sha256` |
+
+The local implementation evidence is bound to
+`be0774680aa83052eeecab29e1a0ab38824f2860`:
+
+- source suite: `325/325` on Python 3.11.16, 3.12.14, and 3.13.15;
+- installed-package suite: `325/325` on virtual-environment Python 3.13.0;
+- setup: succeeded after network permission was granted;
+- source/installed permit, rejection, and `demo --all` 14-case seed-suite
+  outputs: byte-identical;
+- permit certificate digest:
+  `sha256:5f28ba99baf2c45828ffa04bff60c480aa9ccf131e97ad1bb4ed9347b85aff6f`;
+- rejection certificate digest: `sha256:3224...c059` (abbreviated).
+
+Documentation revision remains `PENDING FINAL CUSTODY`; it must not be named
+until the later documentation commit exists. The evidence above is a local
+implementation checkpoint, not a schema or benchmark freeze, external
+validation, or production approval.
 
 ## Validation principles
 
@@ -47,8 +86,8 @@ The repository is pre-alpha and has no selected public license. Validation activ
 |---|---|---|
 | ESIO-P0-001–004 state/scope/validation | Enum, JSON round-trip, schema-negative, invariant, and boundary tests | Independent annotation study |
 | ESIO-P0-005–007 evaluator/gate/renderer | Truth table, property tests, golden statements, prohibited-claim tests | EmptyBench safety/utility comparison |
-| ESIO-P0-008 certificate | Canonicalization, digest, replay, downgrade, and tamper tests | Independent certificate reproduction |
-| ESIO-P0-009 CLI | stdin/file, exit behavior, malformed/oversized input, stdout hygiene | Scripted end-to-end demonstrations |
+| ESIO-P0-008 certificate | Builder-owned evaluation; strict reparse; full-field digest mutation; embedded binding; canonical-byte replay; freshness/revocation boundary; context/digest/current-use separation; downgrade tests | Independent certificate and retained-digest reproduction |
+| ESIO-P0-009 CLI | stdin/file, required registry/trust pair, explicit issuance/origin, reliance options, exit behavior, malformed/oversized/duplicate input, stdout hygiene | Scripted end-to-end demonstrations |
 | ESIO-P0-010 EmptyBench | Corpus schema, oracle independence, split/digest tests | Frozen held-out campaign |
 | ESIO-P0-011 baseline | Clean install, offline run, supported-version CI | Independent environment rerun |
 | ESIO-P1-001–003 adapters/composition | Recorded contract matrices and overlap tests | Authorized source-owner review and shadow run |
@@ -60,7 +99,7 @@ The repository is pre-alpha and has no selected public license. Validation activ
 
 ### E0 — clean local baseline
 
-- Supported Python 3.11+ runtime in a new virtual environment.
+- Supported Python 3.11, 3.12, or 3.13 runtime in a new virtual environment.
 - No network or model access for P0 core tests.
 - Dependency versions recorded.
 - Locale and timezone varied in at least one CI matrix job to detect hidden serialization/time assumptions.
@@ -111,7 +150,11 @@ Run exhaustive combinations for every boolean gate input at P0 scale. Where the 
 - collections: empty required sources, duplicate identifiers, optional/multi-source candidate declarations, reordered semantic sets, very large sets, unknown source;
 - binding: wrong system/locator, adapter ID/version, authorization-context ID, accessible population, observation query fingerprint, and coverage query fingerprint;
 - text/identifiers: Unicode normalization, control characters, extremely long values, secret-like authorization tokens;
-- versions: known version, unknown minor, unsupported major, downgrade, missing policy/evaluator version.
+- versions: exact supported version, floating alias/range, numeric value,
+  unknown minor, unsupported major, downgrade, and missing identifier across
+  schema, policy, evaluator, evaluation input, profile, registry snapshot,
+  trust selection, certificate format, canonicalization profile, digest
+  algorithm, adapter, and implementation package version.
 
 ### Property and metamorphic tests
 
@@ -125,11 +168,80 @@ The following properties must hold over generated valid envelopes:
 6. **State/count consistency:** positive count cannot produce `ABSENT_WITHIN_SCOPE`; zero count alone cannot produce it.
 7. **Qualification preservation:** permitted output cannot omit a policy-required scope or time element.
 8. **Tamper sensitivity:** mutation of any evidence-bearing or policy-bearing field changes the certificate digest.
-9. **Signature non-escalation, P1:** a valid signature over insufficient evidence remains insufficient.
+9. **Application profile control:** a producer cannot select a different profile
+   from an otherwise accepted snapshot; the request reference must equal the
+   application-selected exact reference.
+10. **Staged trust:** snapshot failure prevents contained profile content from
+    influencing applicability, freshness, finality, or favorable diagnostics;
+    profile trust failure prevents its semantics from being used.
+11. **Replay type exactness:** semantically different canonical JSON values,
+    including integer versus floating-point decision values, cannot compare as
+    an identical replay.
+12. **Verification-dimension separation:** absence of expected context, expected
+    digest, or relying-party time remains unestablished and does not become an
+    implicit success; no aggregate `valid` flag is derived.
+13. **Signature non-escalation, P1:** a valid signature over insufficient evidence remains insufficient.
 
 ### Mutation tests
 
-Mutate comparison operators, missing-field branches, error filters, freshness arithmetic, pagination checks, reason-code ordering, and state/count guards. The test suite must kill every mutation in a defined critical-gate mutation set. Report mutation score separately from code coverage; line coverage alone is not an acceptance criterion.
+Mutate comparison operators, missing-field branches, error filters, freshness
+arithmetic, pagination checks, reason ordering, state/count guards, and every
+request, context, version, result, qualification, limitation, origin, time, and
+implementation-identity leaf in a certificate. Recompute inner and outer
+digests where an attacker could do so. The test suite must kill every mutation
+in a defined critical-gate/certificate set. Report mutation score separately
+from code coverage; line coverage alone is not an acceptance criterion.
+
+### Profile, certificate, and reliance verification
+
+The 0.6.0 candidate adds the following required test families:
+
+1. **Application-selected exact profile:** prove that the producer request can
+   reference only the profile selected by the separately supplied trust
+   selection. Exercise a weaker alternative in the same snapshot.
+2. **Staged trust:** corrupt snapshot identity, digest, issuer, time window, and
+   contract version and prove record semantics are not consulted. Then corrupt
+   profile digest, issuer, authority, effective/expiry interval, and revocation
+   and prove its finality/freshness rules are not used.
+3. **Builder-owned decision:** demonstrate that no public builder parameter can
+   inject a caller-created permit or reasons and that both permit and rejection
+   decisions are recorded as first-class replay artifacts.
+4. **Strict structural parity:** pass both mappings and typed certificate
+   objects through verification. Mutate nested typed mappings, inject booleans
+   into numeric positions, use out-of-range coverage bounds, duplicate nested
+   JSON keys, and supply unsupported fields.
+5. **Lossless numeric boundary:** accept only Decimal values that round-trip
+   exactly through the supported binary64/canonical JSON representation. Prove
+   a lossy decimal cannot collapse to a retained digest or replay decision.
+6. **Canonical replay:** compare canonical decision bytes, including an exact
+   integer-versus-float negative test, instead of language-level loose equality.
+7. **Complete effective-validity boundary:** compute the earliest of evidence
+   `valid_until`, snapshot `next_update_at`, resolved profile expiry/effective
+   revocation, and policy/profile observation/index age deadlines. Test one
+   microsecond before and exactly at each controlling boundary.
+8. **Expected evidence separation:** test expected-context match,
+   expected-certificate-digest match, and current-local-reliance eligibility as
+   independent values. A supplied expected digest must compare with the
+   recomputed digest, not the embedded outer value.
+9. **Context replacement attack:** replace embedded snapshot/profile/trust
+   content, recompute their self-digests, context/evaluation bindings, decision,
+   and outer digest, and prove that the artifact cannot match the separately
+   retained expected context or retained expected certificate digest.
+10. **Current-use semantics:** require external expected context and explicit
+    relying-party time; require a replayed permit; enforce
+    `issued_at <= relying_party_at < effective_valid_until_exclusive`; and prove
+    a rejection artifact never becomes reliance-eligible.
+11. **Contract downgrade matrix:** mutate every identifier in the active
+    contract table independently and prove no fallback or alias acceptance.
+12. **Serialized-record boundary:** document and test that Python `frozen=True`
+    is shallow for nested mappings; the canonical serialized and strictly
+    reparsed certificate is the immutable verification record.
+
+The final acceptance package must contain canonical permitted and rejected
+certificate vectors and reproduce their bytes and digests in every supported
+runtime. The named implementation checkpoint satisfies the local
+source/installed reproduction step for its recorded vectors. Independent
+custody and external reproduction remain separate, unperformed steps.
 
 ## EmptyBench experimental design
 
@@ -185,6 +297,15 @@ For LLM conditions, freeze prompts, tool transcripts, model/provider identifiers
 ### Oracle
 
 The oracle must be simpler than and independent of the implementation under test. For synthetic cases it reads simulator truth and a declarative rule table, not the gateway’s return value. Two reviewers inspect every rule and a third adjudicates disagreements before the split is frozen. Oracle changes after unblinding create a new benchmark version and invalidate direct comparison with prior results.
+
+The current P0 seed implements only the structural first step toward this
+design: its corpus and declarative oracle are separate versioned artifacts, the
+corpus contains no expected decisions, the oracle binds the exact corpus
+digest, and the runner requires a separately retained expected oracle digest.
+The same project authors still control the implementation, corpus, rule table,
+and retained digest. Therefore the 24-case seed is a deterministic regression
+set—not an independently adjudicated oracle, held-out split, preregistered
+campaign, or external reproduction.
 
 ### Scoring
 
@@ -281,8 +402,24 @@ Test at minimum:
 
 - fabricated `ABSENT_WITHIN_SCOPE` paired with contradictory fields;
 - hidden or stripped error arrays;
-- unknown state/policy/schema versions and downgrade attempts;
-- certificate field mutation and replay outside its validity window;
+- producer selection of a weaker profile contained in an otherwise accepted
+  registry snapshot;
+- untrusted, future-issued, expired, or revoked profile content and untrusted,
+  mismatched, not-yet-effective, or expired registry snapshots;
+- unknown, floating, ranged, numeric, or downgraded state/schema, policy,
+  evaluator, evaluation-input, profile, snapshot, trust, certificate,
+  canonicalization, digest, adapter, and implementation identifiers;
+- caller-created decision injection and mutation of `allowed`, reasons,
+  disposition, qualifications, limitations, profile result, or implementation
+  identity followed by outer-digest recomputation;
+- replacement of embedded context with recomputed profile/snapshot/trust,
+  evaluation-input, decision, and outer digests while a different expected
+  context or expected certificate digest is retained externally;
+- certificate replay before issuance, at and after every effective-validity
+  boundary, and after policy/profile observation/index freshness expiry;
+- typed-artifact nested-mapping mutation, duplicate JSON keys, loose
+  boolean/integer equality, integer/float replay equality, out-of-range
+  coverage bounds, and lossy Decimal normalization;
 - duplicate source IDs and overlap double counting;
 - injected prose in identifiers, errors, or query descriptions;
 - oversized JSON, deeply nested content, numeric edge cases, and denial-of-service bounds;
@@ -296,7 +433,9 @@ Security test success means the tested bypass fails. It is not a penetration-tes
 ## Shadow-evaluation protocol
 
 1. Obtain written scope, data-handling, read-only, retention, and decision-authority approval.
-2. Freeze source profiles and policy prospectively.
+2. Fix the exact candidate source profiles, registry snapshot, trust selection,
+   policy, and digests prospectively for that study. This campaign control does
+   not freeze schema `1.0` as a released contract.
 3. Run the normal workflow and Evidence-State gateway in parallel.
 4. Do not expose the gateway recommendation until the operator records the ordinary decision, unless the study is explicitly designed otherwise.
 5. Record disagreements and later expert adjudication; do not treat the gateway as ground truth.
@@ -371,23 +510,40 @@ A public scan cannot observe private implementations or guarantee novel research
 Each campaign directory must include:
 
 - campaign identifier and preregistration timestamp;
-- repository commit and clean/dirty status;
-- corpus, split, policy, schema, evaluator, adapter, and analysis digests;
+- implementation and documentation commits plus clean/dirty status;
+- exact wire schema, policy, evaluator, evaluation-input, profile, registry,
+  trust-selection, certificate, canonicalization, digest, adapter, and
+  implementation identifiers;
+- corpus, split, request, policy, registry snapshot, trust selection, adapter,
+  and analysis digests;
 - exact environment and dependency information;
 - raw per-case inputs and outputs within approved data boundaries;
 - oracle labels and reviewer/adjudication record;
 - failure, exclusion, timeout, and missing-data log;
 - generated metrics with confidence intervals;
-- certificate reproduction check;
+- canonical permitted and rejected certificate vectors, their independently
+  retained expected digests, and cross-runtime byte reproduction results;
+- structural, outer-integrity, embedded-integrity, deterministic-replay,
+  expected-context, expected-digest, historical-reproducibility, and
+  current-local-reliance results recorded separately;
 - origin classification for every dataset;
 - `CLAIMS_AND_BOUNDARIES.md` snapshot;
 - named reviewer approval for any external statement.
 
 Never overwrite a frozen campaign. Corrections create a successor package with a documented relationship to the prior package.
 
+For the current candidate, the implementation revision, exact local totals,
+output-parity result, and abbreviated certificate digests are recorded above.
+Only the later documentation revision remains `PENDING FINAL CUSTODY`; it must
+not be named before that commit exists.
+
 ## Exit criteria by delivery state
 
-- **Tested:** all P0 verification checks pass in a recorded local environment.
+- **Tested:** all P0 verification checks pass from one unchanged clean,
+  commit-bound snapshot in each claimed local runtime, with installed/source
+  parity and canonical certificate vectors recorded. The named implementation
+  checkpoint has this local test evidence; the documentation package remains
+  custody-incomplete until its later commit is recorded.
 - **Benchmarked:** the frozen synthetic campaign completes with preregistered scoring and immutable evidence package.
 - **Adapter-validated:** declared replay matrices pass for named versions and fixtures.
 - **Externally reproduced:** an independent party reruns the frozen package and resolves discrepancies.

@@ -43,6 +43,6 @@ def canonical_digest(value: Any) -> str:
 def verify_canonical_digest(value: Any, expected: str) -> bool:
     """Compare a recomputed digest with a previously trusted expected value."""
 
-    if not isinstance(expected, str):
+    if type(expected) is not str:
         return False
     return compare_digest(canonical_digest(value), expected)

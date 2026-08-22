@@ -1,0 +1,10 @@
+# Default review ownership. Repository rulesets determine whether review is required.
+* @redxking
+
+# Changes to trust, release, and governance surfaces require maintainer review.
+/.github/workflows/ @redxking
+/docs/adr/ @redxking
+/src/evidence_state_io/ @redxking
+/SECURITY.md @redxking
+/LICENSE @redxking
+/pyproject.toml @redxking

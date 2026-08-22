@@ -1,0 +1,88 @@
+name: Feature or design proposal
+description: Propose a bounded capability, interface, adapter, or architecture decision.
+title: "[Proposal]: "
+labels:
+  - "type:proposal"
+  - "status:triage"
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and user
+      description: Describe the decision or workflow that cannot be handled safely by the current design.
+    validations:
+      required: true
+
+  - type: textarea
+    id: current_gap
+    attributes:
+      label: Why the current mechanism is insufficient
+      description: Reference current behavior, contracts, known limitations, and adjacent alternatives.
+    validations:
+      required: true
+
+  - type: textarea
+    id: requirements
+    attributes:
+      label: Requirements and non-goals
+      description: Separate required behavior, constraints, compatibility, and explicit exclusions.
+    validations:
+      required: true
+
+  - type: textarea
+    id: design
+    attributes:
+      label: Proposed design and interfaces
+      description: Describe components, data flow, versioned interfaces, trust boundaries, and failure behavior.
+    validations:
+      required: true
+
+  - type: textarea
+    id: security
+    attributes:
+      label: Security, authorization, and data impact
+      description: Cover abuse cases, least privilege, data handling, operational authority, and fail-closed behavior.
+    validations:
+      required: true
+
+  - type: textarea
+    id: claims
+    attributes:
+      label: Evidence and claim changes
+      description: State what evidence would support the capability and what the result would still not prove.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and tradeoffs
+      description: Include the status quo and at least one materially different approach.
+    validations:
+      required: true
+
+  - type: textarea
+    id: validation
+    attributes:
+      label: Verification plan and kill condition
+      description: Define tests, benchmark cases, measures, acceptance thresholds, and the result that should stop the work.
+    validations:
+      required: true
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies and delivery impact
+      description: Identify new packages, services, data, compute, skills, schedule, migration, or operator burden.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Submission checks
+      options:
+        - label: This proposal does not silently change a state meaning, trust boundary, or compatibility promise.
+          required: true
+        - label: Any required ADR, benchmark, migration, and documentation work is identified.
+          required: true
+        - label: No external access, data use, deployment, or consequential action is assumed to be authorized.
+          required: true

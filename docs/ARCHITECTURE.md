@@ -2,300 +2,365 @@
 
 ## Purpose
 
-Evidence-State I/O is a laptop-first Python library and JSON command-line application that prevents an empty observation from being promoted into an unsupported negative factual claim. Its trusted decision path is deterministic: given the same schema version, policy ID/version, evaluator version, coverage declarations, evidence envelope, and evaluation time, it must emit the same verdict and reason codes. A complete certificate payload remains a P0 backlog item.
+Evidence-State I/O is a laptop-first Python library and JSON command-line
+application that prevents an empty observation from being promoted into an
+unsupported negative factual claim. The 0.6.0 development candidate evaluates
+one query-bound source against an application-controlled coverage/finality
+profile, gates the proposed negative claim, and emits a deterministic unsigned
+evidence certificate containing the complete replay input and decision.
 
-The P0 architecture is a modular monolith. It runs in one Python process, requires no network service, and keeps the domain model independent of the CLI, files, databases, and source-specific adapters.
+The trusted decision path is deterministic: the same supported contracts,
+normalized request, trusted profile context, evaluation time, issuance time,
+origin, and implementation identity produce the same canonical certificate
+bytes and SHA-256 digest. Determinism establishes reproducibility of supplied
+facts; it does not authenticate those facts or establish that the source
+observed the world completely.
 
-This document describes the intended design. The schemas and behavior actually present in `src/evidence_state_io/`, together with passing contract tests, remain the implementation truth.
+The P0 architecture remains a modular monolith. It runs in one Python process,
+requires no network service, and keeps domain behavior independent of the CLI,
+files, databases, and source-specific adapters. Schema `1.0` and all contracts
+identified as candidates below remain unfrozen research contracts.
+
+## Active candidate contracts
+
+| Contract | Exact supported identifier |
+|---|---|
+| Package | `evidence-state-io 0.6.0` |
+| Wire schema | `1.0` (unfrozen candidate) |
+| Policy | `esio-p0-safety-floor` / `1.0-candidate.4` |
+| Evaluator | `esio-evaluator-1.0-candidate.5` |
+| Evaluation input | `esio-evaluation-input/1.0-candidate.2` |
+| Coverage/finality profile | `esio-coverage-finality-profile/1.0-candidate.2` |
+| Registry snapshot | `esio-profile-registry-snapshot/1.0-candidate.2` |
+| Trust selection | `esio-profile-trust-selection/1.0-candidate.2` |
+| Evidence certificate | `esio-evidence-certificate/1.0-candidate.2` |
+| Evidence-state transitions | `esio-evidence-state-transition-model/1.0-candidate.1` |
+| Authorization-context identifier | `esio-authorization-context-identifier/1.0-candidate.1` |
+| Validation error | `esio-validation-error/1.0-candidate.1` |
+| Canonical JSON profile | `esio-canonical-json-0.1` |
+| Digest algorithm | `sha256` |
+
+The parser accepts only these exact identifiers. Numeric versions, floating
+aliases, ranges, unknown revisions, and silent downgrade/fallback behavior are
+not supported. The historical schema `0.1` fixture remains hash-bound for
+replay at its historical checkpoint; it is not an active 0.6.0 input contract.
+
+The implementation contract is locally custody-bound to
+`be0774680aa83052eeecab29e1a0ab38824f2860`. Its source and installed-package
+verification and cross-runtime output parity are recorded in
+`TRACEABILITY.md`. Documentation custody remains pending until the later
+documentation commit exists. This implementation checkpoint does not freeze
+schema `1.0`, freeze EmptyBench, establish external validation, or authorize
+production use.
 
 ## Goals
 
-- Distinguish `ABSENT_WITHIN_SCOPE` from incomplete, stale, inaccessible, pending, failed, contradictory, or otherwise indeterminate observation.
-- Make the coverage assumptions behind every permitted negative conclusion explicit and machine-readable.
+- Distinguish `ABSENT_WITHIN_SCOPE` from incomplete, stale, inaccessible,
+  pending, failed, contradictory, or otherwise indeterminate observation.
+- Make the scope, profile, source, freshness, finality, and trust assumptions
+  behind every permitted negative conclusion explicit and machine-readable.
 - Keep language models outside the verdict path.
-- Produce replayable JSON decisions with stable reason codes and integrity metadata.
-- Support matched EmptyBench cases in which the visible result is the same but coverage differs.
-- Allow source adapters and storage backends to be added without changing domain semantics.
-- Run the core library, CLI, demo, and tests on a Python 3.11+ laptop without Docker or external services.
+- Produce self-contained replay records with stable reason codes, exact
+  contract identifiers, canonical bytes, and integrity metadata.
+- Support matched EmptyBench cases in which the visible result is the same but
+  coverage differs.
+- Run the core library, CLI, demo, and tests on Python 3.11, 3.12, or 3.13 on a laptop without
+  Docker or external services.
 
 ## Non-goals for P0
 
 - Proving universal or metaphysical absence.
-- Discovering all enterprise data sources automatically.
-- Establishing that a source's own collection or detection logic is complete.
+- Establishing that source, profile, registry, issuer, approval, or trust
+  declarations are independently true or authenticated.
+- Discovering all enterprise data sources or composing multi-source coverage.
 - Allowing an LLM to override coverage policy or verdicts.
-- Providing a hosted API, distributed control plane, dashboard, or production SIEM integration.
-- Treating a digest as a digital signature or a local process boundary as independent custody.
-- Handling non-public, personal, regulated, classified, proprietary, or export-controlled data.
+- Providing signatures, trusted timestamps, independent custody,
+  non-repudiation, or action authorization.
+- Providing a hosted API, distributed control plane, dashboard, or production
+  integration.
+- Handling non-public, personal, regulated, classified, proprietary, or
+  export-controlled data. The current self-contained certificate embeds the
+  full normalized request and trusted profile context; current fixtures and
+  use must therefore remain synthetic and non-sensitive.
 
-## Architectural constraints
-
-| Constraint | Consequence |
-|---|---|
-| Python 3.11 or newer | Type-rich standard-library-first implementation is possible. |
-| JSON CLI is the P0 external interface | No HTTP server or message broker is required. |
-| Core demo must work offline | Fixtures and policies are local and synthetic. |
-| Verdicts must be reproducible | Time, policy, and registry versions are explicit inputs. |
-| Empty results are untrusted | Coverage is evaluated separately from returned records. |
-| The repository is pre-alpha research | Documentation and output must not imply operational validation. |
-
-## System context
+## System and trust context
 
 ```text
-  untrusted caller / agent / script
-                 |
-                 | versioned JSON evidence envelope
-                 v
-      +-----------------------------+
-      | Evidence-State I/O process  |
-      |                             |
-      | parse -> normalize ->       |
-      | resolve coverage ->         |
-      | evaluate -> gate -> certify |
-      +-----------------------------+
-          |                  |
-          |                  +----> deterministic JSON decision/certificate
-          |
-          +----> optional read-only source adapters
-                     |
-                     +----> synthetic fixtures in P0
-                     +----> disposable laptop lab in P1
+ producer request (untrusted)                application configuration
+ envelope + exact profile reference          registry snapshot + trust selection
+                    \                         /
+                     \                       /
+                      v                     v
+                 +----------------------------------+
+                 | Evidence-State I/O process       |
+                 | strict parse and normalize       |
+                 | staged profile trust             |
+                 | source and coverage evaluation   |
+                 | negative-claim gate              |
+                 | builder-owned evaluation         |
+                 | canonical certificate issuance   |
+                 +----------------------------------+
+                                  |
+                                  v
+                    unsigned replay certificate
 ```
 
-The caller may propose a negative claim. In the current candidate, the producer
-also supplies an aggregate evidence state; the gate validates that state against
-matches, coverage, source accounting, time, and policy rather than deriving the
-state independently. State derivation therefore remains an explicit gap. Source
-adapters report observations and collection metadata; they do not decide whether
-coverage is sufficient. A future coverage registry will declare what a source is
-expected to cover; it will not prove that the source actually collected every
-relevant event.
+The producer request carries only an exact `CoverageProfileReference`. It does
+not carry the profile body, registry snapshot, or trust selection. The
+application supplies those objects on a separate boundary and selects the
+single exact profile reference in the trust selection. A request cannot choose
+a different, weaker profile merely because that profile also appears in the
+trusted snapshot.
+
+The producer still supplies the aggregate evidence state and observation
+facts. The gate checks their internal consistency, source accounting, profile
+applicability, coverage, freshness, finality, and policy; it does not derive
+source truth independently. That remains a deliberate evidence boundary.
 
 ## Modular monolith
 
-The package should preserve the following logical modules even if the initial implementation uses fewer physical files.
-
 | Module | Responsibility | Must not do |
 |---|---|---|
-| Contract model | Parse and validate versioned envelopes, source profiles, policies, decisions, and certificates. | Perform I/O or infer missing coverage. |
-| Canonicalizer | Normalize supported JSON values and create stable bytes for comparison and hashing. | Accept NaN, infinity, unordered timestamps, or environment-dependent values. |
-| Source-accounting evaluator | For the schema `1.0` candidate, compare one declared required source with its runtime identity, adapter, authorization context, accessible population, status, and errors. | Compose multiple sources or treat a matching label as proof of source honesty. |
-| Coverage resolver | Compare coverage facts with the query-bound coverage object and policy; later compare against governed source profiles. | Treat source health alone as proof of query coverage. |
-| Evidence evaluator | Produce an evidence state and complete set of stable reason codes from explicit inputs. | Call an LLM, current-time function, network, or mutable global state. |
-| Negative-claim gate | Permit only a bounded, scoped negative when the evaluator returns `ABSENT_WITHIN_SCOPE`; block or qualify all other negative claims. | Rewrite an indeterminate state as absence. |
-| Certificate builder | Bind normalized inputs, versions, decision, evaluation time, and integrity digest into replayable output. | Call a digest a signature unless an actual signing profile is implemented. |
-| Benchmark harness | Run paired cases and compare the gate with baselines using an independent expected-outcome oracle. | Use the implementation's verdict as its own ground truth. |
-| CLI adapter | Read JSON, select a command, call application services, and write JSON to stdout with diagnostics on stderr. | Contain domain decisions or require a network service. |
-| Source adapters | Translate source-specific observations into the common envelope through read-only interfaces. | Grant `ABSENT_WITHIN_SCOPE` directly. |
-| Repository adapters | Optionally persist registries, envelopes, and certificates. | Change an already issued certificate in place. |
+| Contract model | Strictly parse and validate requests, profiles, snapshots, trust selections, decisions, and certificates. | Perform I/O or guess unsupported versions. |
+| Canonicalizer | Normalize supported JSON values and produce stable bytes and digests. | Accept NaN, infinity, duplicate keys, lossy numbers, or environment-dependent values. |
+| Profile resolver | Apply staged snapshot and profile trust, exact reference resolution, applicability, finality, retention, blind-interval, and freshness checks. | Use untrusted snapshot/profile semantics to drive a favorable decision. |
+| Source-accounting evaluator | Compare the one declared source with runtime identity, adapter, authorization context, population, status, errors, and query binding. | Compose multiple sources or treat matching labels as proof of truth. |
+| Evidence evaluator | Produce a deterministic decision and complete stable reasons from explicit inputs. | Read the wall clock, network, filesystem, or mutable global state. |
+| Negative-claim gate | Permit only the generated bounded negative when every required check passes. | Rewrite indeterminate evidence as absence. |
+| Certificate builder | Own evaluation and bind request, trusted context, contract IDs, origin, times, decision, implementation identity, and validity boundary. | Accept a caller-created decision or call a digest a signature. |
+| Certificate verifier | Reparse, check structural support and bindings, reproduce the decision, and report independent custody/current-use dimensions. | Emit one aggregate `valid` assertion or establish issuer identity/authorization. |
+| Benchmark harness | Compare paired cases with a separately stored, versioned, corpus-bound expected-outcome oracle. | Use the implementation verdict as its own ground truth or describe author-controlled separation as independent adjudication. |
+| CLI adapter | Read strict JSON, supply application context, call domain services, and separate stdout from diagnostics. | Contain domain policy or require a network service. |
 
-## Core conceptual contracts
+## Core contracts
 
-Field names below are conceptual. The versioned JSON schema in the implementation is authoritative.
+### Query and source requirement
 
-### Query specification
+A schema `1.0` candidate query declares target, predicate, descriptive
+authorization boundary, stable non-secret authorization-context ID, time
+interval, exclusions, and exactly one required source. The source requirement
+binds source/system/locator, exact adapter ID and immutable version, accessible
+population, nonempty detection assumptions, an exact profile reference, and a
+profile-derived finality horizon.
 
-A query must identify enough scope to evaluate coverage:
+The normalized query has a canonical SHA-256 fingerprint. Aggregate coverage
+and every source observation must carry that exact fingerprint. A free-form
+question, matching source label, or empty record set is not sufficient.
 
-- target and predicate;
-- descriptive authorization boundary and a stable non-secret authorization-context identifier;
-- start and end of the observation interval;
-- exclusions;
-- exactly one schema `1.0` candidate source requirement, including source ID,
-  system, locator, adapter ID/version, accessible population, and nonempty
-  detection assumptions; and
-- a declared source-specific finality horizon resolved for the query interval.
+### Governed profile context
 
-The normalized query has a canonical SHA-256 fingerprint. Both runtime source
-observations and aggregate coverage must carry that fingerprint. Multiple
-sources, per-source coverage, fields/projection structure, profile references,
-authenticated horizon/index assertions, and finality composition remain later
-contract work.
+The profile declares source identity and adapter applicability, authoritative
+scope, population basis, retention, blind intervals, exclusions, freshness
+caps, finality delay, effective/expiry times, issuer, and approval authority.
+The registry snapshot binds exact profile records and digests under a named
+issuer and closed-open validity interval. The trust selection pins the exact
+snapshot digest, trusted issuer/authority sets, and the one application-selected
+profile reference.
 
-A free-form natural-language question alone is not a query specification.
+Resolution is staged:
 
-### Source coverage profile
+1. Validate snapshot/trust contract identifiers and their self-digests.
+2. Validate registry/snapshot identity, exact digest, selected reference,
+   snapshot issuer, and snapshot time window.
+3. If any snapshot trust check fails, stop before using contained profile
+   semantics for applicability, freshness, or finality diagnostics.
+4. Resolve the application-selected exact profile ID, immutable version, and
+   digest.
+5. Validate profile issuer, approval authority, effective/expiry interval, and
+   inclusive revocation before applying its semantics.
+6. Compare the request and runtime observation with the trusted profile.
 
-A registry profile declares:
+The staged order is security-significant: untrusted content may be parseable,
+but it cannot select the rule set used to evaluate the claim.
 
-- source identifier and profile version;
-- owning authority and declared authoritative scope;
-- populations and fields collected;
-- retention and known blind intervals;
-- maximum acceptable freshness and expected update cadence;
-- access and tenant/partition assumptions;
-- pagination or completeness mechanism;
-- detection assumptions and known exclusions;
-- finality or late-arrival behavior.
+Profiles, snapshots, and trust selections contain declarative identities and
+canonical integrity bindings. They are not signed in P0, and their truth and
+custody must be established outside this process.
 
-Profiles are assertions under configuration control. Their truth must be validated separately; the gateway only evaluates whether runtime evidence satisfies the declared profile and policy.
+### Evaluation and gate result
 
-### Source observation
+The evaluator uses policy `1.0-candidate.4` and emits evaluator
+`esio-evaluator-1.0-candidate.5`. It checks the supplied aggregate state,
+matches, source accounting, profile applicability, coverage, freshness,
+finality horizon, index chronology, and validity. It returns all applicable
+stable reasons, a permit/reject disposition, bounded scope/qualification text,
+profile assessment, and the composite evaluation-input digest.
 
-Each source observation should bind:
-
-- source identity, adapter ID/version, and eventually a profile version;
-- canonical query fingerprint and effective filters;
-- observation interval;
-- access identity or access-boundary label, without embedding credentials;
-- page/cursor completion evidence when applicable;
-- source timestamp, retrieval timestamp, and declared clock basis;
-- records or a stable summary of the visible result;
-- adapter outcome and structured fault information;
-- known exclusions, truncation, or transformation notes.
-
-An empty record list is only an observation. It is not an evidence-state verdict.
-
-The active candidate implements source/adapter identity, authorization-context,
-population, status, error, query-fingerprint, and index-timestamp checks. It does
-not yet implement a profile registry or independently attested source identity,
-horizon, or index watermark. Candidate.2 does deterministically require the
-reported index to reach the declared query-bound horizon.
-
-### Evaluation result
-
-The current gate decision returns:
-
-- a permit/reject disposition after checking the producer-supplied aggregate state;
-- all applicable stable reason codes, not only the highest-priority reason;
-- a gate disposition;
-- the precise scope text or structured scope allowed for a supported negative;
-- an explicit evaluator version;
-- a deterministic digest of the normalized request, which includes schema,
-  policy, source bindings, and caller-supplied evaluation time.
-
-The complete self-describing certificate still needs to expose and bind schema,
-policy, evaluator, profile, origin, evaluation time, decision, and certificate
-format as one canonical issued object.
-
-Initial states are `PRESENT`, `ABSENT_WITHIN_SCOPE`, `NOT_OBSERVED`, `PARTIAL`, `STALE`, `INACCESSIBLE`, `PENDING_WINDOW`, `FAILED`, and `CONTRADICTORY`.
-
-### Gate disposition
-
-The external disposition is intentionally smaller than the evidence vocabulary:
+The external gate remains intentionally smaller than the state vocabulary:
 
 | Evidence result | Negative-claim disposition |
 |---|---|
-| `ABSENT_WITHIN_SCOPE` | Permit only the generated scoped negative. |
-| `PRESENT` | Refuse the negative claim; positive evidence exists. |
-| Any indeterminate or contradictory state | Block an unqualified negative and return the unresolved conditions. |
+| `ABSENT_WITHIN_SCOPE` with no disqualifying reason | Permit only the generated scoped negative. |
+| `PRESENT` | Reject the negative; positive evidence exists. |
+| Any indeterminate, failed, or contradictory state | Reject an unqualified negative and retain the unresolved reasons. |
 
-Explanatory language may be generated outside the trusted decision path, but it must quote or reference the structured disposition and may not broaden it.
+Explanatory language may be generated outside the trusted decision path, but
+it may not broaden the structured disposition or strip qualifications.
+
+### Evidence certificate
+
+`EvidenceCertificate` is a self-contained, unsigned replay record. The builder
+has no caller-supplied `GateDecision` parameter: it evaluates the request
+itself and records the complete decision. The certificate binds:
+
+- every active contract identifier and the SHA-256/canonicalization profiles;
+- normalized request and policy digest;
+- complete trusted profile context and its context binding;
+- composite evaluation-input digest;
+- evaluation, issuance, and effective-validity times;
+- explicit evidence origin and asserted implementation identity;
+- complete permit or rejection decision; and
+- an outer digest over the canonical payload.
+
+The Python dataclasses are frozen only at the top level; nested mappings are
+not a deep immutability guarantee. The immutable verification record is the
+canonical serialized JSON. Verification therefore serializes and strictly
+reparses even a caller-supplied typed `EvidenceCertificate` before inspecting
+it.
+
+Structural parsing rejects duplicate/unknown fields, booleans in numeric
+positions, out-of-range bounds, non-finite values, and decimal values that
+cannot round-trip exactly through the supported binary64 canonical JSON model.
+Replay compares canonical JSON bytes, so JSON numeric types remain significant
+(`1` and `1.0` are not interchangeable decision records).
+
+Verification reports separate dimensions rather than one `valid` flag:
+
+- structural support;
+- outer certificate-digest integrity;
+- embedded digest/binding integrity;
+- deterministic replay and historical reproducibility;
+- optional exact expected-context match;
+- optional expected-certificate-digest match;
+- optional current-local-reliance eligibility; and
+- issuer authentication and authorization, which remain `false` in P0.
+
+Expected context and expected digest must come from outside the certificate.
+Absence of either is unestablished (`null`), not success. Current local reliance
+is evaluated only when an external expected context, a separately retained
+expected certificate digest, and an explicit relying-party time are all
+supplied. Any mismatch fails that dimension and current reliance.
+
+The effective current-reliance boundary is the earliest applicable deadline:
+
+- registry snapshot `next_update_at`;
+- evidence envelope `valid_until`;
+- policy observation- and index-freshness deadlines;
+- resolved profile expiry and effective revocation; and
+- resolved profile observation- and index-freshness deadlines.
+
+The interval is closed-open and also requires
+`issued_at <= relying_party_at`. A rejection certificate can reproduce
+historically but can never become eligible for current reliance. P0 does not
+consult a monotonic registry head or online revocation service after issuance;
+the caller must supply the currently expected context.
 
 ## Data flow
 
-1. The caller supplies a schema `1.0` candidate request and its explicit policy identity/configuration.
-2. The contract layer rejects unknown schemas/policies, malformed time, missing scope, any source count other than one required source, duplicate/undeclared observations, and unsupported JSON values.
-3. The query model creates a canonical fingerprint; the envelope rejects coverage or observations bound to another query.
-4. Source accounting compares declared identity, adapter, authorization context, accessible population, status, and errors.
-5. Coverage evaluation checks the query-bound aggregate coverage facts under the named policy.
-6. The gate checks the producer-supplied aggregate state, matches, source and coverage assessments, freshness, finality horizon, index chronology, and validity. Only an entirely reason-free request permits a scoped negative. Waiting cannot repair an index that remains before the horizon.
-7. The current decision includes the normalized-request digest and evaluator version. The complete certificate builder is not yet implemented.
-8. The CLI writes machine-readable output to stdout and structured invalid-input diagnostics to stderr.
-9. Replaying the same normalized request reproduces the same decision and digest.
+1. The caller supplies a schema `1.0` request with the exact policy and profile
+   reference. The application separately supplies the registry snapshot and
+   trust selection.
+2. The CLI parser rejects ambiguous, oversized, deeply nested, duplicate-key,
+   nonstandard, or unsupported JSON before domain evaluation.
+3. Models normalize time, identifiers, sets, counts, exact supported numbers,
+   and immutable version strings.
+4. Profile resolution validates the snapshot trust boundary first, then the
+   exact selected profile and its trust/applicability boundaries.
+5. Source accounting and coverage evaluation compare request-bound facts with
+   the trusted profile and policy.
+6. The gate evaluates the supplied state and emits a deterministic decision.
+7. The certificate builder binds that decision and all replay inputs into one
+   canonical payload and computes the unsigned outer digest.
+8. The CLI writes the certificate to stdout and structured invalid-input
+   diagnostics to stderr.
+9. Verification strictly reparses the artifact, recomputes all bindings,
+   reevaluates, and compares canonical decision bytes. Optional external
+   context, digest, and relying-party time add separate custody/current-use
+   assessments.
 
 ## Determinism and time
 
-- Domain functions receive `evaluation_time`; they do not read the wall clock.
-- Timestamps use RFC 3339 with an explicit offset and are normalized before comparison.
-- Policy candidate.2 accepts equality at the finality, index, observation, evaluation, and validity boundaries; tests exercise the adjacent microsecond values.
-- JSON canonicalization rejects values that do not have portable representations.
-- Collections that are semantically unordered are sorted by stable identifiers before hashing.
-- Reason-code ordering is defined and tested.
-- Randomized tests must record seeds.
-
-Determinism establishes reproducibility of the implementation. It does not establish that a coverage declaration is true or that a source observed the world completely.
-
-## Persistence
-
-P0 requires no database. Commands operate on explicit JSON inputs and emit explicit JSON outputs. Fixtures live in the repository, and callers choose whether to persist outputs.
-
-An optional repository port may later support SQLite for a single-user laptop ledger. Postgres in `compose.yaml` is a disposable adapter/fault laboratory, not a P0 runtime dependency. Any persistent implementation must be append-oriented: a correction creates a new version that links to the superseded object rather than silently changing an issued certificate.
-
-## Adapter boundary
-
-The application layer should define small protocols similar to:
-
-```python
-class CoverageRegistryPort(Protocol):
-    def resolve(self, query: QuerySpec) -> RegistrySnapshot: ...
-
-class SourceObserverPort(Protocol):
-    def observe(self, query: QuerySpec) -> SourceObservation: ...
-
-class CertificateRepositoryPort(Protocol):
-    def append(self, certificate: EvidenceCertificate) -> None: ...
-```
-
-Adapters translate; they do not decide. A source-specific `200 OK`, empty array, successful search job, or healthy status endpoint cannot bypass the coverage evaluator.
+- Domain functions receive evaluation, issuance, and relying-party times; they
+  do not read the ambient clock.
+- RFC 3339 timestamps require explicit offsets and normalize to canonical UTC.
+- Policy/profile/finality boundaries use exact integer/microsecond arithmetic.
+- Profile/snapshot/revocation/current-use intervals are tested at the adjacent
+  microsecond and use the documented inclusive or closed-open semantics.
+- Semantically unordered collections are sorted before hashing.
+- Supported JSON numbers must preserve their exact canonical meaning; lossy
+  Decimal-to-binary64 normalization is rejected.
+- Decision replay is canonical-byte exact, and reason ordering is deterministic.
 
 ## CLI boundary
 
-The installed command is `evidence-state`. The P0 command contract is:
+The installed command is `evidence-state`:
 
-- `evidence-state evaluate --input <path-or->` evaluates one envelope and writes JSON.
-- `evidence-state demo` runs the local paired covered/partial demonstration.
-- `evidence-state --help` is side-effect free.
+- `evidence-state evaluate --input <path-or-> --registry <path> --trust
+  <path> --issued-at <RFC3339> --origin <class>` evaluates and writes a
+  certificate. Implementation revision/tree-state inputs are explicit; no
+  ambient Git lookup occurs.
+- `evidence-state verify-certificate --input <path-or->` performs structural,
+  integrity, and replay checks. `--registry` and `--trust` must be supplied as a
+  pair for expected-context comparison; `--expected-digest` and
+  `--relying-party-at` enable their independent dimensions.
+- `evidence-state emptybench --input <path> --registry <path> --trust <path>`
+  runs caller-supplied benchmark cases under application-controlled context.
+- `evidence-state demo`, `evidence-state coverage`, and `evidence-state --help`
+  retain their bounded local roles.
 
-`-` denotes stdin where supported. Structured output goes to stdout; diagnostics go to stderr. Successful evaluation may still produce a blocked negative claim, so the JSON disposition—not process exit status—communicates the evidence decision. Nonzero exit status is reserved for invalid input, unavailable local dependencies, or internal execution failure.
+`-` denotes stdin where supported. Structured output goes to stdout;
+diagnostics go to stderr. A valid rejection certificate is a successful
+evaluation operation, so its decision is communicated in JSON rather than by a
+process failure. Invalid input returns exit `2`; certificate verification
+dimension failure returns exit `1`.
 
-## EmptyBench isolation
+## Persistence and laptop deployment
 
-EmptyBench fixtures and their expected outcomes are test inputs, not runtime policy. The expected-outcome oracle must be stored independently from generated decisions. Paired cases should hold the visible records and user question constant while changing one coverage condition. Each new fault case requires a matched control so a system cannot score well by refusing every negative conclusion.
+P0 requires no database. Commands operate on explicit local JSON inputs and
+outputs. A laptop or VM can run the complete core path offline. Optional
+Postgres/Toxiproxy containers are a disposable synthetic adapter/fault lab, not
+a P0 dependency or production environment.
 
-## Laptop deployment
+If persistence is later added, certificates must be append-only. A correction
+creates a successor linked to the prior artifact; it does not mutate an issued
+record. Independent custody requires a separately controlled store or retained
+expected digest and is not supplied by a local file alone.
 
-```text
-Host Python process
-  evidence-state CLI
-    -> in-process contracts/evaluator/gate/certificate
-    -> local JSON fixtures
-    -> stdout JSON
+## Security boundaries and failure behavior
 
-Optional Compose profile `lab`
-  Postgres synthetic source <- Toxiproxy fault boundary
-```
-
-The optional containers bind only to loopback, contain synthetic data, and are not required by the core suite. See [LAPTOP_LAB.md](LAPTOP_LAB.md).
-
-## Security boundaries
-
-- Caller-provided JSON is untrusted.
-- Registry profiles and policies are privileged configuration and require review/versioning.
-- Source observations may be incomplete, forged, stale, or produced with insufficient access.
-- The evaluator and canonicalizer form the P0 trusted computing base.
-- Local digests detect accidental or subsequent modification only when a trusted copy of the expected digest exists.
-- A single laptop process does not provide independent observation, tamper-proof custody, multi-party authorization, or non-repudiation.
+- Producer request and certificate JSON are untrusted.
+- Registry and trust inputs are privileged application configuration, but P0
+  self-digests do not authenticate their declarative issuers.
+- Source observations can be incomplete, stale, forged, or produced under
+  insufficient access.
+- Any unsupported schema, policy, evaluator, profile, registry, trust,
+  evaluation-input, certificate, canonicalization, or digest identifier rejects
+  without fallback.
+- Snapshot trust failure stops profile-semantic use. Exact profile mismatch,
+  untrusted issuer/authority, expiry, revocation, applicability failure,
+  freshness failure, finality failure, source mismatch, or coverage failure
+  blocks the negative claim.
+- Certificate integrity or replay failure is reported independently; it cannot
+  establish authentication or authorization.
+- A single laptop process does not provide independent observation, protected
+  custody, multi-party authorization, non-repudiation, external validation, or
+  production readiness.
 
 The full threat model is in [../SECURITY.md](../SECURITY.md).
 
-## Failure behavior
-
-| Failure | Required behavior |
-|---|---|
-| Unknown schema/policy version | Reject input; do not evaluate under guessed semantics. |
-| Coverage or observation bound to another query | Reject input before evaluation. |
-| Source identity, adapter, authorization context, or population mismatch | Block negative with a source-attributed reason. |
-| Missing required source | Preserve `PARTIAL` or the policy-defined indeterminate state; block negative. |
-| Source inaccessible | Preserve `INACCESSIBLE`; block negative. |
-| Observation older than policy | Preserve `STALE`; block negative. |
-| Incomplete pagination or filtered population | Preserve `PARTIAL`; block negative. |
-| Finality horizon not reached | Preserve `PENDING_WINDOW`; block negative. |
-| Adapter failure | Preserve `FAILED`; block negative. |
-| Conflicting authoritative observations | Preserve `CONTRADICTORY`; block negative. |
-| Optional or multiple declared sources in schema `1.0` candidate | Reject input; multi-source coverage composition is not defined. |
-| Unexpected internal exception | Return a nonzero CLI status without emitting a permitted negative. |
-| Certificate persistence failure | Report failure; do not claim durable custody. |
-
-When several failures apply, the output retains all reason codes. Aggregate-state precedence is versioned policy and must be contract-tested; it must never erase the underlying reasons.
-
 ## Evolution rules
 
-- Additive optional JSON fields may remain within a schema version only when old implementations can ignore them safely.
-- New required fields, changed state meanings, changed boundary comparisons, or changed canonicalization require a new schema or policy version.
-- New evidence states require an ADR, gate mapping, matched benchmark cases, and compatibility tests.
-- New adapters begin read-only and synthetic. Real-data use crosses an owner approval boundary.
-- A future HTTP service should wrap the application layer; it must not move policy into handlers or make network availability a core requirement.
+- Schema `1.0` and candidate contracts remain unfrozen until final custody and
+  acceptance evidence are recorded.
+- New required fields, changed state meanings, comparison boundaries, numeric
+  semantics, trust ordering, or canonicalization require governed version
+  evolution.
+- New evidence states require an ADR, gate mapping, matched benchmark cases,
+  and compatibility tests.
+- New adapters begin read-only and synthetic; real-data use crosses an explicit
+  owner and data-boundary approval.
+- A future service may wrap the application layer but must not move policy into
+  handlers or make network availability a core dependency.
 
 ## Related decisions
 
@@ -306,3 +371,9 @@ When several failures apply, the output retains all reason codes. Aggregate-stat
 - [ADR-0005](adr/0005-canonical-certificates-and-digest-boundary.md)
 - [ADR-0006](adr/0006-disposable-opt-in-fault-lab.md)
 - [ADR-0007](adr/0007-schema-1-source-accounting-and-version-boundaries.md)
+- [ADR-0008](adr/0008-explicit-source-finality-horizon.md)
+- [ADR-0009](adr/0009-governed-profile-resolution-and-trust-selection.md)
+- [ADR-0010](adr/0010-certificates-are-replay-records-not-authorization-tokens.md)
+- [ADR-0011](adr/0011-adversarial-trust-and-replay-hardening.md)
+- [ADR-0012](adr/0012-version-state-transitions-and-validation-errors.md)
+- [ADR-0013](adr/0013-python-trust-boundary-and-reliance-custody.md)

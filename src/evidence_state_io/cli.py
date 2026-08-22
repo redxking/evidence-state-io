@@ -17,14 +17,18 @@ from .certificates import (
     build_evidence_certificate,
     verify_evidence_certificate,
 )
-from .emptybench import parse_cases, run_emptybench, run_seed_emptybench
+from .emptybench import parse_corpus, parse_oracle, run_emptybench, run_seed_emptybench
+from .errors import (
+    ModelValidationError,
+    ValidationErrorCode,
+    public_validation_error,
+)
 from .gate import NegativeClaimRequest, NegativeClaimPolicy
 from .models import (
     ClaimMode,
     CoverageEvidence,
     EvidenceEnvelope,
     MAX_INTEGER_DECIMAL_DIGITS,
-    ModelValidationError,
     parse_datetime,
 )
 from .profiles import (
@@ -39,24 +43,41 @@ MAX_JSON_NUMBER_TOKEN_CHARS = MAX_INTEGER_DECIMAL_DIGITS
 PACKAGE_VERSION = "0.6.0"
 
 
+class _JsonArgumentParser(argparse.ArgumentParser):
+    """Route command-usage failures through the public JSON error contract."""
+
+    def error(self, message: str) -> None:
+        raise ModelValidationError(
+            "command arguments are invalid",
+            code=ValidationErrorCode.CLI_ARGUMENT_INVALID,
+        )
+
+
 def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key, value in pairs:
         if key in result:
-            raise ModelValidationError(f"duplicate JSON object key: {key}")
+            raise ModelValidationError(
+                "JSON contains a duplicate object key",
+                code=ValidationErrorCode.JSON_DUPLICATE_KEY,
+            )
         result[key] = value
     return result
 
 
 def _reject_json_constant(value: str) -> None:
-    raise ModelValidationError(f"non-standard JSON numeric constant is not allowed: {value}")
+    raise ModelValidationError(
+        "JSON contains a non-standard numeric constant",
+        code=ValidationErrorCode.JSON_NUMBER_INVALID,
+    )
 
 
 def _check_json_number_token(value: str) -> None:
     if len(value) > MAX_JSON_NUMBER_TOKEN_CHARS:
         raise ModelValidationError(
             "JSON numeric token exceeds the supported "
-            f"{MAX_JSON_NUMBER_TOKEN_CHARS}-character limit"
+            f"{MAX_JSON_NUMBER_TOKEN_CHARS}-character limit",
+            code=ValidationErrorCode.JSON_NUMBER_INVALID,
         )
 
 
@@ -65,7 +86,10 @@ def _parse_json_int(value: str) -> int:
     try:
         return int(value)
     except ValueError as exc:
-        raise ModelValidationError("JSON integer could not be decoded safely") from exc
+        raise ModelValidationError(
+            "JSON integer could not be decoded safely",
+            code=ValidationErrorCode.JSON_NUMBER_INVALID,
+        ) from exc
 
 
 def _parse_json_float(value: str) -> Decimal:
@@ -73,7 +97,10 @@ def _parse_json_float(value: str) -> Decimal:
     try:
         return Decimal(value)
     except (InvalidOperation, ValueError) as exc:
-        raise ModelValidationError("JSON number could not be decoded safely") from exc
+        raise ModelValidationError(
+            "JSON number could not be decoded safely",
+            code=ValidationErrorCode.JSON_NUMBER_INVALID,
+        ) from exc
 
 
 def _strict_json_loads(text: str) -> Any:
@@ -86,19 +113,26 @@ def _strict_json_loads(text: str) -> Any:
             parse_int=_parse_json_int,
         )
     except RecursionError as exc:
-        raise ModelValidationError("JSON nesting exceeds the supported parser depth") from exc
+        raise ModelValidationError(
+            "JSON nesting exceeds the supported parser depth",
+            code=ValidationErrorCode.JSON_DEPTH_EXCEEDED,
+        ) from exc
     except ModelValidationError:
         raise
     except json.JSONDecodeError:
         raise
     except ValueError as exc:
-        raise ModelValidationError("JSON numeric token could not be decoded safely") from exc
+        raise ModelValidationError(
+            "JSON numeric token could not be decoded safely",
+            code=ValidationErrorCode.JSON_NUMBER_INVALID,
+        ) from exc
     stack: list[tuple[Any, int]] = [(value, 0)]
     while stack:
         current, depth = stack.pop()
         if depth > MAX_JSON_DEPTH:
             raise ModelValidationError(
-                f"JSON nesting exceeds the supported depth of {MAX_JSON_DEPTH}"
+                f"JSON nesting exceeds the supported depth of {MAX_JSON_DEPTH}",
+                code=ValidationErrorCode.JSON_DEPTH_EXCEEDED,
             )
         if isinstance(current, dict):
             stack.extend((item, depth + 1) for item in current.values())
@@ -112,25 +146,46 @@ def _read_json(path: str, stdin: TextIO) -> Any:
         try:
             text = stdin.read(MAX_INPUT_BYTES + 1)
         except UnicodeError as exc:
-            raise ModelValidationError("JSON input must be valid UTF-8") from exc
-        if not isinstance(text, str):
-            raise ModelValidationError("JSON input stream must provide decoded text")
+            raise ModelValidationError(
+                "JSON input must be valid UTF-8",
+                code=ValidationErrorCode.INPUT_ENCODING_INVALID,
+            ) from exc
+        except (OSError, ValueError) as exc:
+            raise ModelValidationError(
+                "JSON input could not be read",
+                code=ValidationErrorCode.INPUT_READ_FAILED,
+            ) from exc
+        if type(text) is not str:
+            raise ModelValidationError(
+                "JSON input stream must provide decoded text",
+                code=ValidationErrorCode.INPUT_ENCODING_INVALID,
+            )
         try:
             encoded = text.encode("utf-8")
         except UnicodeEncodeError as exc:
-            raise ModelValidationError("JSON input must be valid UTF-8") from exc
+            raise ModelValidationError(
+                "JSON input must be valid UTF-8",
+                code=ValidationErrorCode.INPUT_ENCODING_INVALID,
+            ) from exc
         if len(encoded) > MAX_INPUT_BYTES:
             raise ModelValidationError(
-                f"JSON input exceeds the {MAX_INPUT_BYTES}-byte limit"
+                f"JSON input exceeds the {MAX_INPUT_BYTES}-byte limit",
+                code=ValidationErrorCode.INPUT_SIZE_EXCEEDED,
             )
         return _strict_json_loads(text)
     raw = Path(path).read_bytes()
     if len(raw) > MAX_INPUT_BYTES:
-        raise ModelValidationError(f"JSON input exceeds the {MAX_INPUT_BYTES}-byte limit")
+        raise ModelValidationError(
+            f"JSON input exceeds the {MAX_INPUT_BYTES}-byte limit",
+            code=ValidationErrorCode.INPUT_SIZE_EXCEEDED,
+        )
     try:
         text = raw.decode("utf-8")
     except UnicodeDecodeError as exc:
-        raise ModelValidationError("JSON input must be valid UTF-8") from exc
+        raise ModelValidationError(
+            "JSON input must be valid UTF-8",
+            code=ValidationErrorCode.INPUT_ENCODING_INVALID,
+        ) from exc
     return _strict_json_loads(text)
 
 
@@ -144,8 +199,17 @@ def _write_json(value: Any, stream: TextIO, pretty: bool) -> None:
             )
         payload.encode("utf-8")
     except (TypeError, UnicodeError, ValueError) as exc:
-        raise ModelValidationError("JSON output could not be encoded safely") from exc
-    stream.write(payload + "\n")
+        raise ModelValidationError(
+            "JSON output could not be encoded safely",
+            code=ValidationErrorCode.OUTPUT_ENCODING_FAILED,
+        ) from exc
+    try:
+        stream.write(payload + "\n")
+    except (OSError, UnicodeError, ValueError) as exc:
+        raise ModelValidationError(
+            "JSON output could not be written safely",
+            code=ValidationErrorCode.OUTPUT_ENCODING_FAILED,
+        ) from exc
 
 
 def _trusted_profile_context(
@@ -154,7 +218,8 @@ def _trusted_profile_context(
 ) -> TrustedProfileContext:
     if args.registry == "-" or args.trust == "-":
         raise ModelValidationError(
-            "--registry and --trust must be separate files; stdin is reserved for --input"
+            "--registry and --trust must be separate files; stdin is reserved for --input",
+            code=ValidationErrorCode.CLI_ARGUMENT_INVALID,
         )
     return TrustedProfileContext(
         snapshot=ProfileRegistrySnapshot.from_dict(
@@ -179,13 +244,15 @@ def _request_input(
         if supplied_overrides:
             raise ModelValidationError(
                 "full request JSON cannot be combined with CLI overrides: "
-                + ", ".join(f"--{name.replace('_', '-')}" for name in supplied_overrides)
+                + ", ".join(f"--{name.replace('_', '-')}" for name in supplied_overrides),
+                code=ValidationErrorCode.CLI_ARGUMENT_INVALID,
             )
         return NegativeClaimRequest.from_dict(data)
 
     if args.evaluated_at is None:
         raise ModelValidationError(
-            "a bare envelope requires --evaluated-at; the CLI never falls back to wall-clock time"
+            "a bare envelope requires --evaluated-at; the CLI never falls back to wall-clock time",
+            code=ValidationErrorCode.CLI_ARGUMENT_INVALID,
         )
     envelope = EvidenceEnvelope.from_dict(data)
     try:
@@ -193,7 +260,10 @@ def _request_input(
             ClaimMode.SCOPED.value if args.mode is None else args.mode
         )
     except ValueError as exc:  # argparse choices should make this unreachable
-        raise ModelValidationError("--mode must be SCOPED or ABSOLUTE") from exc
+        raise ModelValidationError(
+            "--mode must be SCOPED or ABSOLUTE",
+            code=ValidationErrorCode.CLI_ARGUMENT_INVALID,
+        ) from exc
     request = NegativeClaimRequest(
         envelope=envelope,
         subject=(
@@ -213,7 +283,8 @@ def _implementation_identity(args: argparse.Namespace) -> ImplementationIdentity
         state = WorkingTreeState(args.working_tree_state)
     except (TypeError, ValueError) as exc:
         raise ModelValidationError(
-            "--working-tree-state must be CLEAN, DIRTY, or UNBOUND"
+            "--working-tree-state must be CLEAN, DIRTY, or UNBOUND",
+            code=ValidationErrorCode.CLI_ARGUMENT_INVALID,
         ) from exc
     return ImplementationIdentity(
         package_name="evidence-state-io",
@@ -237,7 +308,7 @@ def _coverage_input(data: Any) -> dict[str, Any]:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
+    parser = _JsonArgumentParser(
         prog="evidence-state",
         description="Evaluate evidence-state envelopes without inferring global absence.",
     )
@@ -307,9 +378,21 @@ def build_parser() -> argparse.ArgumentParser:
     demo.add_argument("--pretty", action="store_true", help="Pretty-print JSON")
 
     benchmark = subparsers.add_parser(
-        "emptybench", help="Run EmptyBench cases supplied as JSON."
+        "emptybench", help="Run a versioned EmptyBench corpus and independent oracle."
     )
-    benchmark.add_argument("--input", required=True, help="JSON file, or - for stdin")
+    benchmark.add_argument(
+        "--input", required=True, help="Versioned corpus JSON file, or - for stdin"
+    )
+    benchmark.add_argument(
+        "--oracle",
+        required=True,
+        help="Separately stored versioned oracle JSON file",
+    )
+    benchmark.add_argument(
+        "--expected-oracle-digest",
+        required=True,
+        help="Separately retained lowercase SHA-256 digest for the oracle",
+    )
     benchmark.add_argument(
         "--registry",
         required=True,
@@ -364,9 +447,9 @@ def main(
     output_stream = sys.stdout if stdout is None else stdout
     error_stream = sys.stderr if stderr is None else stderr
     parser = build_parser()
-    args = parser.parse_args(list(argv) if argv is not None else None)
 
     try:
+        args = parser.parse_args(list(argv) if argv is not None else None)
         if args.command == "evaluate":
             context = _trusted_profile_context(args, input_stream)
             request = _request_input(
@@ -386,9 +469,19 @@ def main(
             _write_json(report.to_dict(), output_stream, args.pretty)
             return 0 if report.all_passed else 1
         if args.command == "emptybench":
+            if args.oracle == "-":
+                raise ModelValidationError(
+                    "--oracle must be a separate file; stdin is reserved for --input",
+                    code=ValidationErrorCode.CLI_ARGUMENT_INVALID,
+                )
             context = _trusted_profile_context(args, input_stream)
-            cases = parse_cases(_read_json(args.input, input_stream))
-            report = run_emptybench(cases, context)
+            corpus = parse_corpus(_read_json(args.input, input_stream))
+            oracle = parse_oracle(
+                _read_json(args.oracle, input_stream),
+                corpus,
+                expected_digest=args.expected_oracle_digest,
+            )
+            report = run_emptybench(corpus, oracle, context)
             _write_json(report.to_dict(), output_stream, args.pretty)
             return 0 if report.all_passed else 1
         if args.command == "coverage":
@@ -398,7 +491,8 @@ def main(
         if args.command == "verify-certificate":
             if (args.registry is None) != (args.trust is None):
                 raise ModelValidationError(
-                    "--registry and --trust must be supplied together for expected-context verification"
+                    "--registry and --trust must be supplied together for expected-context verification",
+                    code=ValidationErrorCode.CLI_ARGUMENT_INVALID,
                 )
             expected_context = (
                 None
@@ -437,7 +531,7 @@ def main(
         UnicodeError,
     ) as exc:
         _write_json(
-            {"error": {"type": type(exc).__name__, "message": str(exc)}},
+            public_validation_error(exc),
             error_stream,
             False,
         )

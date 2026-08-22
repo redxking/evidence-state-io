@@ -1,0 +1,135 @@
+{
+  "oracle_schema": "esio-emptybench-oracle/1.0-candidate.1",
+  "oracle_id": "EmptyBench-P0-seed-oracle",
+  "oracle_version": "1.0-candidate.1",
+  "benchmark_id": "EmptyBench-P0-seed",
+  "benchmark_version": "1.0-candidate.1",
+  "corpus_schema": "esio-emptybench-corpus/1.0-candidate.1",
+  "corpus_digest": "sha256:c054b681a6c86cd0009aa07347f25e660ccee9d0c648fa4acf537de412591f93",
+  "canonicalization_profile": "esio-canonical-json-0.1",
+  "digest_algorithm": "sha256",
+  "rules": [
+    {
+      "rule_id": "PERMIT_COVERED_CONTROL",
+      "expected_allowed": true,
+      "expected_reasons": []
+    },
+    {
+      "rule_id": "REJECT_PAGINATION_INCOMPLETE",
+      "expected_allowed": false,
+      "expected_reasons": [
+        "STATE_NOT_ABSENT_WITHIN_SCOPE",
+        "COVERAGE_POLICY_NOT_MET"
+      ]
+    },
+    {
+      "rule_id": "REJECT_PARTITION_INCOMPLETE",
+      "expected_allowed": false,
+      "expected_reasons": [
+        "STATE_NOT_ABSENT_WITHIN_SCOPE",
+        "COVERAGE_POLICY_NOT_MET"
+      ]
+    },
+    {
+      "rule_id": "REJECT_AUTHORIZATION_LIMITED",
+      "expected_allowed": false,
+      "expected_reasons": [
+        "PROFILE_AUTHORIZATION_MISMATCH"
+      ]
+    },
+    {
+      "rule_id": "REJECT_FRESHNESS_EXPIRED",
+      "expected_allowed": false,
+      "expected_reasons": [
+        "RESULT_EXPIRED"
+      ]
+    },
+    {
+      "rule_id": "REJECT_FINALITY_PENDING",
+      "expected_allowed": false,
+      "expected_reasons": [
+        "STATE_NOT_ABSENT_WITHIN_SCOPE",
+        "INDEX_PRECEDES_FINALITY_HORIZON"
+      ]
+    },
+    {
+      "rule_id": "REJECT_QUERY_ERROR",
+      "expected_allowed": false,
+      "expected_reasons": [
+        "STATE_NOT_ABSENT_WITHIN_SCOPE",
+        "COVERAGE_POLICY_NOT_MET"
+      ]
+    },
+    {
+      "rule_id": "REJECT_UNKNOWN_POPULATION",
+      "expected_allowed": false,
+      "expected_reasons": [
+        "PROFILE_COVERAGE_BASIS_MISMATCH",
+        "COVERAGE_POLICY_NOT_MET"
+      ]
+    },
+    {
+      "rule_id": "REJECT_SOURCE_CONTRADICTION",
+      "expected_allowed": false,
+      "expected_reasons": [
+        "REQUIRED_SOURCE_CONTRADICTORY"
+      ]
+    },
+    {
+      "rule_id": "REJECT_POSITIVE_MATCH",
+      "expected_allowed": false,
+      "expected_reasons": [
+        "STATE_NOT_ABSENT_WITHIN_SCOPE",
+        "NONZERO_MATCHES"
+      ]
+    },
+    {
+      "rule_id": "REJECT_QUERY_SEMANTICS_MISMATCH",
+      "expected_allowed": false,
+      "expected_reasons": [
+        "PROFILE_QUERY_APPLICABILITY_MISMATCH"
+      ]
+    },
+    {
+      "rule_id": "REJECT_SNAPSHOT_MUTATION",
+      "expected_allowed": false,
+      "expected_reasons": [
+        "REQUIRED_SOURCE_ERRORS_PRESENT"
+      ]
+    },
+    {
+      "rule_id": "REJECT_ENVELOPE_CONTRADICTION",
+      "expected_allowed": false,
+      "expected_reasons": [
+        "ENVELOPE_ERRORS_PRESENT"
+      ]
+    }
+  ],
+  "assignments": [
+    {"case_id": "pagination-covered", "rule_id": "PERMIT_COVERED_CONTROL"},
+    {"case_id": "pagination-unresolved", "rule_id": "REJECT_PAGINATION_INCOMPLETE"},
+    {"case_id": "partitioning-covered", "rule_id": "PERMIT_COVERED_CONTROL"},
+    {"case_id": "partitioning-incomplete", "rule_id": "REJECT_PARTITION_INCOMPLETE"},
+    {"case_id": "authorization-covered", "rule_id": "PERMIT_COVERED_CONTROL"},
+    {"case_id": "authorization-limited", "rule_id": "REJECT_AUTHORIZATION_LIMITED"},
+    {"case_id": "freshness-covered", "rule_id": "PERMIT_COVERED_CONTROL"},
+    {"case_id": "freshness-expired", "rule_id": "REJECT_FRESHNESS_EXPIRED"},
+    {"case_id": "finality-covered", "rule_id": "PERMIT_COVERED_CONTROL"},
+    {"case_id": "finality-pending", "rule_id": "REJECT_FINALITY_PENDING"},
+    {"case_id": "error-handling-covered", "rule_id": "PERMIT_COVERED_CONTROL"},
+    {"case_id": "error-handling-rate-limit", "rule_id": "REJECT_QUERY_ERROR"},
+    {"case_id": "population-covered", "rule_id": "PERMIT_COVERED_CONTROL"},
+    {"case_id": "population-unknown", "rule_id": "REJECT_UNKNOWN_POPULATION"},
+    {"case_id": "source-agreement-covered", "rule_id": "PERMIT_COVERED_CONTROL"},
+    {"case_id": "source-agreement-contradictory", "rule_id": "REJECT_SOURCE_CONTRADICTION"},
+    {"case_id": "positive-control-zero", "rule_id": "PERMIT_COVERED_CONTROL"},
+    {"case_id": "positive-control-present", "rule_id": "REJECT_POSITIVE_MATCH"},
+    {"case_id": "query-semantics-covered", "rule_id": "PERMIT_COVERED_CONTROL"},
+    {"case_id": "query-semantics-omitted-language", "rule_id": "REJECT_QUERY_SEMANTICS_MISMATCH"},
+    {"case_id": "snapshot-covered", "rule_id": "PERMIT_COVERED_CONTROL"},
+    {"case_id": "snapshot-mutated", "rule_id": "REJECT_SNAPSHOT_MUTATION"},
+    {"case_id": "envelope-honesty-covered", "rule_id": "PERMIT_COVERED_CONTROL"},
+    {"case_id": "envelope-honesty-contradiction", "rule_id": "REJECT_ENVELOPE_CONTRADICTION"}
+  ],
+  "oracle_digest": "sha256:543bf22c308ed1ee1436f6bd8bb9cc7353680c09d41b849c1af9216a8c730339"
+}

@@ -1,0 +1,98 @@
+name: Defect report
+description: Report reproducible behavior that differs from a documented contract or invariant.
+title: "[Bug]: "
+labels:
+  - "type:bug"
+  - "status:triage"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Evidence-State I/O is a pre-alpha research prototype. Use only synthetic,
+        public-safe, or explicitly approved nonsensitive data. For a vulnerability,
+        stop here and follow `SECURITY.md`.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Defect summary
+      description: State the observed behavior and the documented behavior it contradicts.
+      placeholder: The evaluator ... when ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Potential impact
+      description: Choose the highest plausible impact; this is a triage input, not a finding.
+      options:
+        - Unsupported negative may be permitted
+        - Trust or authorization boundary may be weakened
+        - Determinism or replay may be incorrect
+        - Parser, validation, or error handling is incorrect
+        - Documentation or operator experience is incorrect
+        - Unknown
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version and revision
+      description: Provide the package version and full Git commit when available.
+      placeholder: 0.6.0 at 40-character commit
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include Python version, operating system, installation method, and relevant local/VM constraints.
+      placeholder: Python 3.13.x; macOS/Linux; repository-local virtual environment
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal safe reproduction
+      description: Provide deterministic steps and the smallest public-safe fixture. Redact paths and identifiers.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+      description: Include expected state, gate disposition, reason code, exit code, or serialized output as applicable.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+      description: Include exact non-sensitive output and whether the result is repeatable.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Verification already performed
+      description: List exact checks and controls, including failures or tests not run.
+
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Submission checks
+      options:
+        - label: I searched open and closed issues for the same behavior.
+          required: true
+        - label: This report contains no credentials, private-system details, or unapproved data.
+          required: true
+        - label: I understand that an issue report is not proof of exploitability, compromise, or production impact.
+          required: true

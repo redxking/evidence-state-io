@@ -47,7 +47,7 @@ class NegativeClaimGateTests(unittest.TestCase):
         self.assertTrue(result.allowed)
         self.assertEqual(result.decision, "PERMIT_SCOPED_NEGATIVE")
         self.assertEqual(result.reasons, ())
-        self.assertEqual(result.evaluator_version, "esio-evaluator-1.0-candidate.4")
+        self.assertEqual(result.evaluator_version, "esio-evaluator-1.0-candidate.5")
         self.assertTrue(result.source_accounting.meets_policy)
 
     def test_allowed_text_remains_explicitly_conditional(self) -> None:
@@ -113,7 +113,16 @@ class NegativeClaimGateTests(unittest.TestCase):
         result = decision(lambda data: data.update(mode="ABSOLUTE"))
         self.assertFalse(result.allowed)
         self.assertIn(GateReason.ABSOLUTE_NEGATIVE_UNSUPPORTED, result.reasons)
-        self.assertIsNone(result.qualified_claim)
+        assert result.qualified_claim is not None
+        self.assertIn("evidence is insufficient", result.qualified_claim.lower())
+        self.assertIn(
+            GateReason.ABSOLUTE_NEGATIVE_UNSUPPORTED.value,
+            result.qualified_claim,
+        )
+        self.assertIn(
+            "does not establish that the positive opposite is true",
+            result.qualified_claim,
+        )
 
     def test_every_non_absence_state_is_denied(self) -> None:
         states = [
@@ -385,7 +394,13 @@ class NegativeClaimGateTests(unittest.TestCase):
         self.assertEqual(serialized["evaluated_at"], "2026-11-01T06:30:00Z")
         result = evaluate_negative_claim(candidate, trusted_context())
         self.assertFalse(result.allowed)
-        self.assertIsNone(result.qualified_claim)
+        assert result.qualified_claim is not None
+        self.assertIn("evidence is insufficient", result.qualified_claim.lower())
+        self.assertIn(GateReason.RESULT_EXPIRED.value, result.qualified_claim)
+        self.assertIn(
+            "does not establish that the positive opposite is true",
+            result.qualified_claim,
+        )
         self.assertIn(GateReason.RESULT_EXPIRED, result.reasons)
         self.assertIn(GateReason.OBSERVATION_TOO_OLD, result.reasons)
         self.assertIn(GateReason.INDEX_TOO_OLD, result.reasons)

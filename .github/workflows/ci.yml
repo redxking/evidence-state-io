@@ -1,8 +1,9 @@
-name: ci
+name: CI
 
 on:
   push:
   pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -25,21 +26,26 @@ jobs:
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
       PYTHONDONTWRITEBYTECODE: "1"
       PYTHONHASHSEED: "0"
+      PYTHONUNBUFFERED: "1"
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
+          cache-dependency-path: pyproject.toml
 
       - name: Install project and development dependencies
         run: python -m pip install '.[dev]'
 
       - name: Validate shell syntax
         run: bash -n scripts/*.sh
+
+      - name: Validate dashboard model
+        run: node tests/test_dashboard.js
 
       - name: Compile package
         run: python -m compileall -q -f src
@@ -48,7 +54,7 @@ jobs:
         run: python -m pip check
 
       - name: Run tests
-        run: python -m pytest -p no:cacheprovider
+        run: python -m pytest -p no:cacheprovider -q
 
       - name: Check console entry point
         run: evidence-state --help
@@ -56,13 +62,16 @@ jobs:
       - name: Run offline paired demo
         run: evidence-state demo > "${RUNNER_TEMP}/evidence-state-demo.json"
 
+      - name: Run complete offline demo corpus
+        run: evidence-state demo --all > "${RUNNER_TEMP}/evidence-state-demo-all.json"
+
   compose-config:
     name: Compose configuration
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Validate optional lab configuration
         run: docker compose --file compose.yaml --profile lab config --quiet

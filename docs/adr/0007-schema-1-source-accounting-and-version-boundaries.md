@@ -252,8 +252,9 @@ all of the following are true:
    review records the exact freeze commit and test evidence.
 
 Until these criteria are met, `1.0` is an active development candidate and must
-not be described as externally validated, certificate-complete, released, or
-production-ready.
+not be described as frozen, externally validated, released, or production-ready.
+An implemented certificate candidate may be described only as the exact
+unsigned replay format and enumerated tests supported by a hash-bound record.
 
 ## Action Items
 
@@ -263,7 +264,8 @@ production-ready.
 3. [x] Reject more than one declared source until composition exists.
 4. [x] Preserve and test the schema `0.1` fixture/commit replay boundary.
 5. [x] Implement explicit finality under ADR-0008.
-6. [ ] Complete certificate/version and governed profile binding.
+6. [x] Implement candidate certificate/version and governed profile binding;
+   acceptance and schema-freeze evidence remain governed by the criteria above.
 7. [ ] Freeze independent EmptyBench oracle outputs and cross-version canonical
    vectors before accepting schema `1.0`.
 
@@ -275,3 +277,53 @@ now requires the reported source index to reach that query-bound horizon. This
 closes the evaluator's wait-only finality defect but does not satisfy the
 profile, certificate, independent-oracle, external-review, or schema-freeze
 criteria above.
+
+## 2026-08-21 Governed-Profile and Certificate Addendum
+
+ADR-0009 and ADR-0010 have now been implemented as pre-freeze candidates, with
+the corrective contract changes recorded separately in ADR-0011. The active
+working candidate is package `0.6.0` with:
+
+- policy `esio-p0-safety-floor/1.0-candidate.4` and evaluator
+  `esio-evaluator-1.0-candidate.5`;
+- evaluation input `esio-evaluation-input/1.0-candidate.2`;
+- profile `esio-coverage-finality-profile/1.0-candidate.2`;
+- registry snapshot `esio-profile-registry-snapshot/1.0-candidate.2`;
+- trust selection `esio-profile-trust-selection/1.0-candidate.2`; and
+- unsigned replay certificate
+  `esio-evidence-certificate/1.0-candidate.2`.
+
+The application supplies the registry snapshot and trust selection separately
+from the producer request and pins one exact selected profile reference. The
+deployment boundary must make that state producer-unwritable. Candidate.2 trust
+selection has no independent expiration field. Matching identifiers and digests
+establish deterministic local configuration binding only; publisher, issuer,
+approval-authority, source-owner, origin, revision, tree-state, and time labels
+remain unauthenticated assertions.
+
+Snapshot trust failure stops before record resolution. Profile identity, digest,
+issuer, authority, time, and revocation failure stops before applicability,
+coverage, or derived-finality content is used. Exact immutable versions are
+required; aliases, ranges, branches, fallback, automatic upgrade, and downgrade
+are not supported. These are fail-closed corrections to a candidate that was
+never frozen. The package number does not negotiate them, and candidate.1
+profile/certificate artifacts remain historical only at their hash-bound
+implementation checkpoints.
+
+The candidate.2 certificate is a self-contained replay record. It embeds the
+complete normalized request, registry snapshot, trust selection, context
+bindings, decision, limitations, origin, and implementation identity. Its
+effective exclusive boundary accounts for evidence validity, snapshot next
+update, applicable resolved-profile expiry/revocation, and policy/profile
+observation and index age deadlines. It is unsigned, unauthenticated, not an
+authorization token, and not data-minimized. P0 use is therefore limited to
+synthetic/public-safe or owner-approved nonsensitive content. Authenticated
+registry/source evidence and a separately versioned minimization,
+redaction/reference, or selective-disclosure design remain P1 work.
+
+Completing Action 6 does not satisfy the schema-freeze decision. At minimum,
+the independent EmptyBench oracle and frozen campaign, final hash-bound source
+and installed-package matrix on Python 3.11-3.13, canonical demo and
+permit/rejection vectors, remaining mutation/resource/security checks,
+documentation/fixture alignment, and independent freeze review in Criteria
+4, 6, 7, and 8 remain open. Schema `1.0` is still a development candidate.

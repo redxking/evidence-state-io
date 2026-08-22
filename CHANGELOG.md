@@ -4,6 +4,11 @@ All notable project changes should be recorded here. Dates use ISO 8601.
 
 ## Unreleased
 
+The current working target is package `0.6.0` with unfrozen schema `1.0`.
+Implementation and moving-tree review have advanced; final stable-revision
+acceptance, installed-package parity, supported-runtime replay, and custody
+binding remain open.
+
 ### Added
 
 - Initial product, architecture, research, validation, operating, and implementation handoff.
@@ -18,6 +23,31 @@ All notable project changes should be recorded here. Dates use ISO 8601.
 - A seventh EmptyBench pair that holds the query, horizon, evaluation time, and
   visible zero constant while moving the reported source index one microsecond
   below versus exactly to the finality horizon.
+- ADR-0009 and the governed coverage/finality profile path: exact profile
+  references, a materialized registry snapshot, a separately supplied trust
+  selection, deterministic resolution, applicability, retention, blind
+  intervals, freshness, revocation, and profile-derived finality.
+- An exact `selected_profile_reference` in
+  `esio-profile-trust-selection/1.0-candidate.2`, allowing the relying
+  application to select one profile rather than trusting every active profile
+  in a pinned snapshot.
+- ADR-0010 and `esio-evidence-certificate/1.0-candidate.2`, an unsigned
+  deterministic replay record that binds the request, trusted context,
+  resolved profile references, version boundaries, origin, implementation
+  assertion, times, decision, qualification, and limitations.
+- Independent certificate verification dimensions for structure, outer and
+  embedded integrity, deterministic replay, expected context, separately
+  retained expected digest, historical reproducibility, and current local use
+  at an explicit relying-party time.
+- Checked-in synthetic profile-registry, trust-selection, request, certificate,
+  and matched benchmark vectors for the active candidate contracts.
+- Apache License 2.0, NOTICE, governance, conduct, support, citation, contribution,
+  security, issue, pull-request, ownership, dependency, CI, CodeQL, Pages, and
+  tag-gated release infrastructure for the public pre-alpha repository.
+- Versioned `esio-evidence-state-transition-model/1.0-candidate.1`,
+  `esio-authorization-context-identifier/1.0-candidate.1`, and
+  `esio-validation-error/1.0-candidate.1` contracts with executable tests and
+  ADRs.
 
 ### Hardened
 
@@ -52,9 +82,51 @@ All notable project changes should be recorded here. Dates use ISO 8601.
 - Moved the active implementation to package `0.3.0` and evaluator
   `esio-evaluator-1.0-candidate.2`; preserved canonicalization profile `0.1`
   and the immutable schema `0.1` replay baseline.
+- Advanced the working implementation to package `0.6.0`, policy
+  `esio-p0-safety-floor/1.0-candidate.4`, evaluator
+  `esio-evaluator-1.0-candidate.5`, and profile, registry-snapshot,
+  trust-selection, evaluation-input, and certificate contracts
+  `1.0-candidate.2`. Schema `1.0` remains unfrozen.
+- Closed the weak/strong sibling-profile downgrade: a producer-selected
+  profile must equal the exact application-selected reference, not merely be
+  present in a trusted snapshot.
+- Prevented digest-, identity-, issuer-, time-, authority-, or
+  revocation-invalid snapshot/profile content from influencing resolution,
+  applicability, freshness, or finality diagnostics before its trust boundary
+  passes.
+- Required profile issue time not to follow the snapshot as-of time and
+  rejected floating labels, aliases, ranges, and abbreviated Git object IDs in
+  fields that require an exact version token.
+- Added direct snapshot/profile/trust failure, exact applicability mutation,
+  rehash substitution, composite-digest, equivalent-offset, ordering, and
+  one-microsecond retention, blind-interval, freshness, validity, and derived
+  finality regression coverage.
+- Derived certificate `effective_valid_until_exclusive` from the earliest
+  applicable evidence validity, snapshot next update, resolved-profile expiry
+  or revocation, and policy/profile observation and index freshness deadline.
+- Hardened certificate parsing and replay against Decimal-versus-float
+  equivalence, boolean-as-integer confusion, invalid coverage-domain values,
+  nested typed-object mutation, stale context, and unsigned-certificate
+  overclaiming.
+- Required current local-use verification to combine intact structure and
+  bindings, deterministic replay, a permitted decision, an exact separately
+  supplied expected context, a separately retained expected certificate digest,
+  and an explicit relying-party time within the certificate's conservative
+  exclusive boundary.
+- Replaced overloadable typed profile-reference equality with canonical primitive
+  comparison, eliminating subclass-defined equality from the trust decision.
+- Made every rejected decision render a deterministic insufficiency statement
+  that preserves the ordered reason codes and never establishes the positive
+  opposite claim.
 
 ### Boundaries
 
 - Initial results are local and synthetic unless explicitly recorded otherwise.
 - No production-readiness, operational-effectiveness, market-validation, or standards-adoption claim is made.
 - The local commit and SHA-256 digests provide recoverability and integrity comparison, not independent custody, authentication, or signature semantics.
+- The registry snapshot and trust selection require application-controlled,
+  producer-unwritable configuration custody. Replacing and rehashing both
+  files is outside the protection offered by unsigned P0 digests.
+- Profile and adapter identities, source clocks, index watermarks,
+  late-arrival/reopen limits, and ingestion completeness remain declarative or
+  unvalidated. Certificate replay does not upgrade those assertions.

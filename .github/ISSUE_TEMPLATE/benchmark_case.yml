@@ -1,0 +1,88 @@
+name: Benchmark case
+description: Propose a disqualifying case and matched control for EmptyBench.
+title: "[Benchmark]: "
+labels:
+  - "type:benchmark"
+  - "status:triage"
+body:
+  - type: textarea
+    id: failure_mode
+    attributes:
+      label: Failure mode under test
+      description: Name the single coverage, trust, freshness, finality, or integrity condition being tested.
+    validations:
+      required: true
+
+  - type: textarea
+    id: pair
+    attributes:
+      label: Disqualifying case and matched control
+      description: Explain the one intended difference between the cases and what must remain identical.
+    validations:
+      required: true
+
+  - type: textarea
+    id: oracle
+    attributes:
+      label: Independent oracle
+      description: Identify expected state, disposition, stable reason codes, and how labels remain independent of implementation output.
+    validations:
+      required: true
+
+  - type: textarea
+    id: contracts
+    attributes:
+      label: Contract and fixture versions
+      description: Record schema, policy, profile, registry/trust, evaluator, certificate, and fixture versions that apply.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: origin
+    attributes:
+      label: Evidence origin label
+      options:
+        - SYNTHETIC
+        - REPLAYED
+        - LAB_OBSERVED
+        - SHADOW_OBSERVED
+        - EXTERNALLY_REPRODUCED
+        - OPERATIONAL
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected outcome and metrics
+      description: Include false-permit, correct-abstention, and supported-negative-retention consequences.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Deterministic reproduction
+      description: Provide public-safe inputs, exact commands, runtime, and expected digest or output comparison where applicable.
+    validations:
+      required: true
+
+  - type: textarea
+    id: adversarial
+    attributes:
+      label: Adversarial value and limitations
+      description: Explain what shortcut this catches and what passing the case would not prove.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Submission checks
+      options:
+        - label: The case changes one intended condition from its matched control.
+          required: true
+        - label: Oracle labels are not derived from the implementation under test.
+          required: true
+        - label: Fixtures contain only synthetic, public-safe, or explicitly approved nonsensitive data.
+          required: true

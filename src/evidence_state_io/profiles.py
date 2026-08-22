@@ -32,6 +32,7 @@ from .models import (
     _sha256_digest,
     _string_tuple,
     _validate_aware_datetime,
+    authorization_context_identifier,
     bounded_ascii_identifier,
     datetime_to_json,
     optional_datetime,
@@ -186,7 +187,7 @@ class ProfileSource:
         object.__setattr__(
             self,
             "authorization_context_id",
-            _identifier(
+            authorization_context_identifier(
                 self.authorization_context_id,
                 "profile.source.authorization_context_id",
             ),
@@ -221,7 +222,7 @@ class ProfileSource:
             adapter_version=_immutable_version(
                 data["adapter_version"], f"{path}.adapter_version"
             ),
-            authorization_context_id=_identifier(
+            authorization_context_id=authorization_context_identifier(
                 data["authorization_context_id"],
                 f"{path}.authorization_context_id",
             ),
@@ -491,7 +492,7 @@ class ProfileFinality:
         _reject_unknown(data, allowed, path)
         _require_fields(data, allowed, path)
         method = data["method"]
-        if not isinstance(method, str) or method != FINALITY_METHOD:
+        if type(method) is not str or method != FINALITY_METHOD:
             raise ModelValidationError(f"{path}.method must be {FINALITY_METHOD}")
         return cls(
             method=method,
@@ -596,7 +597,7 @@ class CoverageFinalityProfile:
         _reject_unknown(data, allowed, path)
         _require_fields(data, allowed, path)
         schema = data["profile_schema"]
-        if not isinstance(schema, str) or schema != COVERAGE_FINALITY_PROFILE_SCHEMA:
+        if type(schema) is not str or schema != COVERAGE_FINALITY_PROFILE_SCHEMA:
             raise ModelValidationError(
                 f"{path}.profile_schema must be {COVERAGE_FINALITY_PROFILE_SCHEMA}"
             )
@@ -913,7 +914,7 @@ class ProfileRegistrySnapshot:
         _reject_unknown(data, allowed, "registry_snapshot.snapshot")
         _require_fields(data, allowed, "registry_snapshot.snapshot")
         schema = data["snapshot_schema"]
-        if not isinstance(schema, str) or schema != PROFILE_REGISTRY_SNAPSHOT_SCHEMA:
+        if type(schema) is not str or schema != PROFILE_REGISTRY_SNAPSHOT_SCHEMA:
             raise ModelValidationError(
                 "registry_snapshot.snapshot.snapshot_schema must be "
                 f"{PROFILE_REGISTRY_SNAPSHOT_SCHEMA}"
@@ -1068,7 +1069,7 @@ class ProfileTrustSelection:
         _reject_unknown(data, allowed, "trust_selection")
         _require_fields(data, allowed, "trust_selection")
         schema = data["trust_schema"]
-        if not isinstance(schema, str) or schema != PROFILE_TRUST_SELECTION_SCHEMA:
+        if type(schema) is not str or schema != PROFILE_TRUST_SELECTION_SCHEMA:
             raise ModelValidationError(
                 f"trust_selection.trust_schema must be {PROFILE_TRUST_SELECTION_SCHEMA}"
             )
@@ -1296,6 +1297,39 @@ def _query_intersects_blind_interval(
     return query_start < interval.end and query_end >= interval.start
 
 
+def _same_profile_reference(
+    candidate: CoverageProfileReference,
+    selected: CoverageProfileReference,
+) -> bool:
+    """Compare canonical reference fields without invoking model equality.
+
+    The typed Python API accepts validated model instances.  A caller can,
+    however, derive a subclass that overloads ``__eq__``/``__ne__``.  Trust
+    selection must therefore compare the primitive canonical fields directly,
+    using constant-time comparison for the digest, rather than dispatching to
+    caller-controlled object equality.
+    """
+
+    candidate_fields = (
+        candidate.registry_id,
+        candidate.profile_id,
+        candidate.profile_version,
+        candidate.profile_digest,
+    )
+    selected_fields = (
+        selected.registry_id,
+        selected.profile_id,
+        selected.profile_version,
+        selected.profile_digest,
+    )
+    if any(type(value) is not str for value in (*candidate_fields, *selected_fields)):
+        return False
+    return all(
+        compare_digest(candidate_value, selected_value)
+        for candidate_value, selected_value in zip(candidate_fields, selected_fields)
+    )
+
+
 def evaluate_profile_governance(
     envelope: EvidenceEnvelope,
     evaluated_at: datetime,
@@ -1307,8 +1341,15 @@ def evaluate_profile_governance(
     trust selection are separate from the producer-controlled envelope.
     """
 
-    if not isinstance(envelope, EvidenceEnvelope):
+    if type(envelope) is not EvidenceEnvelope:
         raise ModelValidationError("profile evaluation envelope must be EvidenceEnvelope")
+    envelope = EvidenceEnvelope.from_dict(envelope.to_dict())
+    if context is not None:
+        if type(context) is not TrustedProfileContext:
+            raise ModelValidationError(
+                "profile evaluation context must be TrustedProfileContext or null"
+            )
+        context = TrustedProfileContext.from_dict(context.to_dict())
     evaluation_time = _validate_aware_datetime(
         evaluated_at, "profile_evaluation.evaluated_at"
     )
@@ -1427,7 +1468,7 @@ def evaluate_profile_governance(
                 source_id=requirement.source_id,
             )
             continue
-        if reference != trust.selected_profile_reference:
+        if not _same_profile_reference(reference, trust.selected_profile_reference):
             add_issue(
                 ProfileIssueCode.PROFILE_TRUST_SELECTION_MISMATCH,
                 "The producer-selected profile reference does not match the exact application-selected profile reference.",

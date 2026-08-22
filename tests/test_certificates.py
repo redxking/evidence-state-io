@@ -303,11 +303,13 @@ class EvidenceCertificateTests(unittest.TestCase):
         before = verify_evidence_certificate(
             artifact,
             expected_context=context,
+            expected_certificate_digest=artifact.certificate_digest,
             relying_party_at=datetime(2026, 8, 21, 12, 13, 59, 999999, tzinfo=UTC),
         )
         at_boundary = verify_evidence_certificate(
             artifact,
             expected_context=context,
+            expected_certificate_digest=artifact.certificate_digest,
             relying_party_at=datetime(2026, 8, 21, 12, 14, tzinfo=UTC),
         )
         self.assertTrue(before.current_local_reliance_eligible)
@@ -526,16 +528,29 @@ class EvidenceCertificateTests(unittest.TestCase):
         current = verify_evidence_certificate(
             artifact,
             expected_context=context,
+            expected_certificate_digest=artifact.certificate_digest,
             relying_party_at=datetime(2026, 8, 21, 12, 30, tzinfo=UTC),
         )
         expired = verify_evidence_certificate(
             artifact,
             expected_context=context,
+            expected_certificate_digest=artifact.certificate_digest,
             relying_party_at=datetime(2026, 8, 21, 13, 0, tzinfo=UTC),
         )
         self.assertTrue(current.current_local_reliance_eligible)
         self.assertFalse(expired.current_local_reliance_eligible)
         self.assertTrue(expired.historical_reproducibility)
+
+    def test_current_local_reliance_requires_retained_expected_digest(self) -> None:
+        request, context = governed_inputs()
+        artifact = certificate(request=request, context=context)
+        report = verify_evidence_certificate(
+            artifact,
+            expected_context=context,
+            relying_party_at=datetime(2026, 8, 21, 12, 30, tzinfo=UTC),
+        )
+        self.assertIsNone(report.expected_certificate_digest_match)
+        self.assertIsNone(report.current_local_reliance_eligible)
 
     def test_rejection_can_never_become_current_local_reliance(self) -> None:
         request, context = governed_inputs()
@@ -546,6 +561,7 @@ class EvidenceCertificateTests(unittest.TestCase):
         report = verify_evidence_certificate(
             artifact,
             expected_context=context,
+            expected_certificate_digest=artifact.certificate_digest,
             relying_party_at=datetime(2026, 8, 21, 12, 30, tzinfo=UTC),
         )
         self.assertFalse(report.current_local_reliance_eligible)
@@ -652,6 +668,7 @@ class EvidenceCertificateTests(unittest.TestCase):
             (("policy_version",), "1.0-candidate.3"),
             (("policy_version",), "1.0-candidate.999"),
             (("evaluator_version",), "esio-evaluator-1.0-candidate.3"),
+            (("evaluator_version",), "esio-evaluator-1.0-candidate.4"),
             (("evaluator_version",), "esio-evaluator-1.0-candidate.999"),
             (("canonicalization_profile",), "esio-canonical-json-0.0"),
             (("digest_algorithm",), "sha512"),
@@ -707,6 +724,32 @@ class EvidenceCertificateTests(unittest.TestCase):
                 report = verify_evidence_certificate(data)
                 self.assertFalse(report.structural_support)
                 self.assertFalse(report.historical_reproducibility)
+
+    def test_overloaded_string_cannot_downgrade_mapping_certificate(self) -> None:
+        class EqualityBypass(str):
+            def __eq__(self, other: object) -> bool:
+                return True
+
+            def __ne__(self, other: object) -> bool:
+                return False
+
+        request, context = governed_inputs()
+        data = certificate(request=request, context=context).to_dict()
+        data["certificate"]["evaluator_version"] = EqualityBypass(
+            "esio-evaluator-1.0-candidate.4"
+        )
+        data["certificate_digest"] = canonical_digest(data["certificate"])
+
+        report = verify_evidence_certificate(
+            data,
+            expected_context=context,
+            expected_certificate_digest=data["certificate_digest"],
+            relying_party_at=datetime(2026, 8, 21, 12, 30, tzinfo=UTC),
+        )
+
+        self.assertFalse(report.structural_support)
+        self.assertFalse(report.historical_reproducibility)
+        self.assertIsNone(report.current_local_reliance_eligible)
 
     def test_origin_and_issued_time_are_explicit_strict_inputs(self) -> None:
         request, context = governed_inputs()

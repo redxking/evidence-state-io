@@ -18,8 +18,11 @@ from hashlib import sha256
 import json
 from math import isfinite, nextafter
 import re
+from types import MappingProxyType
 from typing import Any, Mapping, Sequence
 import unicodedata
+
+from .errors import ModelValidationError, ValidationErrorCode
 
 
 MAX_EVIDENCE_STRING_LENGTH = 512
@@ -47,10 +50,35 @@ _TIMESTAMP_PATTERN = re.compile(
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}"
     r"(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$"
 )
+_EXPLICIT_CREDENTIAL_PATTERN = re.compile(
+    r"^(?:authorization|bearer|basic|cookie|password|passwd|secret|session|"
+    r"token|access_token|refresh_token|api_key|apikey):.+$"
+)
+_KNOWN_TOKEN_PATTERN = re.compile(
+    r"^(?:"
+    r"gh[pousr]_[a-z0-9]{20,}"
+    r"|github_pat_[a-z0-9_]{20,}"
+    r"|glpat-[a-z0-9_-]{20,}"
+    r"|sk-[a-z0-9_-]{20,}"
+    r"|xox[baprs]-[a-z0-9-]{10,}"
+    r"|ya29\.[a-z0-9_-]{20,}"
+    r"|akia[a-z0-9]{16}"
+    r")$"
+)
+_JWT_LIKE_PATTERN = re.compile(
+    r"^eyj[a-z0-9_-]{5,}\.[a-z0-9_-]{8,}\.[a-z0-9_-]{16,}$"
+)
+_OPAQUE_TOKEN_PATTERN = re.compile(
+    r"^(?=.{48,128}$)(?=[a-z0-9]*[a-z])(?=[a-z0-9]*[0-9])[a-z0-9]+$"
+)
 
 
-class ModelValidationError(ValueError):
-    """Raised when JSON input cannot be represented without ambiguity."""
+AUTHORIZATION_CONTEXT_IDENTIFIER_PROFILE = (
+    "esio-authorization-context-identifier/1.0-candidate.1"
+)
+EVIDENCE_STATE_TRANSITION_MODEL = (
+    "esio-evidence-state-transition-model/1.0-candidate.1"
+)
 
 
 class EvidenceState(str, Enum):
@@ -63,6 +91,182 @@ class EvidenceState(str, Enum):
     PENDING_WINDOW = "PENDING_WINDOW"
     FAILED = "FAILED"
     CONTRADICTORY = "CONTRADICTORY"
+
+
+EVIDENCE_STATE_INTERPRETATIONS: Mapping[EvidenceState, str] = MappingProxyType(
+    {
+        EvidenceState.PRESENT: (
+            "One or more in-scope matches were observed; completeness is not implied."
+        ),
+        EvidenceState.ABSENT_WITHIN_SCOPE: (
+            "Zero matches were observed and every condition required by the named "
+            "coverage policy passed for the declared scope and evaluation time."
+        ),
+        EvidenceState.NOT_OBSERVED: (
+            "No match was observed, but sufficient absence conditions were not established."
+        ),
+        EvidenceState.PARTIAL: (
+            "Only a known subset of the required population, pages, partitions, fields, "
+            "or time range was evaluated."
+        ),
+        EvidenceState.STALE: (
+            "Evidence exceeded the applicable freshness condition at evaluation time."
+        ),
+        EvidenceState.INACCESSIBLE: (
+            "Required evidence could not be accessed within the declared authorization "
+            "or policy boundary."
+        ),
+        EvidenceState.PENDING_WINDOW: (
+            "The applicable observation or finality horizon had not closed."
+        ),
+        EvidenceState.FAILED: (
+            "The observation operation did not complete successfully or returned a "
+            "disqualifying error."
+        ),
+        EvidenceState.CONTRADICTORY: (
+            "Required evidence sources or claims are mutually inconsistent under the policy."
+        ),
+    }
+)
+
+_NONINITIAL_EVIDENCE_STATES = tuple(
+    state for state in EvidenceState if state is not EvidenceState.NOT_OBSERVED
+)
+_ALLOWED_EVIDENCE_STATE_TRANSITIONS: Mapping[
+    EvidenceState, tuple[EvidenceState, ...]
+] = MappingProxyType(
+    {
+        EvidenceState.PRESENT: (EvidenceState.PRESENT,),
+        EvidenceState.ABSENT_WITHIN_SCOPE: _NONINITIAL_EVIDENCE_STATES,
+        EvidenceState.NOT_OBSERVED: tuple(EvidenceState),
+        EvidenceState.PARTIAL: _NONINITIAL_EVIDENCE_STATES,
+        EvidenceState.STALE: _NONINITIAL_EVIDENCE_STATES,
+        EvidenceState.INACCESSIBLE: _NONINITIAL_EVIDENCE_STATES,
+        EvidenceState.PENDING_WINDOW: _NONINITIAL_EVIDENCE_STATES,
+        EvidenceState.FAILED: _NONINITIAL_EVIDENCE_STATES,
+        EvidenceState.CONTRADICTORY: _NONINITIAL_EVIDENCE_STATES,
+    }
+)
+
+
+def _require_transition_model(value: Any) -> str:
+    if type(value) is not str or value != EVIDENCE_STATE_TRANSITION_MODEL:
+        raise ModelValidationError(
+            "transition_model must identify the exact supported "
+            f"{EVIDENCE_STATE_TRANSITION_MODEL} contract",
+            code=ValidationErrorCode.UNSUPPORTED_CONTRACT,
+        )
+    return EVIDENCE_STATE_TRANSITION_MODEL
+
+
+def allowed_evidence_state_transitions(
+    state: EvidenceState,
+    *,
+    transition_model: str = EVIDENCE_STATE_TRANSITION_MODEL,
+) -> tuple[EvidenceState, ...]:
+    """Return successors in stable taxonomy order for one claim lineage.
+
+    A lineage fixes the schema, normalized query fingerprint, and declared
+    source set.  Each transition is represented by a new immutable envelope;
+    this API never mutates or validates the successor evidence itself.
+    """
+
+    _require_transition_model(transition_model)
+    if not isinstance(state, EvidenceState):
+        raise ModelValidationError("state must be an EvidenceState")
+    return _ALLOWED_EVIDENCE_STATE_TRANSITIONS[state]
+
+
+def is_evidence_state_transition_allowed(
+    prior_state: EvidenceState,
+    next_state: EvidenceState,
+    *,
+    transition_model: str = EVIDENCE_STATE_TRANSITION_MODEL,
+) -> bool:
+    """Return whether a successor classification is allowed in the model."""
+
+    if not isinstance(next_state, EvidenceState):
+        raise ModelValidationError("next_state must be an EvidenceState")
+    return next_state in allowed_evidence_state_transitions(
+        prior_state,
+        transition_model=transition_model,
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class EvidenceStateTransition:
+    """Version-bound transition between successive immutable envelopes."""
+
+    transition_model: str
+    prior_state: EvidenceState
+    next_state: EvidenceState
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "transition_model",
+            _require_transition_model(self.transition_model),
+        )
+        if not isinstance(self.prior_state, EvidenceState):
+            raise ModelValidationError("prior_state must be an EvidenceState")
+        if not isinstance(self.next_state, EvidenceState):
+            raise ModelValidationError("next_state must be an EvidenceState")
+        if not is_evidence_state_transition_allowed(
+            self.prior_state,
+            self.next_state,
+            transition_model=self.transition_model,
+        ):
+            raise ModelValidationError(
+                f"transition from {self.prior_state.value} to "
+                f"{self.next_state.value} is not allowed by "
+                f"{self.transition_model}",
+                code=ValidationErrorCode.STATE_TRANSITION_INVALID,
+            )
+
+    @classmethod
+    def from_dict(
+        cls,
+        value: Any,
+        path: str = "evidence_state_transition",
+    ) -> "EvidenceStateTransition":
+        if not isinstance(value, Mapping):
+            raise ModelValidationError(f"{path} must be a JSON object")
+        allowed = {"transition_model", "prior_state", "next_state"}
+        unknown = sorted(set(value) - allowed)
+        if unknown:
+            raise ModelValidationError(
+                f"{path} has unknown fields: {', '.join(unknown)}"
+            )
+        missing = sorted(allowed - set(value))
+        if missing:
+            raise ModelValidationError(
+                f"{path} is missing required fields: {', '.join(missing)}"
+            )
+        _require_transition_model(value["transition_model"])
+        try:
+            prior_state = EvidenceState(value["prior_state"])
+        except (TypeError, ValueError) as exc:
+            raise ModelValidationError(
+                f"{path}.prior_state must be an exact EvidenceState value"
+            ) from exc
+        try:
+            next_state = EvidenceState(value["next_state"])
+        except (TypeError, ValueError) as exc:
+            raise ModelValidationError(
+                f"{path}.next_state must be an exact EvidenceState value"
+            ) from exc
+        return cls(
+            transition_model=EVIDENCE_STATE_TRANSITION_MODEL,
+            prior_state=prior_state,
+            next_state=next_state,
+        )
+
+    def to_dict(self) -> dict[str, str]:
+        return {
+            "transition_model": self.transition_model,
+            "prior_state": self.prior_state.value,
+            "next_state": self.next_state.value,
+        }
 
 
 class PopulationBasis(str, Enum):
@@ -107,6 +311,8 @@ class SourceObservationStatus(str, Enum):
 def _mapping(value: Any, path: str) -> Mapping[str, Any]:
     if not isinstance(value, Mapping):
         raise ModelValidationError(f"{path} must be a JSON object")
+    if any(type(key) is not str for key in value):
+        raise ModelValidationError(f"{path} object keys must be plain strings")
     return value
 
 
@@ -130,7 +336,10 @@ def bounded_single_line(
 ) -> str:
     """Validate data that may later appear in operator-facing output."""
 
-    if not isinstance(value, str) or not value.strip():
+    # The typed Python boundary rejects ``str`` subclasses.  Their comparison,
+    # trimming, encoding, or hashing methods are caller-controlled and can turn
+    # an apparently validated value into a different trust decision later.
+    if type(value) is not str or not value.strip():
         raise ModelValidationError(f"{path} must be a non-empty string")
     result = value.strip()
     if len(result) > max_length:
@@ -167,8 +376,51 @@ def bounded_ascii_identifier(
     return result
 
 
+def authorization_context_identifier(
+    value: Any,
+    path: str,
+    *,
+    identifier_profile: str = AUTHORIZATION_CONTEXT_IDENTIFIER_PROFILE,
+) -> str:
+    """Validate a stable non-secret authorization-context identifier.
+
+    Candidate.1 rejects only narrowly defined credential representations:
+    explicit credential schemes, known provider token prefixes, JWT-like
+    compact values, and long unnamespaced opaque alphanumeric values.  The
+    check is intentionally applied only to ``authorization_context_id``
+    fields; descriptive scope, assumptions, errors, and operator text are not
+    scanned or rewritten.
+
+    This is an input invariant, not a general secret scanner or proof that an
+    accepted identifier contains no secret.
+    """
+
+    if (
+        type(identifier_profile) is not str
+        or identifier_profile != AUTHORIZATION_CONTEXT_IDENTIFIER_PROFILE
+    ):
+        raise ModelValidationError(
+            "identifier_profile must identify the exact supported "
+            f"{AUTHORIZATION_CONTEXT_IDENTIFIER_PROFILE} contract",
+            code=ValidationErrorCode.UNSUPPORTED_CONTRACT,
+        )
+    result = bounded_ascii_identifier(value, path)
+    if (
+        _EXPLICIT_CREDENTIAL_PATTERN.fullmatch(result)
+        or _KNOWN_TOKEN_PATTERN.fullmatch(result)
+        or _JWT_LIKE_PATTERN.fullmatch(result)
+        or _OPAQUE_TOKEN_PATTERN.fullmatch(result)
+    ):
+        raise ModelValidationError(
+            f"{path} must be a stable non-secret identifier, not a credential "
+            "or raw-token-like value",
+            code=ValidationErrorCode.CREDENTIAL_LIKE_IDENTIFIER,
+        )
+    return result
+
+
 def _sha256_digest(value: Any, path: str) -> str:
-    if not isinstance(value, str) or not _SHA256_DIGEST_PATTERN.fullmatch(value):
+    if type(value) is not str or not _SHA256_DIGEST_PATTERN.fullmatch(value):
         raise ModelValidationError(
             f"{path} must be a lowercase sha256 digest"
         )
@@ -356,7 +608,7 @@ def _required_string_tuple(
 
 
 def parse_datetime(value: Any, path: str) -> datetime:
-    if not isinstance(value, str) or not value.strip():
+    if type(value) is not str or not value.strip():
         raise ModelValidationError(f"{path} must be an ISO-8601 timestamp")
     candidate = value.strip()
     if candidate != value:
@@ -524,7 +776,7 @@ class SourceRequirement:
         object.__setattr__(
             self,
             "authorization_context_id",
-            bounded_ascii_identifier(
+            authorization_context_identifier(
                 self.authorization_context_id,
                 "source_requirement.authorization_context_id",
             ),
@@ -636,7 +888,7 @@ class SourceRequirement:
             adapter_version=_immutable_version(
                 data["adapter_version"], f"{path}.adapter_version"
             ),
-            authorization_context_id=bounded_ascii_identifier(
+            authorization_context_id=authorization_context_identifier(
                 data["authorization_context_id"],
                 f"{path}.authorization_context_id",
             ),
@@ -711,7 +963,7 @@ class QueryScope:
         object.__setattr__(
             self,
             "authorization_context_id",
-            bounded_ascii_identifier(
+            authorization_context_identifier(
                 self.authorization_context_id, "query.authorization_context_id"
             ),
         )
@@ -849,7 +1101,7 @@ class QueryScope:
             target=_required_string(data, "target", "query"),
             predicate=_required_string(data, "predicate", "query"),
             authorization_boundary=_required_string(data, "authorization_boundary", "query"),
-            authorization_context_id=bounded_ascii_identifier(
+            authorization_context_id=authorization_context_identifier(
                 data["authorization_context_id"],
                 "query.authorization_context_id",
             ),
@@ -1250,7 +1502,7 @@ class SourceObservation:
         object.__setattr__(
             self,
             "authorization_context_id",
-            bounded_ascii_identifier(
+            authorization_context_identifier(
                 self.authorization_context_id,
                 "source_observation.authorization_context_id",
             ),
@@ -1334,7 +1586,7 @@ class SourceObservation:
             descriptor=SourceDescriptor.from_dict(
                 data["descriptor"], f"{path}.descriptor"
             ),
-            authorization_context_id=bounded_ascii_identifier(
+            authorization_context_id=authorization_context_identifier(
                 data["authorization_context_id"],
                 f"{path}.authorization_context_id",
             ),
@@ -1478,7 +1730,7 @@ class EvidenceEnvelope:
         data = _mapping(value, "envelope")
         _require_fields(data, {"schema_version"}, "envelope")
         schema_version = data["schema_version"]
-        if not isinstance(schema_version, str):
+        if type(schema_version) is not str:
             raise ModelValidationError("envelope.schema_version must be the string '1.0'")
         if schema_version != "1.0":
             raise ModelValidationError(

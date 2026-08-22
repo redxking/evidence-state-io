@@ -1,16 +1,30 @@
-"""Seed EmptyBench cases for ambiguous empty-result handling."""
+"""Deterministic EmptyBench corpus/oracle loading and scoring.
+
+The corpus contains synthetic inputs, not expected decisions. Expected
+decisions live in a separately versioned oracle artifact whose digest must be
+retained independently by the caller. This is an integrity and custody
+boundary, not authentication or proof that the oracle is correct.
+"""
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from copy import deepcopy
+from dataclasses import dataclass
+from hmac import compare_digest
+import json
+from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
+from .canonical import (
+    CANONICALIZATION_PROFILE,
+    DIGEST_ALGORITHM,
+    verify_canonical_digest,
+)
 from .gate import GateDecision, GateReason, NegativeClaimRequest, evaluate_negative_claim
 from .models import (
     CoverageProfileReference,
     ModelValidationError,
     PopulationBasis,
-    QueryScope,
     bounded_single_line,
     parse_datetime,
 )
@@ -32,115 +46,384 @@ from .profiles import (
 )
 
 
+EMPTYBENCH_CORPUS_SCHEMA = "esio-emptybench-corpus/1.0-candidate.1"
+EMPTYBENCH_ORACLE_SCHEMA = "esio-emptybench-oracle/1.0-candidate.1"
+EMPTYBENCH_REPORT_SCHEMA = "esio-emptybench-report/1.0-candidate.1"
+SEED_BENCHMARK_ID = "EmptyBench-P0-seed"
+SEED_BENCHMARK_VERSION = "1.0-candidate.1"
+SEED_ORACLE_DIGEST = "sha256:543bf22c308ed1ee1436f6bd8bb9cc7353680c09d41b849c1af9216a8c730339"
+
 MAX_BENCHMARK_ID_LENGTH = 128
 MAX_BENCHMARK_DESCRIPTION_LENGTH = 512
+MAX_BENCHMARK_CASES = 256
+MAX_MUTATIONS_PER_CASE = 32
+MAX_JSON_POINTER_LENGTH = 512
+_SEED_CORPUS_FILE = "emptybench-p0-corpus.json"
+_SEED_ORACLE_FILE = "emptybench-p0-oracle.json"
+
+
+def _mapping(value: Any, path: str) -> Mapping[str, Any]:
+    if not isinstance(value, Mapping):
+        raise ModelValidationError(f"{path} must be a JSON object")
+    return value
+
+
+def _exact_fields(value: Any, *, path: str, fields: set[str]) -> Mapping[str, Any]:
+    data = _mapping(value, path)
+    if any(not isinstance(key, str) for key in data):
+        raise ModelValidationError(f"{path} field names must be strings")
+    unknown = sorted(set(data) - fields)
+    if unknown:
+        raise ModelValidationError(f"{path} has unknown fields: {', '.join(unknown)}")
+    missing = sorted(fields - set(data))
+    if missing:
+        raise ModelValidationError(f"{path} is missing fields: {', '.join(missing)}")
+    return data
+
+
+def _array(value: Any, path: str) -> Sequence[Any]:
+    if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
+        raise ModelValidationError(f"{path} must be an array")
+    return value
+
+
+def _identifier(value: Any, path: str) -> str:
+    return bounded_single_line(value, path, max_length=MAX_BENCHMARK_ID_LENGTH)
+
+
+def _description(value: Any, path: str) -> str:
+    return bounded_single_line(value, path, max_length=MAX_BENCHMARK_DESCRIPTION_LENGTH)
+
+
+def _sha256_digest(value: Any, path: str) -> str:
+    candidate = _identifier(value, path)
+    if len(candidate) != 71 or not candidate.startswith("sha256:"):
+        raise ModelValidationError(f"{path} must be a lowercase SHA-256 digest")
+    suffix = candidate.removeprefix("sha256:")
+    if any(character not in "0123456789abcdef" for character in suffix):
+        raise ModelValidationError(f"{path} must be a lowercase SHA-256 digest")
+    return candidate
+
+
+def _without_digest(value: Mapping[str, Any], field: str) -> dict[str, Any]:
+    payload = dict(value)
+    payload.pop(field, None)
+    return payload
+
+
+def _decode_json_pointer(pointer: Any, path: str) -> tuple[str, ...]:
+    normalized = bounded_single_line(pointer, path, max_length=MAX_JSON_POINTER_LENGTH)
+    if not normalized.startswith("/") or normalized == "/":
+        raise ModelValidationError(f"{path} must identify a non-root JSON value")
+    segments: list[str] = []
+    for raw_segment in normalized[1:].split("/"):
+        index = 0
+        decoded: list[str] = []
+        while index < len(raw_segment):
+            character = raw_segment[index]
+            if character != "~":
+                decoded.append(character)
+                index += 1
+                continue
+            if index + 1 >= len(raw_segment) or raw_segment[index + 1] not in "01":
+                raise ModelValidationError(f"{path} contains an invalid JSON Pointer escape")
+            decoded.append("~" if raw_segment[index + 1] == "0" else "/")
+            index += 2
+        segment = "".join(decoded)
+        if not segment:
+            raise ModelValidationError(f"{path} must not contain an empty path segment")
+        segments.append(segment)
+    return tuple(segments)
+
+
+def _replace_at_pointer(document: Any, pointer: tuple[str, ...], value: Any) -> None:
+    current = document
+    for depth, segment in enumerate(pointer[:-1]):
+        location = "/" + "/".join(pointer[: depth + 1])
+        if isinstance(current, Mapping):
+            if segment not in current:
+                raise ModelValidationError(f"case mutation path does not exist at {location}")
+            current = current[segment]
+            continue
+        if isinstance(current, list):
+            if not segment.isdigit() or (len(segment) > 1 and segment.startswith("0")):
+                raise ModelValidationError(
+                    f"case mutation path has an invalid array index at {location}"
+                )
+            item_index = int(segment)
+            if item_index >= len(current):
+                raise ModelValidationError(
+                    f"case mutation array index is out of range at {location}"
+                )
+            current = current[item_index]
+            continue
+        raise ModelValidationError(f"case mutation path traverses a scalar at {location}")
+
+    final = pointer[-1]
+    if isinstance(current, Mapping):
+        if final not in current:
+            raise ModelValidationError("case mutation may replace only an existing object field")
+        current[final] = deepcopy(value)
+        return
+    if isinstance(current, list):
+        if not final.isdigit() or (len(final) > 1 and final.startswith("0")):
+            raise ModelValidationError("case mutation has an invalid final array index")
+        item_index = int(final)
+        if item_index >= len(current):
+            raise ModelValidationError("case mutation final array index is out of range")
+        current[item_index] = deepcopy(value)
+        return
+    raise ModelValidationError("case mutation final parent must be an object or array")
+
+
+@dataclass(frozen=True, slots=True)
+class EmptyBenchMutation:
+    pointer: str
+    value: Any
+
+    @classmethod
+    def from_dict(cls, value: Any, path: str) -> "EmptyBenchMutation":
+        data = _exact_fields(value, path=path, fields={"pointer", "value"})
+        pointer = bounded_single_line(
+            data["pointer"],
+            f"{path}.pointer",
+            max_length=MAX_JSON_POINTER_LENGTH,
+        )
+        _decode_json_pointer(pointer, f"{path}.pointer")
+        return cls(pointer=pointer, value=deepcopy(data["value"]))
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"pointer": self.pointer, "value": deepcopy(self.value)}
 
 
 @dataclass(frozen=True, slots=True)
 class EmptyBenchCase:
     case_id: str
     pair_id: str
+    fault_class: str
     variant: str
     description: str
     request: NegativeClaimRequest
-    expected_allowed: bool
-    expected_reasons: tuple[str, ...] = field(default_factory=tuple)
+    mutations: tuple[EmptyBenchMutation, ...] = ()
 
     def __post_init__(self) -> None:
-        for name in ("case_id", "pair_id", "variant", "description"):
-            limit = (
-                MAX_BENCHMARK_DESCRIPTION_LENGTH
-                if name == "description"
-                else MAX_BENCHMARK_ID_LENGTH
-            )
-            normalized = bounded_single_line(
-                getattr(self, name), f"case.{name}", max_length=limit
-            )
-            object.__setattr__(self, name, normalized)
+        for name in ("case_id", "pair_id", "fault_class", "variant"):
+            object.__setattr__(self, name, _identifier(getattr(self, name), f"case.{name}"))
+        object.__setattr__(self, "description", _description(self.description, "case.description"))
+        if self.variant not in {"control", "fault"}:
+            raise ModelValidationError("case.variant must be control or fault")
         if not isinstance(self.request, NegativeClaimRequest):
             raise ModelValidationError("case.request must be a NegativeClaimRequest")
-        if not isinstance(self.expected_allowed, bool):
-            raise ModelValidationError("case.expected_allowed must be a boolean")
-        if isinstance(self.expected_reasons, (str, bytes)) or not isinstance(
-            self.expected_reasons, Sequence
-        ):
-            raise ModelValidationError("case.expected_reasons must be an array of strings")
-        normalized_reasons = tuple(
-            bounded_single_line(
-                item,
-                f"case.expected_reasons[{index}]",
-                max_length=MAX_BENCHMARK_ID_LENGTH,
-            )
-            for index, item in enumerate(self.expected_reasons)
-        )
-        object.__setattr__(self, "expected_reasons", normalized_reasons)
-        if len(set(self.expected_reasons)) != len(self.expected_reasons):
-            raise ModelValidationError("case.expected_reasons must not contain duplicates")
-        valid_reasons = {reason.value for reason in GateReason}
-        unknown_reasons = sorted(set(self.expected_reasons) - valid_reasons)
-        if unknown_reasons:
+        if any(not isinstance(item, EmptyBenchMutation) for item in self.mutations):
             raise ModelValidationError(
-                "case.expected_reasons contains unknown reason codes: "
-                + ", ".join(unknown_reasons)
+                "case.mutations must contain only EmptyBenchMutation values"
             )
 
     @classmethod
-    def from_dict(cls, value: Any) -> "EmptyBenchCase":
-        if not isinstance(value, Mapping):
-            raise ModelValidationError("case must be a JSON object")
-        allowed = {
+    def from_definition(
+        cls,
+        value: Any,
+        *,
+        base_request: Mapping[str, Any],
+        path: str,
+    ) -> "EmptyBenchCase":
+        fields = {
             "case_id",
             "pair_id",
+            "fault_class",
+            "variant",
+            "description",
+            "mutations",
+        }
+        data = _exact_fields(value, path=path, fields=fields)
+        raw_mutations = _array(data["mutations"], f"{path}.mutations")
+        if len(raw_mutations) > MAX_MUTATIONS_PER_CASE:
+            raise ModelValidationError(
+                f"{path}.mutations exceeds the {MAX_MUTATIONS_PER_CASE}-entry limit"
+            )
+        mutations = tuple(
+            EmptyBenchMutation.from_dict(item, f"{path}.mutations[{index}]")
+            for index, item in enumerate(raw_mutations)
+        )
+        pointers = [mutation.pointer for mutation in mutations]
+        if len(set(pointers)) != len(pointers):
+            raise ModelValidationError(f"{path}.mutations must not repeat a JSON Pointer")
+        request_payload = deepcopy(dict(base_request))
+        for mutation in mutations:
+            _replace_at_pointer(
+                request_payload,
+                _decode_json_pointer(mutation.pointer, f"{path}.mutations.pointer"),
+                mutation.value,
+            )
+        return cls(
+            case_id=_identifier(data["case_id"], f"{path}.case_id"),
+            pair_id=_identifier(data["pair_id"], f"{path}.pair_id"),
+            fault_class=_identifier(data["fault_class"], f"{path}.fault_class"),
+            variant=_identifier(data["variant"], f"{path}.variant"),
+            description=_description(data["description"], f"{path}.description"),
+            request=NegativeClaimRequest.from_dict(request_payload),
+            mutations=mutations,
+        )
+
+    @classmethod
+    def from_dict(cls, value: Any) -> "EmptyBenchCase":
+        """Parse one expanded case without accepting an embedded expectation."""
+
+        fields = {
+            "case_id",
+            "pair_id",
+            "fault_class",
             "variant",
             "description",
             "request",
-            "expected_allowed",
-            "expected_reasons",
         }
-        unknown = sorted(set(value) - allowed)
-        if unknown:
-            raise ModelValidationError(f"case has unknown fields: {', '.join(unknown)}")
-        strings: dict[str, str] = {}
-        for name in ("case_id", "pair_id", "variant", "description"):
-            limit = (
-                MAX_BENCHMARK_DESCRIPTION_LENGTH
-                if name == "description"
-                else MAX_BENCHMARK_ID_LENGTH
-            )
-            strings[name] = bounded_single_line(
-                value.get(name), f"case.{name}", max_length=limit
-            )
-        expected_allowed = value.get("expected_allowed")
-        if not isinstance(expected_allowed, bool):
-            raise ModelValidationError("case.expected_allowed must be a boolean")
-        if "expected_reasons" not in value:
-            raise ModelValidationError("case.expected_reasons is required")
-        raw_reasons = value["expected_reasons"]
-        if isinstance(raw_reasons, (str, bytes)) or not isinstance(raw_reasons, Sequence):
-            raise ModelValidationError("case.expected_reasons must be an array of strings")
-        reasons: list[str] = []
-        for index, item in enumerate(raw_reasons):
-            if not isinstance(item, str) or not item.strip():
-                raise ModelValidationError(
-                    f"case.expected_reasons[{index}] must be a non-empty string"
-                )
-            reasons.append(item.strip())
+        data = _exact_fields(value, path="case", fields=fields)
         return cls(
-            **strings,
-            request=NegativeClaimRequest.from_dict(value.get("request")),
-            expected_allowed=expected_allowed,
-            expected_reasons=tuple(reasons),
+            case_id=_identifier(data["case_id"], "case.case_id"),
+            pair_id=_identifier(data["pair_id"], "case.pair_id"),
+            fault_class=_identifier(data["fault_class"], "case.fault_class"),
+            variant=_identifier(data["variant"], "case.variant"),
+            description=_description(data["description"], "case.description"),
+            request=NegativeClaimRequest.from_dict(data["request"]),
         )
+
+    def definition_dict(self) -> dict[str, Any]:
+        return {
+            "case_id": self.case_id,
+            "pair_id": self.pair_id,
+            "fault_class": self.fault_class,
+            "variant": self.variant,
+            "description": self.description,
+            "mutations": [mutation.to_dict() for mutation in self.mutations],
+        }
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "case_id": self.case_id,
             "pair_id": self.pair_id,
+            "fault_class": self.fault_class,
             "variant": self.variant,
             "description": self.description,
             "request": self.request.to_dict(),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class EmptyBenchCorpus:
+    corpus_schema: str
+    benchmark_id: str
+    benchmark_version: str
+    canonicalization_profile: str
+    digest_algorithm: str
+    base_request: Mapping[str, Any]
+    cases: tuple[EmptyBenchCase, ...]
+    corpus_digest: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "corpus_schema": self.corpus_schema,
+            "benchmark_id": self.benchmark_id,
+            "benchmark_version": self.benchmark_version,
+            "canonicalization_profile": self.canonicalization_profile,
+            "digest_algorithm": self.digest_algorithm,
+            "base_request": deepcopy(dict(self.base_request)),
+            "cases": [case.definition_dict() for case in self.cases],
+            "corpus_digest": self.corpus_digest,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class EmptyBenchOracleRule:
+    rule_id: str
+    expected_allowed: bool
+    expected_reasons: tuple[str, ...]
+
+    @classmethod
+    def from_dict(cls, value: Any, path: str) -> "EmptyBenchOracleRule":
+        data = _exact_fields(
+            value,
+            path=path,
+            fields={"rule_id", "expected_allowed", "expected_reasons"},
+        )
+        expected_allowed = data["expected_allowed"]
+        if not isinstance(expected_allowed, bool):
+            raise ModelValidationError(f"{path}.expected_allowed must be a boolean")
+        raw_reasons = _array(data["expected_reasons"], f"{path}.expected_reasons")
+        reasons = tuple(
+            _identifier(reason, f"{path}.expected_reasons[{index}]")
+            for index, reason in enumerate(raw_reasons)
+        )
+        if len(set(reasons)) != len(reasons):
+            raise ModelValidationError(f"{path}.expected_reasons must not contain duplicates")
+        unknown = sorted(set(reasons) - {reason.value for reason in GateReason})
+        if unknown:
+            raise ModelValidationError(
+                f"{path}.expected_reasons contains unknown reason codes: {', '.join(unknown)}"
+            )
+        if expected_allowed and reasons:
+            raise ModelValidationError(f"{path} permit rule must not declare rejection reasons")
+        if not expected_allowed and not reasons:
+            raise ModelValidationError(f"{path} reject rule must declare at least one reason")
+        return cls(
+            rule_id=_identifier(data["rule_id"], f"{path}.rule_id"),
+            expected_allowed=expected_allowed,
+            expected_reasons=reasons,
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "rule_id": self.rule_id,
             "expected_allowed": self.expected_allowed,
             "expected_reasons": list(self.expected_reasons),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class EmptyBenchOracleAssignment:
+    case_id: str
+    rule_id: str
+
+    @classmethod
+    def from_dict(cls, value: Any, path: str) -> "EmptyBenchOracleAssignment":
+        data = _exact_fields(value, path=path, fields={"case_id", "rule_id"})
+        return cls(
+            case_id=_identifier(data["case_id"], f"{path}.case_id"),
+            rule_id=_identifier(data["rule_id"], f"{path}.rule_id"),
+        )
+
+    def to_dict(self) -> dict[str, str]:
+        return {"case_id": self.case_id, "rule_id": self.rule_id}
+
+
+@dataclass(frozen=True, slots=True)
+class EmptyBenchOracle:
+    oracle_schema: str
+    oracle_id: str
+    oracle_version: str
+    benchmark_id: str
+    benchmark_version: str
+    corpus_schema: str
+    corpus_digest: str
+    canonicalization_profile: str
+    digest_algorithm: str
+    rules: tuple[EmptyBenchOracleRule, ...]
+    assignments: tuple[EmptyBenchOracleAssignment, ...]
+    oracle_digest: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "oracle_schema": self.oracle_schema,
+            "oracle_id": self.oracle_id,
+            "oracle_version": self.oracle_version,
+            "benchmark_id": self.benchmark_id,
+            "benchmark_version": self.benchmark_version,
+            "corpus_schema": self.corpus_schema,
+            "corpus_digest": self.corpus_digest,
+            "canonicalization_profile": self.canonicalization_profile,
+            "digest_algorithm": self.digest_algorithm,
+            "rules": [rule.to_dict() for rule in self.rules],
+            "assignments": [assignment.to_dict() for assignment in self.assignments],
+            "oracle_digest": self.oracle_digest,
         }
 
 
@@ -148,7 +431,9 @@ class EmptyBenchCase:
 class EmptyBenchOutcome:
     case_id: str
     pair_id: str
+    fault_class: str
     variant: str
+    oracle_rule_id: str
     expected_allowed: bool
     actual_allowed: bool
     expected_reasons: tuple[str, ...]
@@ -160,7 +445,9 @@ class EmptyBenchOutcome:
         return {
             "case_id": self.case_id,
             "pair_id": self.pair_id,
+            "fault_class": self.fault_class,
             "variant": self.variant,
+            "oracle_rule_id": self.oracle_rule_id,
             "expected_allowed": self.expected_allowed,
             "actual_allowed": self.actual_allowed,
             "expected_reasons": list(self.expected_reasons),
@@ -173,6 +460,13 @@ class EmptyBenchOutcome:
 @dataclass(frozen=True, slots=True)
 class EmptyBenchReport:
     benchmark: str
+    benchmark_version: str
+    corpus_schema: str
+    corpus_digest: str
+    oracle_schema: str
+    oracle_id: str
+    oracle_version: str
+    oracle_digest: str
     outcomes: tuple[EmptyBenchOutcome, ...]
 
     @property
@@ -187,48 +481,64 @@ class EmptyBenchReport:
     def all_passed(self) -> bool:
         return self.total > 0 and self.passed == self.total
 
+    @property
+    def pairs_total(self) -> int:
+        return len({outcome.pair_id for outcome in self.outcomes})
+
+    @property
+    def pairs_discriminated(self) -> int:
+        pairs: dict[str, list[EmptyBenchOutcome]] = {}
+        for outcome in self.outcomes:
+            pairs.setdefault(outcome.pair_id, []).append(outcome)
+        return sum(
+            len(pair) == 2
+            and all(outcome.passed for outcome in pair)
+            and {outcome.actual_allowed for outcome in pair} == {False, True}
+            for pair in pairs.values()
+        )
+
     def to_dict(self) -> dict[str, Any]:
         return {
+            "report_schema": EMPTYBENCH_REPORT_SCHEMA,
             "benchmark": self.benchmark,
+            "benchmark_version": self.benchmark_version,
+            "corpus": {"schema": self.corpus_schema, "digest": self.corpus_digest},
+            "oracle": {
+                "schema": self.oracle_schema,
+                "oracle_id": self.oracle_id,
+                "version": self.oracle_version,
+                "digest": self.oracle_digest,
+            },
             "summary": {
                 "total": self.total,
                 "passed": self.passed,
                 "failed": self.total - self.passed,
+                "unsafe_permits": sum(
+                    not outcome.expected_allowed and outcome.actual_allowed
+                    for outcome in self.outcomes
+                ),
+                "false_rejections": sum(
+                    outcome.expected_allowed and not outcome.actual_allowed
+                    for outcome in self.outcomes
+                ),
+                "pairs_total": self.pairs_total,
+                "pairs_discriminated": self.pairs_discriminated,
                 "all_passed": self.all_passed,
             },
             "outcomes": [outcome.to_dict() for outcome in self.outcomes],
         }
 
 
-def parse_cases(value: Any) -> tuple[EmptyBenchCase, ...]:
-    raw_cases: Any
-    if isinstance(value, Mapping):
-        unknown = sorted(set(value) - {"cases"})
-        if unknown:
-            raise ModelValidationError(
-                f"benchmark input has unknown fields: {', '.join(unknown)}"
-            )
-        raw_cases = value.get("cases")
-    else:
-        raw_cases = value
-    if isinstance(raw_cases, (str, bytes)) or not isinstance(raw_cases, Sequence):
-        raise ModelValidationError("benchmark input must be an array or an object with cases")
-    cases = tuple(EmptyBenchCase.from_dict(case) for case in raw_cases)
-    return _validate_case_pairs(cases)
-
-
-def _validate_case_pairs(
-    cases: Iterable[EmptyBenchCase],
-) -> tuple[EmptyBenchCase, ...]:
-    """Materialize and validate the pair contract for every execution path."""
-
+def _validate_case_structure(cases: Iterable[EmptyBenchCase]) -> tuple[EmptyBenchCase, ...]:
     materialized = tuple(cases)
-    if any(not isinstance(case, EmptyBenchCase) for case in materialized):
-        raise ModelValidationError(
-            "benchmark cases must contain only EmptyBenchCase values"
-        )
     if not materialized:
-        raise ModelValidationError("benchmark input must contain at least one case")
+        raise ModelValidationError("benchmark corpus must contain at least one case")
+    if len(materialized) > MAX_BENCHMARK_CASES:
+        raise ModelValidationError(
+            f"benchmark corpus exceeds the {MAX_BENCHMARK_CASES}-case limit"
+        )
+    if any(not isinstance(case, EmptyBenchCase) for case in materialized):
+        raise ModelValidationError("benchmark corpus must contain EmptyBenchCase values")
     case_ids = [case.case_id for case in materialized]
     if len(set(case_ids)) != len(case_ids):
         raise ModelValidationError("benchmark case_id values must be unique")
@@ -241,36 +551,38 @@ def _validate_case_pairs(
             raise ModelValidationError(
                 f"benchmark pair {pair_id!r} must contain exactly two cases"
             )
-        if len({case.variant for case in pair}) != 2:
+        if {case.variant for case in pair} != {"control", "fault"}:
             raise ModelValidationError(
-                f"benchmark pair {pair_id!r} must use two distinct variants"
+                f"benchmark pair {pair_id!r} must contain one control and one fault"
             )
-        allowed_cases = [case for case in pair if case.expected_allowed]
-        rejected_cases = [case for case in pair if not case.expected_allowed]
-        if len(allowed_cases) != 1 or len(rejected_cases) != 1:
+        if len({case.fault_class for case in pair}) != 1:
+            raise ModelValidationError(f"benchmark pair {pair_id!r} must use one fault_class")
+        control = next(case for case in pair if case.variant == "control")
+        fault = next(case for case in pair if case.variant == "fault")
+        if _common_signature(control) != _common_signature(fault):
             raise ModelValidationError(
-                f"benchmark pair {pair_id!r} must have one allowed control and one rejected fault"
+                f"benchmark pair {pair_id!r} must preserve its common observation context"
             )
-        if allowed_cases[0].expected_reasons:
+        if control.fault_class != "QUERY_SEMANTICS" and (
+            control.request.envelope.query.to_dict() != fault.request.envelope.query.to_dict()
+        ):
             raise ModelValidationError(
-                f"benchmark pair {pair_id!r} allowed control must expect no rejection reasons"
+                f"benchmark pair {pair_id!r} changes the query outside QUERY_SEMANTICS"
             )
-        if not rejected_cases[0].expected_reasons:
+        if control.fault_class != "POSITIVE_CONTROL" and (
+            control.request.envelope.matched_count != fault.request.envelope.matched_count
+        ):
             raise ModelValidationError(
-                f"benchmark pair {pair_id!r} rejected fault must declare exact expected reasons"
+                f"benchmark pair {pair_id!r} changes matched_count outside POSITIVE_CONTROL"
             )
-        if _visible_signature(pair[0]) != _visible_signature(pair[1]):
+        if control.request.to_dict() == fault.request.to_dict():
             raise ModelValidationError(
-                f"benchmark pair {pair_id!r} must preserve the visible observation and question"
-            )
-        if _sufficiency_signature(pair[0]) == _sufficiency_signature(pair[1]):
-            raise ModelValidationError(
-                f"benchmark pair {pair_id!r} must differ in at least one sufficiency fact"
+                f"benchmark pair {pair_id!r} must differ in at least one evidence fact"
             )
     return materialized
 
 
-def _visible_signature(case: EmptyBenchCase) -> dict[str, Any]:
+def _common_signature(case: EmptyBenchCase) -> dict[str, Any]:
     request = case.request.to_dict()
     envelope = request["envelope"]
     return {
@@ -278,84 +590,339 @@ def _visible_signature(case: EmptyBenchCase) -> dict[str, Any]:
         "mode": request["mode"],
         "evaluated_at": request["evaluated_at"],
         "schema_version": envelope["schema_version"],
-        "query": envelope["query"],
-        "matched_count": envelope["matched_count"],
         "observed_at": envelope["observed_at"],
         "notes": envelope["notes"],
     }
 
 
-def _sufficiency_signature(case: EmptyBenchCase) -> dict[str, Any]:
-    request = case.request.to_dict()
-    envelope = request["envelope"]
-    return {
-        "state": envelope["state"],
-        "coverage": envelope["coverage"],
-        "valid_until": envelope["valid_until"],
-        "errors": envelope["errors"],
-        "source_observations": envelope["source_observations"],
-        "policy": request["policy"],
+def parse_corpus(value: Any, *, expected_digest: str | None = None) -> EmptyBenchCorpus:
+    fields = {
+        "corpus_schema",
+        "benchmark_id",
+        "benchmark_version",
+        "canonicalization_profile",
+        "digest_algorithm",
+        "base_request",
+        "cases",
+        "corpus_digest",
     }
+    data = _exact_fields(value, path="corpus", fields=fields)
+    if data["corpus_schema"] != EMPTYBENCH_CORPUS_SCHEMA:
+        raise ModelValidationError(f"corpus.corpus_schema must be {EMPTYBENCH_CORPUS_SCHEMA}")
+    if data["canonicalization_profile"] != CANONICALIZATION_PROFILE:
+        raise ModelValidationError("corpus canonicalization_profile is unsupported")
+    if data["digest_algorithm"] != DIGEST_ALGORITHM:
+        raise ModelValidationError("corpus digest_algorithm is unsupported")
+    corpus_digest = _sha256_digest(data["corpus_digest"], "corpus.corpus_digest")
+    if not verify_canonical_digest(_without_digest(data, "corpus_digest"), corpus_digest):
+        raise ModelValidationError("corpus digest does not match its canonical payload")
+    if expected_digest is not None and not compare_digest(
+        corpus_digest, _sha256_digest(expected_digest, "expected corpus digest")
+    ):
+        raise ModelValidationError("corpus digest does not match the retained expected digest")
+    base_request = _mapping(data["base_request"], "corpus.base_request")
+    NegativeClaimRequest.from_dict(base_request)
+    raw_cases = _array(data["cases"], "corpus.cases")
+    cases = _validate_case_structure(
+        EmptyBenchCase.from_definition(
+            case, base_request=base_request, path=f"corpus.cases[{index}]"
+        )
+        for index, case in enumerate(raw_cases)
+    )
+    return EmptyBenchCorpus(
+        corpus_schema=EMPTYBENCH_CORPUS_SCHEMA,
+        benchmark_id=_identifier(data["benchmark_id"], "corpus.benchmark_id"),
+        benchmark_version=_identifier(data["benchmark_version"], "corpus.benchmark_version"),
+        canonicalization_profile=CANONICALIZATION_PROFILE,
+        digest_algorithm=DIGEST_ALGORITHM,
+        base_request=deepcopy(dict(base_request)),
+        cases=cases,
+        corpus_digest=corpus_digest,
+    )
 
 
-def _run_validated_emptybench(
-    cases: tuple[EmptyBenchCase, ...],
+def parse_cases(value: Any) -> tuple[EmptyBenchCase, ...]:
+    """Parse expanded case records; this helper alone cannot score them."""
+
+    raw_cases = value.get("cases") if isinstance(value, Mapping) else value
+    return _validate_case_structure(
+        EmptyBenchCase.from_dict(case) for case in _array(raw_cases, "benchmark cases")
+    )
+
+
+def parse_oracle(
+    value: Any,
+    corpus: EmptyBenchCorpus,
     *,
-    benchmark: str,
+    expected_digest: str,
+) -> EmptyBenchOracle:
+    if not isinstance(corpus, EmptyBenchCorpus):
+        raise ModelValidationError("oracle requires a parsed EmptyBenchCorpus")
+    fields = {
+        "oracle_schema",
+        "oracle_id",
+        "oracle_version",
+        "benchmark_id",
+        "benchmark_version",
+        "corpus_schema",
+        "corpus_digest",
+        "canonicalization_profile",
+        "digest_algorithm",
+        "rules",
+        "assignments",
+        "oracle_digest",
+    }
+    data = _exact_fields(value, path="oracle", fields=fields)
+    if data["oracle_schema"] != EMPTYBENCH_ORACLE_SCHEMA:
+        raise ModelValidationError(f"oracle.oracle_schema must be {EMPTYBENCH_ORACLE_SCHEMA}")
+    if data["canonicalization_profile"] != CANONICALIZATION_PROFILE:
+        raise ModelValidationError("oracle canonicalization_profile is unsupported")
+    if data["digest_algorithm"] != DIGEST_ALGORITHM:
+        raise ModelValidationError("oracle digest_algorithm is unsupported")
+    oracle_digest = _sha256_digest(data["oracle_digest"], "oracle.oracle_digest")
+    if not verify_canonical_digest(_without_digest(data, "oracle_digest"), oracle_digest):
+        raise ModelValidationError("oracle digest does not match its canonical payload")
+    retained_digest = _sha256_digest(expected_digest, "expected oracle digest")
+    if not compare_digest(oracle_digest, retained_digest):
+        raise ModelValidationError("oracle digest does not match the retained expected digest")
+    bindings = {
+        "benchmark_id": corpus.benchmark_id,
+        "benchmark_version": corpus.benchmark_version,
+        "corpus_schema": corpus.corpus_schema,
+        "corpus_digest": corpus.corpus_digest,
+    }
+    for field, expected in bindings.items():
+        if data[field] != expected:
+            raise ModelValidationError(f"oracle {field} does not bind the supplied corpus")
+    rules = tuple(
+        EmptyBenchOracleRule.from_dict(rule, f"oracle.rules[{index}]")
+        for index, rule in enumerate(_array(data["rules"], "oracle.rules"))
+    )
+    if not rules:
+        raise ModelValidationError("oracle.rules must contain at least one rule")
+    rule_ids = [rule.rule_id for rule in rules]
+    if len(set(rule_ids)) != len(rule_ids):
+        raise ModelValidationError("oracle rule_id values must be unique")
+    rules_by_id = {rule.rule_id: rule for rule in rules}
+    assignments = tuple(
+        EmptyBenchOracleAssignment.from_dict(assignment, f"oracle.assignments[{index}]")
+        for index, assignment in enumerate(
+            _array(data["assignments"], "oracle.assignments")
+        )
+    )
+    assigned_case_ids = [assignment.case_id for assignment in assignments]
+    if len(set(assigned_case_ids)) != len(assigned_case_ids):
+        raise ModelValidationError("oracle assignments must not duplicate case_id values")
+    unknown_rules = sorted(
+        {assignment.rule_id for assignment in assignments} - set(rules_by_id)
+    )
+    if unknown_rules:
+        raise ModelValidationError(
+            "oracle assignments reference unknown rules: " + ", ".join(unknown_rules)
+        )
+    corpus_case_ids = {case.case_id for case in corpus.cases}
+    assigned_ids = set(assigned_case_ids)
+    missing = sorted(corpus_case_ids - assigned_ids)
+    extra = sorted(assigned_ids - corpus_case_ids)
+    if missing or extra:
+        details = []
+        if missing:
+            details.append("missing cases: " + ", ".join(missing))
+        if extra:
+            details.append("unknown cases: " + ", ".join(extra))
+        raise ModelValidationError("oracle assignment set mismatch; " + "; ".join(details))
+
+    assignments_by_case = {assignment.case_id: assignment for assignment in assignments}
+    pairs: dict[str, list[EmptyBenchCase]] = {}
+    for case in corpus.cases:
+        pairs.setdefault(case.pair_id, []).append(case)
+    for pair_id, pair in sorted(pairs.items()):
+        results = [
+            rules_by_id[assignments_by_case[case.case_id].rule_id].expected_allowed
+            for case in pair
+        ]
+        if sorted(results) != [False, True]:
+            raise ModelValidationError(
+                f"oracle pair {pair_id!r} must assign one permit and one rejection"
+            )
+        for case in pair:
+            expectation = rules_by_id[assignments_by_case[case.case_id].rule_id]
+            if (case.variant == "control") is not expectation.expected_allowed:
+                raise ModelValidationError(
+                    f"oracle assignment for {case.case_id!r} contradicts its case variant"
+                )
+
+    return EmptyBenchOracle(
+        oracle_schema=EMPTYBENCH_ORACLE_SCHEMA,
+        oracle_id=_identifier(data["oracle_id"], "oracle.oracle_id"),
+        oracle_version=_identifier(data["oracle_version"], "oracle.oracle_version"),
+        benchmark_id=corpus.benchmark_id,
+        benchmark_version=corpus.benchmark_version,
+        corpus_schema=corpus.corpus_schema,
+        corpus_digest=corpus.corpus_digest,
+        canonicalization_profile=CANONICALIZATION_PROFILE,
+        digest_algorithm=DIGEST_ALGORITHM,
+        rules=rules,
+        assignments=assignments,
+        oracle_digest=oracle_digest,
+    )
+
+
+def run_emptybench(
+    corpus: EmptyBenchCorpus,
+    oracle: EmptyBenchOracle,
     context: TrustedProfileContext,
+    *,
+    case_ids: Iterable[str] | None = None,
 ) -> EmptyBenchReport:
+    """Score a parsed corpus against its separately parsed decision oracle."""
+
+    if not isinstance(corpus, EmptyBenchCorpus):
+        raise ModelValidationError("EmptyBench requires an EmptyBenchCorpus")
+    if not isinstance(oracle, EmptyBenchOracle):
+        raise ModelValidationError("EmptyBench requires an EmptyBenchOracle")
+    if not isinstance(context, TrustedProfileContext):
+        raise ModelValidationError(
+            "EmptyBench requires an application-controlled TrustedProfileContext"
+        )
+    if (
+        oracle.benchmark_id != corpus.benchmark_id
+        or oracle.benchmark_version != corpus.benchmark_version
+        or oracle.corpus_schema != corpus.corpus_schema
+        or oracle.corpus_digest != corpus.corpus_digest
+    ):
+        raise ModelValidationError("EmptyBench oracle is not bound to the supplied corpus")
+
+    cases_by_id = {case.case_id: case for case in corpus.cases}
+    selected_ids = tuple(cases_by_id) if case_ids is None else tuple(case_ids)
+    if not selected_ids:
+        raise ModelValidationError("EmptyBench selection must contain at least one case")
+    if len(set(selected_ids)) != len(selected_ids):
+        raise ModelValidationError("EmptyBench selection must not contain duplicates")
+    unknown_cases = sorted(set(selected_ids) - set(cases_by_id))
+    if unknown_cases:
+        raise ModelValidationError(
+            "EmptyBench selection contains unknown cases: " + ", ".join(unknown_cases)
+        )
+    selected_pair_counts: dict[str, int] = {}
+    for case_id in selected_ids:
+        pair_id = cases_by_id[case_id].pair_id
+        selected_pair_counts[pair_id] = selected_pair_counts.get(pair_id, 0) + 1
+    incomplete_pairs = sorted(
+        pair_id for pair_id, count in selected_pair_counts.items() if count != 2
+    )
+    if incomplete_pairs:
+        raise ModelValidationError(
+            "EmptyBench selection must include complete pairs: "
+            + ", ".join(incomplete_pairs)
+        )
+    rules_by_id = {rule.rule_id: rule for rule in oracle.rules}
+    assignments_by_case = {assignment.case_id: assignment for assignment in oracle.assignments}
     outcomes: list[EmptyBenchOutcome] = []
-    for case in cases:
+    for case_id in selected_ids:
+        case = cases_by_id[case_id]
+        assignment = assignments_by_case[case.case_id]
+        expectation = rules_by_id[assignment.rule_id]
         decision = evaluate_negative_claim(case.request, context)
         actual_reasons = tuple(reason.value for reason in decision.reasons)
         passed = (
-            decision.allowed is case.expected_allowed
-            and actual_reasons == case.expected_reasons
+            decision.allowed is expectation.expected_allowed
+            and actual_reasons == expectation.expected_reasons
         )
         outcomes.append(
             EmptyBenchOutcome(
                 case_id=case.case_id,
                 pair_id=case.pair_id,
+                fault_class=case.fault_class,
                 variant=case.variant,
-                expected_allowed=case.expected_allowed,
+                oracle_rule_id=expectation.rule_id,
+                expected_allowed=expectation.expected_allowed,
                 actual_allowed=decision.allowed,
-                expected_reasons=case.expected_reasons,
+                expected_reasons=expectation.expected_reasons,
                 actual_reasons=actual_reasons,
                 passed=passed,
                 decision=decision,
             )
         )
-    return EmptyBenchReport(benchmark=benchmark, outcomes=tuple(outcomes))
-
-
-def run_emptybench(
-    cases: Iterable[EmptyBenchCase],
-    context: TrustedProfileContext,
-) -> EmptyBenchReport:
-    """Run a caller-supplied corpus after enforcing the paired-case contract."""
-
-    validated = _validate_case_pairs(cases)
-    if not isinstance(context, TrustedProfileContext):
-        raise ModelValidationError(
-            "EmptyBench requires an application-controlled TrustedProfileContext"
-        )
-    return _run_validated_emptybench(
-        validated,
-        benchmark="EmptyBench-custom",
-        context=context,
+    return EmptyBenchReport(
+        benchmark=corpus.benchmark_id,
+        benchmark_version=corpus.benchmark_version,
+        corpus_schema=corpus.corpus_schema,
+        corpus_digest=corpus.corpus_digest,
+        oracle_schema=oracle.oracle_schema,
+        oracle_id=oracle.oracle_id,
+        oracle_version=oracle.oracle_version,
+        oracle_digest=oracle.oracle_digest,
+        outcomes=tuple(outcomes),
     )
+
+
+def _seed_artifact_directory() -> Path:
+    candidates = (
+        Path(__file__).resolve().parents[2] / "benchmarks",
+        Path.cwd().resolve() / "benchmarks",
+    )
+    for candidate in candidates:
+        if (candidate / _SEED_CORPUS_FILE).is_file() and (
+            candidate / _SEED_ORACLE_FILE
+        ).is_file():
+            return candidate
+    raise ModelValidationError(
+        "seed EmptyBench artifacts were not found; run from the repository or supply explicit corpus and oracle files"
+    )
+
+
+def _reject_duplicate_json_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ModelValidationError(f"duplicate JSON object key in benchmark artifact: {key}")
+        result[key] = value
+    return result
+
+
+def _read_seed_json(path: Path) -> Any:
+    try:
+        return json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=_reject_duplicate_json_keys,
+            parse_constant=lambda value: (_ for _ in ()).throw(
+                ModelValidationError(f"non-standard JSON constant in benchmark artifact: {value}")
+            ),
+        )
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise ModelValidationError("seed EmptyBench artifact could not be read") from exc
+
+
+def seed_benchmark() -> tuple[EmptyBenchCorpus, EmptyBenchOracle]:
+    directory = _seed_artifact_directory()
+    corpus = parse_corpus(_read_seed_json(directory / _SEED_CORPUS_FILE))
+    oracle = parse_oracle(
+        _read_seed_json(directory / _SEED_ORACLE_FILE),
+        corpus,
+        expected_digest=SEED_ORACLE_DIGEST,
+    )
+    return corpus, oracle
 
 
 def run_seed_emptybench(*, all_cases: bool = False) -> EmptyBenchReport:
-    """Run only the package-owned seed corpus under the seed benchmark label."""
+    corpus, oracle = seed_benchmark()
+    selected = None
+    if not all_cases:
+        selected = tuple(case.case_id for case in corpus.cases if case.pair_id == "pagination")
+    return run_emptybench(corpus, oracle, seed_profile_context(), case_ids=selected)
 
-    cases = seed_cases() if all_cases else demo_cases()
-    validated = _validate_case_pairs(cases)
-    return _run_validated_emptybench(
-        validated,
-        benchmark="EmptyBench-seed",
-        context=seed_profile_context(),
-    )
+
+def seed_cases() -> tuple[EmptyBenchCase, ...]:
+    return seed_benchmark()[0].cases
+
+
+def seed_case_dicts() -> list[dict[str, Any]]:
+    return [case.to_dict() for case in seed_cases()]
+
+
+def demo_cases() -> tuple[EmptyBenchCase, ...]:
+    return tuple(case for case in seed_cases() if case.pair_id == "pagination")
 
 
 def seed_profile_context() -> TrustedProfileContext:
@@ -369,12 +936,8 @@ def seed_profile_context() -> TrustedProfileContext:
         approval_authority_id="example-assurance-board",
         issuer_id="example-profile-publisher",
         issued_at=parse_datetime("2026-08-20T00:00:00Z", "seed_profile.issued_at"),
-        effective_at=parse_datetime(
-            "2026-08-21T00:00:00Z", "seed_profile.effective_at"
-        ),
-        expires_at=parse_datetime(
-            "2027-01-01T00:00:00Z", "seed_profile.expires_at"
-        ),
+        effective_at=parse_datetime("2026-08-21T00:00:00Z", "seed_profile.effective_at"),
+        expires_at=parse_datetime("2027-01-01T00:00:00Z", "seed_profile.expires_at"),
         source=ProfileSource(
             source_id="github-public-repositories",
             system="github-search",
@@ -387,13 +950,9 @@ def seed_profile_context() -> TrustedProfileContext:
         applicability=ProfileApplicability(
             target="GitHub repository search",
             predicate="topic:evidence-state language:Python",
-            authorization_boundary=(
-                "public repositories visible to the adapter token"
-            ),
+            authorization_boundary="public repositories visible to the adapter token",
             required_exclusions=("deleted repositories", "unindexed content"),
-            detection_assumptions=(
-                "repository is indexed by the declared search endpoint",
-            ),
+            detection_assumptions=("repository is indexed by the declared search endpoint",),
         ),
         coverage=ProfileCoverage(
             population_basis=PopulationBasis.EXACT,
@@ -427,9 +986,7 @@ def seed_profile_context() -> TrustedProfileContext:
         snapshot_version="1",
         issuer_id="example-registry-publisher",
         as_of=parse_datetime("2026-08-21T00:00:00Z", "seed_snapshot.as_of"),
-        next_update_at=parse_datetime(
-            "2027-01-01T00:00:00Z", "seed_snapshot.next_update_at"
-        ),
+        next_update_at=parse_datetime("2027-01-01T00:00:00Z", "seed_snapshot.next_update_at"),
         records=(record,),
         snapshot_digest=None,
     )
@@ -452,296 +1009,3 @@ def seed_profile_context() -> TrustedProfileContext:
         trust_selection_digest=None,
     )
     return TrustedProfileContext(snapshot=snapshot, trust_selection=trust)
-
-
-def _request_dict(
-    *,
-    state: str = "ABSENT_WITHIN_SCOPE",
-    examined_units: int = 100,
-    population_basis: str = "EXACT",
-    population_units: int | None = 100,
-    declared_lower_bound: float | None = None,
-    pages_examined: int | None = 5,
-    pages_expected: int | None = 5,
-    pagination_complete: bool = True,
-    continuation_token_present: bool = False,
-    partitions_examined: int | None = 2,
-    partitions_expected: int | None = 2,
-    partitions_complete: bool = True,
-    timed_out: bool = False,
-    permission_limited: bool = False,
-    valid_until: str | None = "2026-08-21T13:00:00Z",
-    index_as_of: str | None = "2026-08-21T12:04:00Z",
-    source_observations: Sequence[Mapping[str, Any]] | None = None,
-    source_requirements: Sequence[Mapping[str, Any]] | None = None,
-    mode: str = "SCOPED",
-    authorization_boundary: str = "public repositories visible to the adapter token",
-    authorization_context_id: str = "public-search-adapter-context",
-    policy: Mapping[str, Any] | None = None,
-) -> dict[str, Any]:
-    profile_context = seed_profile_context()
-    profile = profile_context.snapshot.records[0].profile
-    effective_requirements = (
-        [
-            {
-                "source_id": "github-public-repositories",
-                "role": "REQUIRED",
-                "system": "github-search",
-                "locator": "repositories/search",
-                "adapter_id": "github-search-adapter",
-                "adapter_version": "example-0.4",
-                "authorization_context_id": authorization_context_id,
-                "accessible_population": "public-repositories-visible-to-adapter",
-                "finality_horizon": "2026-08-21T12:04:00Z",
-                "detection_assumptions": [
-                    "repository is indexed by the declared search endpoint"
-                ],
-                "profile_ref": {
-                    "registry_id": profile_context.snapshot.registry_id,
-                    "profile_id": profile.profile_id,
-                    "profile_version": profile.profile_version,
-                    "profile_digest": profile.profile_digest,
-                },
-            }
-        ]
-        if source_requirements is None
-        else [dict(requirement) for requirement in source_requirements]
-    )
-    query = {
-        "target": "GitHub repository search",
-        "predicate": "topic:evidence-state language:Python",
-        "authorization_boundary": authorization_boundary,
-        "authorization_context_id": authorization_context_id,
-        "time_start": "2026-08-21T00:00:00Z",
-        "time_end": "2026-08-21T12:00:00Z",
-        "exclusions": ["deleted repositories", "unindexed content"],
-        "source_requirements": effective_requirements,
-    }
-    query_fingerprint = QueryScope.from_dict(query).fingerprint()
-    effective_observations = (
-        [
-            {
-                "source_id": "github-public-repositories",
-                "status": "OBSERVED",
-                "authorization_context_id": authorization_context_id,
-                "query_fingerprint": query_fingerprint,
-                "accessible_population": "public-repositories-visible-to-adapter",
-                "descriptor": {
-                    "system": "github-search",
-                    "locator": "repositories/search",
-                    "adapter_id": "github-search-adapter",
-                    "adapter_version": "example-0.4",
-                    "index_as_of": index_as_of,
-                },
-                "errors": [],
-            }
-        ]
-        if source_observations is None
-        else [dict(observation) for observation in source_observations]
-    )
-    return {
-        "subject": "repositories matching the query",
-        "mode": mode,
-        "evaluated_at": "2026-08-21T12:05:00Z",
-        "policy": {
-            "policy_id": "esio-p0-safety-floor",
-            "policy_version": "1.0-candidate.4",
-            **dict({} if policy is None else policy),
-        },
-        "envelope": {
-            "schema_version": "1.0",
-            "state": state,
-            "query": query,
-            "coverage": {
-                "examined_units": examined_units,
-                "population_basis": population_basis,
-                "population_units": population_units,
-                "declared_lower_bound": declared_lower_bound,
-                "pages_examined": pages_examined,
-                "pages_expected": pages_expected,
-                "pagination_complete": pagination_complete,
-                "continuation_token_present": continuation_token_present,
-                "partitions_examined": partitions_examined,
-                "partitions_expected": partitions_expected,
-                "partitions_complete": partitions_complete,
-                "timed_out": timed_out,
-                "interrupted": False,
-                "permission_limited": permission_limited,
-                "query_errors": [],
-            },
-            "coverage_query_fingerprint": query_fingerprint,
-            "matched_count": 0,
-            "observed_at": "2026-08-21T12:04:00Z",
-            "valid_until": valid_until,
-            "source_observations": effective_observations,
-            "errors": [],
-            "notes": ["Synthetic EmptyBench seed case; not an external observation."],
-        },
-    }
-
-
-def seed_case_dicts() -> list[dict[str, Any]]:
-    """Return deterministic paired cases; no external data is implied."""
-
-    return [
-        {
-            "case_id": "covered-complete",
-            "pair_id": "covered-vs-partial",
-            "variant": "covered",
-            "description": "Zero matches after complete exact-population traversal.",
-            "request": _request_dict(),
-            "expected_allowed": True,
-            "expected_reasons": [],
-        },
-        {
-            "case_id": "partial-continuation",
-            "pair_id": "covered-vs-partial",
-            "variant": "partial",
-            "description": "Zero matches before remaining result pages were traversed.",
-            "request": _request_dict(
-                state="PARTIAL",
-                examined_units=60,
-                pages_examined=3,
-                pagination_complete=False,
-                continuation_token_present=True,
-            ),
-            "expected_allowed": False,
-            "expected_reasons": [
-                "STATE_NOT_ABSENT_WITHIN_SCOPE",
-                "COVERAGE_POLICY_NOT_MET",
-            ],
-        },
-        {
-            "case_id": "fresh-valid",
-            "pair_id": "fresh-vs-stale",
-            "variant": "fresh",
-            "description": "Complete result remains inside its declared validity window.",
-            "request": _request_dict(),
-            "expected_allowed": True,
-            "expected_reasons": [],
-        },
-        {
-            "case_id": "expired-result",
-            "pair_id": "fresh-vs-stale",
-            "variant": "stale",
-            "description": "The same empty result is evaluated after its validity window.",
-            "request": _request_dict(valid_until="2026-08-21T12:04:30Z"),
-            "expected_allowed": False,
-            "expected_reasons": ["RESULT_EXPIRED"],
-        },
-        {
-            "case_id": "governed-population-match",
-            "pair_id": "governed-population-match-vs-mismatch",
-            "variant": "matching-denominator",
-            "description": "The exact runtime denominator matches the governed profile.",
-            "request": _request_dict(),
-            "expected_allowed": True,
-            "expected_reasons": [],
-        },
-        {
-            "case_id": "governed-population-mismatch",
-            "pair_id": "governed-population-match-vs-mismatch",
-            "variant": "mismatched-denominator",
-            "description": "The runtime denominator differs from the exact governed profile.",
-            "request": _request_dict(
-                population_units=101,
-            ),
-            "expected_allowed": False,
-            "expected_reasons": [
-                "PROFILE_COVERAGE_BASIS_MISMATCH",
-                "COVERAGE_POLICY_NOT_MET",
-            ],
-        },
-        {
-            "case_id": "governed-access-match",
-            "pair_id": "governed-access-match-vs-mismatch",
-            "variant": "matching-access",
-            "description": "The runtime access limitation matches the governed profile.",
-            "request": _request_dict(),
-            "expected_allowed": True,
-            "expected_reasons": [],
-        },
-        {
-            "case_id": "governed-access-mismatch",
-            "pair_id": "governed-access-match-vs-mismatch",
-            "variant": "mismatched-access",
-            "description": "The runtime permission-limited state differs from the governed profile.",
-            "request": _request_dict(
-                permission_limited=True,
-            ),
-            "expected_allowed": False,
-            "expected_reasons": ["PROFILE_AUTHORIZATION_MISMATCH"],
-        },
-        {
-            "case_id": "completed-without-timeout",
-            "pair_id": "complete-vs-timeout",
-            "variant": "completed",
-            "description": "A fully covered query completed without timeout.",
-            "request": _request_dict(),
-            "expected_allowed": True,
-            "expected_reasons": [],
-        },
-        {
-            "case_id": "timed-out-query",
-            "pair_id": "complete-vs-timeout",
-            "variant": "timeout",
-            "description": "The same empty result is paired with a timeout fact.",
-            "request": _request_dict(timed_out=True),
-            "expected_allowed": False,
-            "expected_reasons": ["COVERAGE_POLICY_NOT_MET"],
-        },
-        {
-            "case_id": "required-source-observed",
-            "pair_id": "required-source-present-vs-missing",
-            "variant": "observed",
-            "description": "The declared required source has an explicit observation record.",
-            "request": _request_dict(),
-            "expected_allowed": True,
-            "expected_reasons": [],
-        },
-        {
-            "case_id": "required-source-missing",
-            "pair_id": "required-source-present-vs-missing",
-            "variant": "missing",
-            "description": "The visible empty result lacks an observation for the declared required source.",
-            "request": _request_dict(source_observations=[]),
-            "expected_allowed": False,
-            "expected_reasons": ["REQUIRED_SOURCE_MISSING"],
-        },
-        {
-            "case_id": "finality-snapshot-at-horizon",
-            "pair_id": "finality-snapshot-at-vs-before-horizon",
-            "variant": "at-horizon",
-            "description": "The required source snapshot was current at the declared finality horizon.",
-            "request": _request_dict(
-                index_as_of="2026-08-21T12:04:00Z",
-            ),
-            "expected_allowed": True,
-            "expected_reasons": [],
-        },
-        {
-            "case_id": "finality-snapshot-before-horizon",
-            "pair_id": "finality-snapshot-at-vs-before-horizon",
-            "variant": "before-horizon",
-            "description": "The same visible empty result came from a snapshot one microsecond before finality.",
-            "request": _request_dict(
-                state="PENDING_WINDOW",
-                index_as_of="2026-08-21T12:03:59.999999Z",
-            ),
-            "expected_allowed": False,
-            "expected_reasons": [
-                "STATE_NOT_ABSENT_WITHIN_SCOPE",
-                "INDEX_PRECEDES_FINALITY_HORIZON",
-            ],
-        },
-    ]
-
-
-def seed_cases() -> tuple[EmptyBenchCase, ...]:
-    return tuple(EmptyBenchCase.from_dict(case) for case in seed_case_dicts())
-
-
-def demo_cases() -> tuple[EmptyBenchCase, ...]:
-    """Return the P0 operator pair: covered versus partial traversal."""
-
-    return tuple(case for case in seed_cases() if case.pair_id == "covered-vs-partial")

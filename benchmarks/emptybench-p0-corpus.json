@@ -1,0 +1,328 @@
+{
+  "corpus_schema": "esio-emptybench-corpus/1.0-candidate.1",
+  "benchmark_id": "EmptyBench-P0-seed",
+  "benchmark_version": "1.0-candidate.1",
+  "canonicalization_profile": "esio-canonical-json-0.1",
+  "digest_algorithm": "sha256",
+  "base_request": {
+    "subject": "repositories matching the query",
+    "mode": "SCOPED",
+    "evaluated_at": "2026-08-21T12:05:00Z",
+    "policy": {
+      "policy_id": "esio-p0-safety-floor",
+      "policy_version": "1.0-candidate.4"
+    },
+    "envelope": {
+      "schema_version": "1.0",
+      "state": "ABSENT_WITHIN_SCOPE",
+      "query": {
+        "target": "GitHub repository search",
+        "predicate": "topic:evidence-state language:Python",
+        "authorization_boundary": "public repositories visible to the adapter token",
+        "authorization_context_id": "public-search-adapter-context",
+        "time_start": "2026-08-21T00:00:00Z",
+        "time_end": "2026-08-21T12:00:00Z",
+        "exclusions": [
+          "deleted repositories",
+          "unindexed content"
+        ],
+        "source_requirements": [
+          {
+            "source_id": "github-public-repositories",
+            "role": "REQUIRED",
+            "system": "github-search",
+            "locator": "repositories/search",
+            "adapter_id": "github-search-adapter",
+            "adapter_version": "example-0.4",
+            "authorization_context_id": "public-search-adapter-context",
+            "accessible_population": "public-repositories-visible-to-adapter",
+            "finality_horizon": "2026-08-21T12:04:00Z",
+            "detection_assumptions": [
+              "repository is indexed by the declared search endpoint"
+            ],
+            "profile_ref": {
+              "registry_id": "example-coverage-registry",
+              "profile_id": "github-search-p0",
+              "profile_version": "1.0.0",
+              "profile_digest": "sha256:2f7fee3eb62e5c4dcd798eb475f6b6b2cbe21369a7530f78565c642a6d029a6f"
+            }
+          }
+        ]
+      },
+      "coverage": {
+        "examined_units": 100,
+        "population_basis": "EXACT",
+        "population_units": 100,
+        "declared_lower_bound": null,
+        "pages_examined": 5,
+        "pages_expected": 5,
+        "pagination_complete": true,
+        "continuation_token_present": false,
+        "partitions_examined": 2,
+        "partitions_expected": 2,
+        "partitions_complete": true,
+        "timed_out": false,
+        "interrupted": false,
+        "permission_limited": false,
+        "query_errors": []
+      },
+      "coverage_query_fingerprint": "sha256:dea92255f10151ece5b120a8491bdf53f7c1f483103fb1038d6e0e349d498d77",
+      "matched_count": 0,
+      "observed_at": "2026-08-21T12:04:00Z",
+      "valid_until": "2026-08-21T13:00:00Z",
+      "source_observations": [
+        {
+          "source_id": "github-public-repositories",
+          "status": "OBSERVED",
+          "authorization_context_id": "public-search-adapter-context",
+          "query_fingerprint": "sha256:dea92255f10151ece5b120a8491bdf53f7c1f483103fb1038d6e0e349d498d77",
+          "accessible_population": "public-repositories-visible-to-adapter",
+          "descriptor": {
+            "system": "github-search",
+            "locator": "repositories/search",
+            "adapter_id": "github-search-adapter",
+            "adapter_version": "example-0.4",
+            "index_as_of": "2026-08-21T12:04:00Z"
+          },
+          "errors": []
+        }
+      ],
+      "errors": [],
+      "notes": [
+        "Synthetic EmptyBench seed case; not an external observation."
+      ]
+    }
+  },
+  "cases": [
+    {
+      "case_id": "pagination-covered",
+      "pair_id": "pagination",
+      "fault_class": "PAGINATION",
+      "variant": "control",
+      "description": "All declared result pages were traversed with no continuation token.",
+      "mutations": []
+    },
+    {
+      "case_id": "pagination-unresolved",
+      "pair_id": "pagination",
+      "fault_class": "PAGINATION",
+      "variant": "fault",
+      "description": "An empty partial page retains an unresolved continuation token.",
+      "mutations": [
+        {"pointer": "/envelope/state", "value": "PARTIAL"},
+        {"pointer": "/envelope/coverage/examined_units", "value": 60},
+        {"pointer": "/envelope/coverage/pages_examined", "value": 3},
+        {"pointer": "/envelope/coverage/pagination_complete", "value": false},
+        {"pointer": "/envelope/coverage/continuation_token_present", "value": true}
+      ]
+    },
+    {
+      "case_id": "partitioning-covered",
+      "pair_id": "partitioning",
+      "fault_class": "PARTITIONING",
+      "variant": "control",
+      "description": "All required partitions were traversed.",
+      "mutations": []
+    },
+    {
+      "case_id": "partitioning-incomplete",
+      "pair_id": "partitioning",
+      "fault_class": "PARTITIONING",
+      "variant": "fault",
+      "description": "One required partition was not traversed.",
+      "mutations": [
+        {"pointer": "/envelope/state", "value": "PARTIAL"},
+        {"pointer": "/envelope/coverage/examined_units", "value": 50},
+        {"pointer": "/envelope/coverage/partitions_examined", "value": 1},
+        {"pointer": "/envelope/coverage/partitions_complete", "value": false}
+      ]
+    },
+    {
+      "case_id": "authorization-covered",
+      "pair_id": "authorization",
+      "fault_class": "AUTHORIZATION",
+      "variant": "control",
+      "description": "The runtime access boundary matches the governed profile.",
+      "mutations": []
+    },
+    {
+      "case_id": "authorization-limited",
+      "pair_id": "authorization",
+      "fault_class": "AUTHORIZATION",
+      "variant": "fault",
+      "description": "The runtime result is permission-limited contrary to the governed profile.",
+      "mutations": [
+        {"pointer": "/envelope/coverage/permission_limited", "value": true}
+      ]
+    },
+    {
+      "case_id": "freshness-covered",
+      "pair_id": "freshness",
+      "fault_class": "FRESHNESS",
+      "variant": "control",
+      "description": "The result remains inside its declared validity window.",
+      "mutations": []
+    },
+    {
+      "case_id": "freshness-expired",
+      "pair_id": "freshness",
+      "fault_class": "FRESHNESS",
+      "variant": "fault",
+      "description": "The result is evaluated after its validity window.",
+      "mutations": [
+        {"pointer": "/envelope/valid_until", "value": "2026-08-21T12:04:30Z"}
+      ]
+    },
+    {
+      "case_id": "finality-covered",
+      "pair_id": "finality",
+      "fault_class": "FINALITY",
+      "variant": "control",
+      "description": "The source snapshot reached the declared finality horizon.",
+      "mutations": []
+    },
+    {
+      "case_id": "finality-pending",
+      "pair_id": "finality",
+      "fault_class": "FINALITY",
+      "variant": "fault",
+      "description": "The source snapshot precedes finality by one microsecond.",
+      "mutations": [
+        {"pointer": "/envelope/state", "value": "PENDING_WINDOW"},
+        {"pointer": "/envelope/source_observations/0/descriptor/index_as_of", "value": "2026-08-21T12:03:59.999999Z"}
+      ]
+    },
+    {
+      "case_id": "error-handling-covered",
+      "pair_id": "error-handling",
+      "fault_class": "ERROR_HANDLING",
+      "variant": "control",
+      "description": "The query completed without a transport or query error.",
+      "mutations": []
+    },
+    {
+      "case_id": "error-handling-rate-limit",
+      "pair_id": "error-handling",
+      "fault_class": "ERROR_HANDLING",
+      "variant": "fault",
+      "description": "A rate-limit error accompanies the empty payload.",
+      "mutations": [
+        {"pointer": "/envelope/state", "value": "FAILED"},
+        {"pointer": "/envelope/coverage/query_errors", "value": ["RATE_LIMIT"]}
+      ]
+    },
+    {
+      "case_id": "population-covered",
+      "pair_id": "population",
+      "fault_class": "POPULATION",
+      "variant": "control",
+      "description": "The exact population denominator is declared and matches the profile.",
+      "mutations": []
+    },
+    {
+      "case_id": "population-unknown",
+      "pair_id": "population",
+      "fault_class": "POPULATION",
+      "variant": "fault",
+      "description": "The population denominator is unknown.",
+      "mutations": [
+        {"pointer": "/envelope/coverage/population_basis", "value": "UNKNOWN"},
+        {"pointer": "/envelope/coverage/population_units", "value": null}
+      ]
+    },
+    {
+      "case_id": "source-agreement-covered",
+      "pair_id": "source-agreement",
+      "fault_class": "SOURCE_AGREEMENT",
+      "variant": "control",
+      "description": "The required source reports a consistent observed result.",
+      "mutations": []
+    },
+    {
+      "case_id": "source-agreement-contradictory",
+      "pair_id": "source-agreement",
+      "fault_class": "SOURCE_AGREEMENT",
+      "variant": "fault",
+      "description": "The required source marks the observation contradictory.",
+      "mutations": [
+        {"pointer": "/envelope/source_observations/0/status", "value": "CONTRADICTORY"}
+      ]
+    },
+    {
+      "case_id": "positive-control-zero",
+      "pair_id": "positive-control",
+      "fault_class": "POSITIVE_CONTROL",
+      "variant": "control",
+      "description": "The fully covered scope contains zero matches.",
+      "mutations": []
+    },
+    {
+      "case_id": "positive-control-present",
+      "pair_id": "positive-control",
+      "fault_class": "POSITIVE_CONTROL",
+      "variant": "fault",
+      "description": "The same scope contains one in-scope match.",
+      "mutations": [
+        {"pointer": "/envelope/state", "value": "PRESENT"},
+        {"pointer": "/envelope/matched_count", "value": 1}
+      ]
+    },
+    {
+      "case_id": "query-semantics-covered",
+      "pair_id": "query-semantics",
+      "fault_class": "QUERY_SEMANTICS",
+      "variant": "control",
+      "description": "The query predicate matches the governed applicability predicate.",
+      "mutations": []
+    },
+    {
+      "case_id": "query-semantics-omitted-language",
+      "pair_id": "query-semantics",
+      "fault_class": "QUERY_SEMANTICS",
+      "variant": "fault",
+      "description": "The query omits the governed language filter while retaining an empty result.",
+      "mutations": [
+        {"pointer": "/envelope/query/predicate", "value": "topic:evidence-state"},
+        {"pointer": "/envelope/coverage_query_fingerprint", "value": "sha256:de379461fabd0478f02e774d77c089977a73cfccf2298ada551c5efee9bb16c1"},
+        {"pointer": "/envelope/source_observations/0/query_fingerprint", "value": "sha256:de379461fabd0478f02e774d77c089977a73cfccf2298ada551c5efee9bb16c1"}
+      ]
+    },
+    {
+      "case_id": "snapshot-covered",
+      "pair_id": "snapshot",
+      "fault_class": "SNAPSHOT",
+      "variant": "control",
+      "description": "The source reports a consistent snapshot across traversal.",
+      "mutations": []
+    },
+    {
+      "case_id": "snapshot-mutated",
+      "pair_id": "snapshot",
+      "fault_class": "SNAPSHOT",
+      "variant": "fault",
+      "description": "The source reports a snapshot change during traversal.",
+      "mutations": [
+        {"pointer": "/envelope/source_observations/0/errors", "value": ["SNAPSHOT_CHANGED_BETWEEN_PAGES"]}
+      ]
+    },
+    {
+      "case_id": "envelope-honesty-covered",
+      "pair_id": "envelope-honesty",
+      "fault_class": "ENVELOPE_HONESTY",
+      "variant": "control",
+      "description": "The envelope declares no unresolved internal contradiction.",
+      "mutations": []
+    },
+    {
+      "case_id": "envelope-honesty-contradiction",
+      "pair_id": "envelope-honesty",
+      "fault_class": "ENVELOPE_HONESTY",
+      "variant": "fault",
+      "description": "The envelope explicitly records a contradiction in its evidence facts.",
+      "mutations": [
+        {"pointer": "/envelope/errors", "value": ["DECLARED_ABSENCE_CONTRADICTS_COMPLETION_FACTS"]}
+      ]
+    }
+  ],
+  "corpus_digest": "sha256:c054b681a6c86cd0009aa07347f25e660ccee9d0c648fa4acf537de412591f93"
+}

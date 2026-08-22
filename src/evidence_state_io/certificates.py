@@ -120,7 +120,7 @@ class ImplementationIdentity:
                 raise ModelValidationError(
                     "an UNBOUND implementation requires a null repository_revision"
                 )
-        elif not isinstance(self.repository_revision, str) or not _REVISION_PATTERN.fullmatch(
+        elif type(self.repository_revision) is not str or not _REVISION_PATTERN.fullmatch(
             self.repository_revision
         ):
             raise ModelValidationError(
@@ -145,7 +145,7 @@ class ImplementationIdentity:
                 "implementation.working_tree_state must be CLEAN, DIRTY, or UNBOUND"
             ) from exc
         revision = data["repository_revision"]
-        if revision is not None and not isinstance(revision, str):
+        if revision is not None and type(revision) is not str:
             raise ModelValidationError(
                 "implementation.repository_revision must be a string or null"
             )
@@ -299,7 +299,7 @@ def _string_array(value: Any, path: str) -> list[str]:
     items = _required_sequence(value, path)
     result: list[str] = []
     for index, item in enumerate(items):
-        if not isinstance(item, str):
+        if type(item) is not str:
             raise ModelValidationError(f"{path}[{index}] must be a string")
         result.append(item)
     return result
@@ -341,7 +341,13 @@ def _normalized_json_copy(value: Any, path: str = "decision") -> Any:
                 f"{path} contains a number that is not exactly preserved by the certificate JSON model"
             )
         return normalized
+    if isinstance(value, str):
+        if type(value) is not str:
+            raise ModelValidationError(f"{path} must use plain JSON strings")
+        return value
     if isinstance(value, Mapping):
+        if any(type(key) is not str for key in value):
+            raise ModelValidationError(f"{path} object keys must be plain strings")
         return {
             key: _normalized_json_copy(item, f"{path}.{key}")
             for key, item in value.items()
@@ -379,9 +385,7 @@ def _validate_coverage_assessment(value: Any) -> None:
         fields = {"name", "lower_bound", "basis"}
         _reject_unknown(component, fields, f"decision.coverage.components[{index}]")
         _require_fields(component, fields, f"decision.coverage.components[{index}]")
-        if not isinstance(component["name"], str) or not isinstance(
-            component["basis"], str
-        ):
+        if type(component["name"]) is not str or type(component["basis"]) is not str:
             raise ModelValidationError(
                 "decision coverage component name and basis must be strings"
             )
@@ -468,7 +472,7 @@ def _validate_profile_assessment(value: Any) -> None:
         _require_fields(issue, fields, f"decision.profile.issues[{index}]")
         if issue["code"] not in {item.value for item in ProfileIssueCode}:
             raise ModelValidationError("decision.profile issue has an unknown code")
-        if not isinstance(issue["detail"], str) or not issue["detail"]:
+        if type(issue["detail"]) is not str or not issue["detail"]:
             raise ModelValidationError("decision.profile issue detail must be a string")
         for field_name in ("source_id", "profile_id"):
             if issue[field_name] is not None:
@@ -534,13 +538,19 @@ def _validated_decision_dict(value: Any) -> dict[str, Any]:
         raise ModelValidationError("decision.qualified_claim must be a string or null")
     _string_array(data["limitations"], "decision.limitations")
     _sha256_digest(data["input_digest"], "decision.input_digest")
-    if data["canonicalization_profile"] != CANONICALIZATION_PROFILE:
+    if type(data["canonicalization_profile"]) is not str or not compare_digest(
+        data["canonicalization_profile"], CANONICALIZATION_PROFILE
+    ):
         raise ModelValidationError(
             "decision.canonicalization_profile is not supported"
         )
-    if data["digest_algorithm"] != DIGEST_ALGORITHM:
+    if type(data["digest_algorithm"]) is not str or not compare_digest(
+        data["digest_algorithm"], DIGEST_ALGORITHM
+    ):
         raise ModelValidationError("decision.digest_algorithm is not supported")
-    if data["evaluator_version"] != EVALUATOR_VERSION:
+    if type(data["evaluator_version"]) is not str or not compare_digest(
+        data["evaluator_version"], EVALUATOR_VERSION
+    ):
         raise ModelValidationError("decision.evaluator_version is not supported")
     normalized = _normalized_json_copy(data)
     canonical_json_bytes(normalized)
@@ -583,7 +593,8 @@ class EvidenceCertificatePayload:
             "evaluator_version": EVALUATOR_VERSION,
         }
         for name, expected in exact_identifiers.items():
-            if getattr(self, name) != expected:
+            value = getattr(self, name)
+            if type(value) is not str or not compare_digest(value, expected):
                 raise ModelValidationError(
                     f"certificate.{name} must be the supported value {expected}"
                 )
@@ -600,13 +611,13 @@ class EvidenceCertificatePayload:
                 "certificate.evaluation_input_digest",
             ),
         )
-        if not isinstance(self.request, NegativeClaimRequest):
+        if type(self.request) is not NegativeClaimRequest:
             raise ModelValidationError("certificate.request must be NegativeClaimRequest")
-        if not isinstance(self.trusted_profile_context, TrustedProfileContext):
+        if type(self.trusted_profile_context) is not TrustedProfileContext:
             raise ModelValidationError(
                 "certificate.trusted_profile_context must be TrustedProfileContext"
             )
-        if not isinstance(self.context_binding, CertificateContextBinding):
+        if type(self.context_binding) is not CertificateContextBinding:
             raise ModelValidationError(
                 "certificate.context_binding must be CertificateContextBinding"
             )
@@ -624,12 +635,12 @@ class EvidenceCertificatePayload:
             raise ModelValidationError(
                 "certificate.issued_at must not precede evaluated_at"
             )
-        if not isinstance(self.evidence_origin, EvidenceOrigin):
+        if type(self.evidence_origin) is not EvidenceOrigin:
             raise ModelValidationError(
                 "certificate.evidence_origin must be an EvidenceOrigin"
             )
         object.__setattr__(self, "decision", _validated_decision_dict(self.decision))
-        if not isinstance(self.implementation, ImplementationIdentity):
+        if type(self.implementation) is not ImplementationIdentity:
             raise ModelValidationError(
                 "certificate.implementation must be ImplementationIdentity"
             )
@@ -891,18 +902,24 @@ def build_evidence_certificate(
     evaluation whose complete output it records.
     """
 
-    if not isinstance(request, NegativeClaimRequest):
+    if type(request) is not NegativeClaimRequest:
         raise ModelValidationError("certificate request must be NegativeClaimRequest")
-    if not isinstance(context, TrustedProfileContext):
+    if type(context) is not TrustedProfileContext:
         raise ModelValidationError(
             "certificate context must be a separately supplied TrustedProfileContext"
         )
-    if not isinstance(origin, EvidenceOrigin):
+    if type(origin) is not EvidenceOrigin:
         raise ModelValidationError("certificate origin must be an EvidenceOrigin")
-    if not isinstance(implementation, ImplementationIdentity):
+    if type(implementation) is not ImplementationIdentity:
         raise ModelValidationError(
             "certificate implementation must be ImplementationIdentity"
         )
+    # Reparse typed values before evaluation or emission.  This prevents
+    # post-construction mutation from bypassing the strict public contracts and
+    # keeps rejected credential-like content out of certificate payloads.
+    request = NegativeClaimRequest.from_dict(request.to_dict())
+    context = TrustedProfileContext.from_dict(context.to_dict())
+    implementation = ImplementationIdentity.from_dict(implementation.to_dict())
     issuance_time = _validate_aware_datetime(issued_at, "certificate.issued_at")
     if issuance_time < request.evaluated_at:
         raise ModelValidationError(
@@ -1057,12 +1074,12 @@ def verify_evidence_certificate(
     certificate; absence is represented by ``None`` rather than success.
     """
 
-    if expected_context is not None and not isinstance(
-        expected_context, TrustedProfileContext
-    ):
-        raise ModelValidationError(
-            "expected_context must be TrustedProfileContext or null"
-        )
+    if expected_context is not None:
+        if type(expected_context) is not TrustedProfileContext:
+            raise ModelValidationError(
+                "expected_context must be TrustedProfileContext or null"
+            )
+        expected_context = TrustedProfileContext.from_dict(expected_context.to_dict())
     reliance_time = None
     if relying_party_at is not None:
         reliance_time = _validate_aware_datetime(
@@ -1128,13 +1145,17 @@ def verify_evidence_certificate(
 
     historical_reproducibility = deterministic_replay
     current_reliance: bool | None = None
-    if reliance_time is not None and expected_context is not None:
+    if (
+        reliance_time is not None
+        and expected_context is not None
+        and expected_certificate_digest is not None
+    ):
         current_reliance = bool(
             outer_integrity
             and embedded_integrity
             and deterministic_replay
             and context_match
-            and expected_digest_match is not False
+            and expected_digest_match
             and payload.decision["allowed"] is True
             and payload.issued_at
             <= reliance_time

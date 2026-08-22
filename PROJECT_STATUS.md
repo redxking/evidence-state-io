@@ -1,167 +1,128 @@
 # Project Status
 
-**Status date:** 2026-08-21
-**Lifecycle stage:** schema `1.0` source-accounting and finality candidate, locally tested
-**Claim level:** local research prototype only
+**Status date:** 2026-08-22
+
+**Lifecycle stage:** public Apache-2.0 pre-alpha; package `0.6.0` acceptance and custody verification open
+
+**Claim level:** local research prototype only; schema `1.0` is unfrozen
 
 ## Current objective
 
-Produce a reproducible laptop-based gateway that permits a bounded negative
-only when the supplied evidence state, query scope, coverage, and required
-source observation satisfy an explicit fail-closed contract. Declared-horizon
-chronology is now enforced; profile-governed finality remains open. The next
-increment must define and bind the governed coverage/finality profile needed by
-a complete canonical decision certificate, without confusing a digest with a
-signature.
+Bind one stable `0.6.0` revision to a complete local acceptance record. The
+implementation now binds application-selected profiles, emits deterministic
+replay records, defines versioned evidence-state transitions and validation
+errors, rejects credential-like authorization-context identifiers, and carries
+a separated 24-case EmptyBench seed corpus and declarative oracle. The public
+repository, Apache-2.0 license, community controls, and delivery automation do
+not change its pre-alpha evidence status.
 
 ## Continuation mechanism
 
-- Active goal: complete the runnable handoff and advance the MVP until its
-  defined acceptance criteria are met.
-- Active daily heartbeat: `advance-evidence-state-i-o`, scheduled for 9:00 AM
-  in the task's local timezone.
-- The heartbeat is bounded by `HANDOFF.md` and may not cross release,
-  licensing, external-deployment, sensitive-data, or material-cost approval
-  boundaries.
-- The ordered implementation queue and restart instructions are in `TASKS.md`
-  and `HANDOFF.md`; every increment must leave the repository recoverable and
-  update this evidence record.
+- Active goal: complete the runnable handoff and advance the MVP until its defined acceptance criteria are met.
+- Active daily heartbeat: `advance-evidence-state-i-o`, scheduled for 9:00 AM in the task's local timezone.
+- The heartbeat is bounded by `HANDOFF.md` and `docs/AUTOMATION.md`. It may
+  maintain the authorized public repository but may not create a versioned
+  release/tag, change licensing, deploy externally, use sensitive data, incur
+  material cost, or expand external claims without owner authority.
+- `TASKS.md` contains the active bounded work. Every increment must leave the repository recoverable and update the evidence record in the same change.
+
+## Active contract set
+
+| Boundary | Active identifier |
+|---|---|
+| Package | `0.6.0` |
+| Wire schema | `1.0` candidate, unfrozen |
+| Policy | `esio-p0-safety-floor/1.0-candidate.4` |
+| Evaluator | `esio-evaluator-1.0-candidate.5` |
+| Coverage/finality profile | `esio-coverage-finality-profile/1.0-candidate.2` |
+| Registry snapshot | `esio-profile-registry-snapshot/1.0-candidate.2` |
+| Trust selection | `esio-profile-trust-selection/1.0-candidate.2` |
+| Evaluation input | `esio-evaluation-input/1.0-candidate.2` |
+| Evidence certificate | `esio-evidence-certificate/1.0-candidate.2` |
+| Evidence-state transitions | `esio-evidence-state-transition-model/1.0-candidate.1` |
+| Authorization-context identifier | `esio-authorization-context-identifier/1.0-candidate.1` |
+| Validation error | `esio-validation-error/1.0-candidate.1` |
+| EmptyBench corpus | `esio-emptybench-corpus/1.0-candidate.1` |
+| EmptyBench oracle | `esio-emptybench-oracle/1.0-candidate.1` |
+| EmptyBench report | `esio-emptybench-report/1.0-candidate.1` |
+| Canonicalization | `esio-canonical-json-0.1` |
+| Digest | SHA-256 |
+
+These identifiers are exact boundaries, not a negotiation mechanism. Older, newer, floating, ranged, or aliased active versions fail closed. Package version does not silently select another schema or policy.
 
 ## Current implementation
 
-- Package `0.3.0` accepts exactly active schema `1.0`, policy
-  `esio-p0-safety-floor/1.0-candidate.2`, and evaluator
-  `esio-evaluator-1.0-candidate.2`.
-- Query scope includes a stable authorization-context ID and is normalized to
-  a canonical SHA-256 fingerprint. The coverage object and every source
-  observation must carry that fingerprint.
-- The candidate accepts exactly one declared `REQUIRED` source. The source
-  requirement and observation must match on source ID, system, locator,
-  adapter ID/version, authorization context, and accessible population.
-  Detection assumptions must be explicit, nonempty, unique, and canonical.
-- Missing and every non-observed source status reject. Identity, adapter,
-  authorization, population, observation-error, and query-binding mismatches
-  also reject with source-attributed reasons.
-- Literal `unknown`, `unspecified`, `none`, and `n/a` placeholders reject across
-  the safety-bearing subject, query, exclusion, source/adapter identity,
-  authorization context, population, and detection-assumption fields. Exact
-  `*` and `all` also reject where a bounded identity, population, exclusion, or
-  subject is required; they remain valid explicit target/predicate expressions
-  whose meaning is still bounded by the query's authorization, source, and
-  time contract. This does not prove broader semantic correctness.
-- A source requirement can carry a query-bound `finality_horizon`. It is
-  syntactically optional/null-compatible for the unfrozen schema `1.0`
-  candidate, but policy candidate.2 makes it a non-relaxable permit condition.
-  Missing/null values reject with `FINALITY_HORIZON_UNDECLARED`.
-- A permit requires the inclusive chronology `query.time_end <= horizon <=
-  index_as_of <= observed_at <= evaluated_at <= valid_until`. Advancing only
-  evaluation time cannot repair a pre-horizon snapshot. The comparison proves
-  consistency with supplied declarations, not source completeness or honesty.
-- Omitted and null horizons canonicalize by omission. This preserves the actual
-  pre-finality schema `1.0` query fingerprint so an older bound object can be
-  diagnosed under candidate.2; it still rejects and is not auto-upgraded.
-- EmptyBench contains seven matched pairs/fourteen synthetic cases, including
-  required-source observed-versus-missing and index-at-versus-before-finality
-  pairs.
-- The hash-bound schema `0.1` fixture and decision digest remain available for
-  historical replay only at commit `b6fac87`; the active parser rejects `0.1`
-  and performs no implicit migration.
+- The application supplies a materialized registry snapshot and trust selection separately from the producer-controlled request. The trust selection pins the exact snapshot identity/version/digest and the exact selected profile reference. A request that selects another active profile from the same snapshot rejects with `PROFILE_TRUST_SELECTION_MISMATCH`.
+- Profile, snapshot, trust-selection, request, observation, and adapter version fields accept only exact normalized version forms. Common floating labels, ranges, and abbreviated Git object IDs reject structurally.
+- Snapshot identity, digest, issuer, as-of time, and expiry are checked before any contained record is used. Profile digest, issuer, approval authority, effective time, expiry, and revocation are then checked before profile applicability, freshness, or finality content can influence the assessment.
+- The selected profile governs exact source and adapter identity, authorization context and boundary, accessible population, target, predicate, required exclusions, detection assumptions, denominator, optional page and partition counts, permission limits, retention, blind intervals, freshness, and late-arrival/reopen bounds.
+- The profile supplies the fixed `QUERY_END_PLUS_MAX_DELAY` rule. A permit requires the request horizon to equal `query.time_end + max(late_arrival_bound, reopen_bound)` and the reported source index to reach that horizon. Advancing evaluation time cannot repair an old index.
+- Governance intervals are half-open: profile use requires `effective_at <= evaluated_at < expires_at`; snapshot use requires `as_of <= evaluated_at < next_update_at`. Observation and index freshness permit exact equality with their configured age limits and reject one microsecond beyond. Retention, blind-interval, and derived-horizon boundaries have corresponding exact microsecond tests.
+- The candidate accepts exactly one declared `REQUIRED` source. Optional or multiple sources reject because cross-source population, overlap, temporal, and finality composition are not defined.
+- The CLI builds an `esio-evidence-certificate/1.0-candidate.2` object rather than accepting a caller-supplied decision. The certificate binds the complete request, trusted context, exact resolved references, policy, evaluator, evaluation-input contract, origin classification, implementation assertion, evaluation and issue times, decision, and qualification.
+- Certificate verification independently reports structural support, outer digest integrity, embedded binding integrity, deterministic replay, expected-context comparison, expected-certificate-digest comparison, historical reproducibility, and current local-use eligibility.
+- `effective_valid_until_exclusive` is the earliest applicable snapshot update, conservative envelope boundary, policy observation/index freshness deadline, resolved-profile expiry or revocation boundary, and resolved-profile observation/index freshness deadline. Current local use additionally requires an explicit relying-party time at or after issue and strictly before that boundary.
+- The certificate is unsigned. SHA-256 values are comparison and integrity metadata, not authentication, independent custody, trusted time, non-repudiation, or action authority.
+- The schema `0.1` fixture remains historical replay evidence at pinned commit `b6fac87`. The active parser does not relabel or auto-migrate it.
+- Evidence-state transitions are explicit, immutable-envelope lifecycle assertions under `esio-evidence-state-transition-model/1.0-candidate.1`; they do not prove the successor evidence or source event.
+- Public CLI failures carry stable `esio-validation-error/1.0-candidate.1` codes. Authorization-context fields reject a narrow, versioned set of credential-like shapes; this is a guardrail, not proof that an arbitrary identifier contains no secret.
+- Rejection certificates now contain a deterministic insufficiency statement and can never be reinterpreted as evidence for the opposite proposition. Current local reliance remains unestablished unless expected context, a separately retained expected certificate digest, and relying-party time are all supplied.
+- EmptyBench now loads a versioned corpus with 12 matched control/fault pairs
+  and no embedded expectations, then scores it against a separately stored,
+  corpus-bound declarative oracle and separately retained expected oracle
+  digest. Tampering, swapping, missing/duplicate assignments, contract
+  downgrade, and invalid mutation paths fail closed.
 
-## Verification record
+## Interim verification evidence
 
-On 2026-08-21, the current schema `1.0` candidate produced the following local
-results:
+The following results were observed during the moving-tree hardening and adversarial-review cycle:
 
-- Finality implementation checkpoint:
-  `7deaea1dd79eacd2c4f3ebbef87a314e5293f1f6` (`contract: enforce explicit source finality`).
-- Finality documentation/custody checkpoint:
-  `bac04fabfa5dbcf6a7e639217ee345f9c8ceb645` (`docs: record finality checkpoint custody`).
-- Prior source-accounting checkpoint:
-  `bdd7c1e15c45f8d9940fc76604b3dde1fa953faa` (`contract: bind schema 1.0 to required source evidence`).
-- `env -u PYTHONPATH ./scripts/check.sh` — passed static checks, local-link
-  checks, shell/Compose validation, source-versus-installed package snapshots,
-  and deterministic demonstration parity.
-- `env -u PYTHONPATH ./scripts/test.sh` — 244/244 passed on Python 3.13.0.
-- `env -u PYTHONPATH ./.venv/bin/python -m pytest -q` — 244/244 passed against
-  the installed `site-packages` copy with `PYTHONPATH` unset.
-- `PYTHONPATH=src /opt/homebrew/bin/python3.11 -m unittest discover -s tests -q`
-  — 244/244 passed against the checked-out source on Python 3.11.
-- `env -u PYTHONPATH ./scripts/demo.sh --pretty` — 2/2 synthetic operator cases
-  passed.
-- The Python 3.11 source seed and Python 3.13 installed-package seed runs passed
-  14/14 and were byte-identical. The custom EmptyBench example passed 2/2 and
-  retained `EmptyBench-custom` provenance.
-- Direct installed CLI evaluation produced `PERMIT_SCOPED_NEGATIVE` for the
-  fully bound covered example and `REJECT_NEGATIVE` for the matched partial
-  example.
-- `scripts/setup.sh` now verifies equality among the project, imported module,
-  and installed-distribution versions. A stale `0.1.0` metadata directory was
-  detected during review, moved recoverably to
-  `/private/tmp/evidence-state-io-stale-0.1.0.dist-info`, and the clean
-  `0.3.0` installation passed the complete replay.
-- `git diff --check` and `bash -n scripts/*.sh` passed.
+- `./scripts/test.sh -q` — `367 passed` against the integrated moving tree on
+  2026-08-22; all 24 seed cases and all 12 pairs passed with zero unsafe
+  permits and zero false rejections.
+- `./scripts/test.sh -q tests/test_profiles.py` — `40 passed`, including exact selected-profile trust, unsupported contracts, direct applicability mutations, and microsecond boundary cases.
+- Independent read-only attack attempts did not reproduce the weak/strong dual-profile downgrade once the trust selection pinned the exact profile reference.
+- Rehashed replacement profile/snapshot content rejected against the original fixed trust context. Replacing and rehashing both configuration files remained possible, correctly exposing the configuration-custody boundary rather than claiming cryptographic trust.
+- Untrusted snapshot or profile content with extreme finality values returned the trust failure without using the untrusted content for applicability or horizon calculations.
+- `git diff --check` was clean at the interim review point.
 
-An internal read-only adversarial review rejected the first green 215-test
-schema `1.0` proposal. It reproduced permits with the wrong source descriptor,
-missing adapter identity, conflicting authorization context, empty detection
-assumptions, hidden optional-source failure, unbound coverage/observation
-objects, and missing or pre-query source-index timestamps. Those paths were
-converted to regressions before the 224-test candidate checkpoint was accepted
-for continued local development.
+These are useful implementation observations, not the final acceptance record. The worktree was still moving, the installed package and supported-runtime matrix had not yet been rerun against a frozen revision, and no independent external party held the oracle or expected digests.
 
-The final candidate audit also caught source/install drift after a late output
-edit and a self-consistent placeholder-declaration permit path. The package was
-reinstalled, exact parity was restored, and the placeholder mutations were
-converted into existing-suite regressions before custody binding.
+## Open final acceptance and custody work
 
-The explicit-finality audit first caught an unsafe design possibility—the
-wait-only upgrade of an old empty snapshot—and required the source index itself
-to reach the horizon. Its post-implementation pass then found that unconditional
-serialization of an undeclared horizon as `null` changed actual pre-finality
-schema `1.0` query fingerprints before the intended diagnostic could run.
-Omitted/null horizons now normalize by omission, and a regression using the
-actual `example-0.2` fingerprint proves that the object parses and rejects solely
-with `FINALITY_HORIZON_UNDECLARED`. The final read-only adversarial audit passed
-164/164 focused Python 3.13 checks and 37/37 Python 3.11 finality/benchmark
-checks without reproducing a fail-open.
+The `0.6.0` handoff must remain open until one stable revision completes and records all of the following:
 
-The historical 171-test snapshot remains the first accepted **local** schema
-`0.1` and canonicalization-profile `0.1` freeze at `b6fac87`. The 244-test
-schema `1.0` state is a candidate source-accounting/finality checkpoint, not a frozen
-schema, benchmark, release, certificate, or external validation result.
+1. freeze or commit the intended implementation and documentation state;
+2. run `./scripts/setup.sh` and confirm project, imported module, and installed distribution all report `0.6.0`;
+3. run `./scripts/check.sh` with `PYTHONPATH` unset and preserve its source-versus-installed package and deterministic-demo parity result;
+4. rerun the full source and installed-package suites plus supported Python
+   3.11, 3.12, and 3.13 source tests;
+5. rerun the seed, operator, and custom paired demonstrations and compare cross-runtime output byte-for-byte where specified;
+6. issue and verify the checked-in synthetic certificate using issue time `2026-08-21T12:06:00Z`, relying-party time `2026-08-21T12:30:00Z`, and expected digest `sha256:5683e522aa22f08145658d49452a4c044d7cf562a6a3987da364b3322d4aab17`;
+7. record the exact revision, commands, runtime versions, counts, generated-vector equality, and any environment limitations; and
+8. obtain a final independent read-only review of the frozen state before calling the local handoff accepted.
 
-These results are local synthetic evidence. GitHub Actions was not executed,
-containers were not started, and no external or operational system was
-evaluated.
+Completion of this list may establish a locally tested, hash-bound candidate. It does not freeze schema `1.0`, freeze EmptyBench, authenticate configuration or evidence, demonstrate market demand, authorize deployment, or establish production readiness.
 
 ## Known limitations
 
-- The aggregate evidence state and coverage facts are producer-supplied. The
-  gateway validates their internal contract but does not independently derive
-  or attest their truth.
-- Query fingerprints reduce wrong-object and accidental substitution risk; a
-  self-consistent malicious producer can still forge declarations without an
-  authenticated adapter or attestation profile.
-- The gate enforces a declared horizon but does not validate its late-arrival
-  model, authenticate the reported index, calibrate clocks, or model exceptional
-  backfill, correction, deletion, retraction, or source reopening.
-- No governed profile registry, snapshot-consistency model, blind-interval
-  model, or multi-source composition exists.
-- No complete certificate binding schema, policy/evaluator versions, origin,
-  input, verdict, reasons, qualification, and issue time exists.
-- The SHA-256 input digest is integrity metadata, not a signature or independent
-  evidence custody.
-- The EmptyBench corpus and oracle are implementation-owned, not independently
-  governed, preregistered, or frozen.
-- No design-partner evidence, real adapter, independently reproduced benchmark,
-  operational deployment, or external security assessment exists.
-- Credential-like identifier detection, governed adapter/profile registries,
-  comprehensive per-collection bounds, and broad fuzzing remain open.
-- No licensing decision has been made. Public-search absence does not prove no
-  private implementation exists.
+- Registry, trust-selection, profile, owner, issuer, approval, adapter, evidence, and watermark identities remain declarative under local configuration custody. A party able to replace and rehash both registry and trust files can select another profile.
+- Profile digests bind exact content but do not prove the truth of population, retention, blind-interval, freshness, late-arrival, reopen, or source-behavior assertions.
+- The producer-supplied aggregate state and evidence facts are internally checked but not independently derived. Query fingerprints and exact matching do not stop a self-consistent malicious producer without authenticated adapter evidence.
+- No monotonic registry head, signed trust selection, issuer authentication, trusted timestamp, nonce/replay store, operational revocation distribution, or independent custody exists.
+- No source-clock calibration or empirical validation of exceptional late arrivals, backfill, corrections, retractions, deletions, reopening, or ingestion completeness exists.
+- The certificate is a deterministic unsigned replay record. It is not an authorization token, signature, proof of source truth, or durable custody mechanism.
+- EmptyBench corpus/oracle separation and minimum P0 fault-family coverage are
+  implemented and locally tested. The authors still control both artifacts;
+  no held-out campaign is frozen, independently adjudicated, preregistered, or
+  externally reproduced.
+- No real adapter, design-partner evidence, independently reproduced benchmark, operational deployment, or external security assessment exists.
+- Public-search absence does not prove that no private implementation exists.
 
 ## Next decision
 
-Define and bind the governed coverage/finality profile, build the complete
-deterministic certificate, then separate and freeze the EmptyBench oracle before
-any market, benchmark, production-readiness, or external-validation claim.
+Commit the integrated state, run the full source, installed-package,
+supported-runtime, vector, deterministic-output, and final read-only review
+matrix against that stable revision, and bind the exact evidence to it. Only
+that can close local `0.6.0` acceptance; it cannot establish production
+readiness or external validation.

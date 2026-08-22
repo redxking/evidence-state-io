@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Evidence-State I/O — Empty is not absent</title>
+  <meta name="description" content="An open evidence-state contract, deterministic negative-claim gate, replay certificate, and paired benchmark for AI and tool-using systems.">
+  <meta name="theme-color" content="#081115">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Evidence-State I/O — Empty is not absent">
+  <meta property="og:description" content="Make the evidence behind negative conclusions explicit, testable, and replayable.">
+  <meta property="og:url" content="https://redxking.github.io/evidence-state-io/">
+  <meta property="og:image" content="https://redxking.github.io/evidence-state-io/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Evidence-State I/O — Empty is not absent">
+  <meta name="twitter:description" content="Make the evidence behind negative conclusions explicit, testable, and replayable.">
+  <meta name="twitter:image" content="https://redxking.github.io/evidence-state-io/og.png">
+  <link rel="canonical" href="https://redxking.github.io/evidence-state-io/">
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="Evidence-State I/O home">
+      <span class="brand-mark" aria-hidden="true">E:</span>
+      <span>Evidence-State I/O</span>
+    </a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Primary navigation">
+      <a href="#mechanism">Mechanism</a>
+      <a href="#products">Products</a>
+      <a href="#roadmap">Roadmap</a>
+      <a href="#boundaries">Boundaries</a>
+      <a class="nav-cta" href="https://github.com/redxking/evidence-state-io">View on GitHub</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top">
+      <div class="hero-copy">
+        <p class="eyebrow">Open-source assurance infrastructure for AI and tool-using systems</p>
+        <h1>Empty is not <span>absent.</span></h1>
+        <p class="hero-deck">Evidence-State I/O makes a system show what it actually observed before it can turn “nothing returned” into a factual negative conclusion.</p>
+        <div class="hero-actions">
+          <a class="button primary" href="https://github.com/redxking/evidence-state-io#local-quick-start">Run the gateway</a>
+          <a class="button secondary" href="https://github.com/redxking/evidence-state-io/discussions">Join the research</a>
+        </div>
+        <dl class="signal-strip" aria-label="Project facts">
+          <div><dt>Runtime</dt><dd>Python 3.11–3.13</dd></div>
+          <div><dt>Verdict path</dt><dd>Deterministic</dd></div>
+          <div><dt>Core mode</dt><dd>Offline</dd></div>
+          <div><dt>License</dt><dd>Apache-2.0</dd></div>
+        </dl>
+      </div>
+      <div class="decision-panel" aria-label="Evidence decision example">
+        <div class="panel-heading"><span>negative_claim.evaluate</span><span class="live-dot">candidate</span></div>
+        <div class="evidence-flow">
+          <div class="flow-node">
+            <span class="node-index">01</span>
+            <div><strong>Observation</strong><small>0 matches returned</small></div>
+          </div>
+          <div class="flow-node">
+            <span class="node-index">02</span>
+            <div><strong>Evidence state</strong><small>coverage · access · freshness · finality</small></div>
+          </div>
+          <div class="flow-gate">
+            <span>deterministic gate</span>
+            <span class="gate-line" aria-hidden="true"></span>
+          </div>
+          <div class="verdict reject">
+            <span class="verdict-label">Incomplete evidence</span>
+            <strong>REJECT_NEGATIVE</strong>
+            <small>The evidence is insufficient. The positive opposite is not asserted.</small>
+          </div>
+          <div class="verdict permit">
+            <span class="verdict-label">Complete bounded evidence</span>
+            <strong>PERMIT_SCOPED_NEGATIVE</strong>
+            <small>Only the generated, qualified conclusion may pass.</small>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="problem-band" aria-labelledby="problem-heading">
+      <p class="section-number">01 / THE PROBLEM</p>
+      <div>
+        <h2 id="problem-heading">Most systems preserve results. They lose the conditions that make those results meaningful.</h2>
+        <p>An empty response can mean complete absence within a declared scope—or a timeout, hidden population, stale index, unfinished page sequence, inaccessible source, open finality window, or failed query. Those states should never collapse into the same answer.</p>
+      </div>
+    </section>
+
+    <section class="section" id="mechanism" aria-labelledby="mechanism-heading">
+      <div class="section-intro">
+        <p class="section-number">02 / THE MECHANISM</p>
+        <h2 id="mechanism-heading">A small deterministic boundary between observation and assertion.</h2>
+        <p>The gateway does not ask a model to judge whether evidence is complete. It evaluates explicit contracts and produces a replayable record.</p>
+      </div>
+      <ol class="mechanism-grid">
+        <li><span>01</span><h3>Declare</h3><p>Bind the query, scope, access boundary, source, adapter, population, exclusions, and exact governed profile.</p></li>
+        <li><span>02</span><h3>Observe</h3><p>Retain source state, coverage, pagination, partitions, timestamps, errors, matches, and query identity.</p></li>
+        <li><span>03</span><h3>Evaluate</h3><p>Apply staged trust, coverage, freshness, retention, blind-interval, and derived-finality checks without ambient time.</p></li>
+        <li><span>04</span><h3>Gate</h3><p>Permit only a bounded negative with complete support. Every partial or contradictory path fails closed.</p></li>
+        <li><span>05</span><h3>Replay</h3><p>Issue an unsigned deterministic certificate that separates integrity, replay, expected state, and current local use.</p></li>
+      </ol>
+    </section>
+
+    <section class="section product-section" id="products" aria-labelledby="products-heading">
+      <div class="section-intro">
+        <p class="section-number">03 / PRODUCT SYSTEM</p>
+        <h2 id="products-heading">One contract, three compounding products.</h2>
+      </div>
+      <div class="product-grid">
+        <article>
+          <p class="product-tag">01 · Measure</p>
+          <h3>EmptyBench</h3>
+          <p>Matched cases hold the visible result constant while changing the evidence that supports—or defeats—a negative conclusion.</p>
+          <a href="https://github.com/redxking/evidence-state-io/blob/main/docs/RESEARCH_PLAN.md">Research design <span aria-hidden="true">→</span></a>
+        </article>
+        <article>
+          <p class="product-tag">02 · Enforce</p>
+          <h3>Evidence-State Gateway</h3>
+          <p>A dependency-light library and JSON command line that keeps model inference outside the trusted verdict path.</p>
+          <a href="https://github.com/redxking/evidence-state-io#local-quick-start">Run locally <span aria-hidden="true">→</span></a>
+        </article>
+        <article>
+          <p class="product-tag">03 · Govern</p>
+          <h3>Coverage Registry</h3>
+          <p>Versioned source profiles make population, access, retention, blind intervals, freshness, and finality assumptions inspectable.</p>
+          <a href="https://github.com/redxking/evidence-state-io/blob/main/docs/ARCHITECTURE.md">Architecture <span aria-hidden="true">→</span></a>
+        </article>
+      </div>
+    </section>
+
+    <section class="section roadmap-section" id="roadmap" aria-labelledby="roadmap-heading">
+      <div class="section-intro split">
+        <div>
+          <p class="section-number">04 / ROADMAP</p>
+          <h2 id="roadmap-heading">Advance by evidence gates, not feature volume.</h2>
+        </div>
+        <a class="text-link" href="https://github.com/redxking/evidence-state-io/issues">Track work on GitHub <span aria-hidden="true">→</span></a>
+      </div>
+      <div class="roadmap" role="list" aria-label="Project roadmap">
+        <article class="roadmap-item active" role="listitem"><span class="roadmap-state">Active</span><p class="roadmap-id">P0</p><div><h3>Contract and falsification</h3><p>Close the schema, validation, transition, benchmark-oracle, and reproducibility criteria with deterministic local evidence.</p></div></article>
+        <article class="roadmap-item" role="listitem"><span class="roadmap-state">Next</span><p class="roadmap-id">P1</p><div><h3>Read-only adapter evidence</h3><p>Test one governed adapter against recorded, authorized, non-sensitive workflows before expanding integrations.</p></div></article>
+        <article class="roadmap-item" role="listitem"><span class="roadmap-state">Gate</span><p class="roadmap-id">R1</p><div><h3>Frozen comparative study</h3><p>Measure unsupported negatives and valid-negative retention against prompt-only, always-block, and envelope-visible baselines.</p></div></article>
+        <article class="roadmap-item" role="listitem"><span class="roadmap-state">Later</span><p class="roadmap-id">P2</p><div><h3>Authenticated and composed evidence</h3><p>Specify signing, trusted time, registry rollback resistance, source attestations, and multi-source composition as separate contracts.</p></div></article>
+      </div>
+    </section>
+
+    <section class="section boundaries-section" id="boundaries" aria-labelledby="boundaries-heading">
+      <div class="section-intro">
+        <p class="section-number">05 / EVIDENCE BOUNDARIES</p>
+        <h2 id="boundaries-heading">The project is explicit about what has—and has not—been established.</h2>
+      </div>
+      <div class="boundary-grid">
+        <div class="boundary-card established">
+          <h3>What the candidate can establish locally</h3>
+          <ul>
+            <li>A request crossed the named deterministic checks.</li>
+            <li>A decision replays from the retained normalized inputs.</li>
+            <li>An artifact matches separately retained context and digest.</li>
+            <li>A scoped conclusion retained its required qualifications.</li>
+          </ul>
+        </div>
+        <div class="boundary-card not-established">
+          <h3>What it does not establish</h3>
+          <ul>
+            <li>Source, registry, profile, issuer, or clock truth.</li>
+            <li>Universal absence, production safety, or legal sufficiency.</li>
+            <li>Authentication, authorization, or non-repudiation.</li>
+            <li>Independent validation, market demand, or operational effect.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section start-section" aria-labelledby="start-heading">
+      <div>
+        <p class="section-number">06 / START</p>
+        <h2 id="start-heading">Run the complete local path on a laptop or VM.</h2>
+        <p>No GPU, hosted service, model API, or network connection is required for the core evaluator and benchmark scaffold.</p>
+      </div>
+      <div class="terminal-card">
+        <div class="terminal-top"><span>local setup</span><button type="button" data-copy="# setup\ngit clone https://github.com/redxking/evidence-state-io.git\ncd evidence-state-io\n./scripts/setup.sh\n./scripts/test.sh\nevidence-state demo" aria-label="Copy setup commands">Copy</button></div>
+        <pre><code><span class="comment"># setup</span>
+git clone https://github.com/redxking/evidence-state-io.git
+cd evidence-state-io
+./scripts/setup.sh
+./scripts/test.sh
+evidence-state demo</code></pre>
+      </div>
+    </section>
+
+    <section class="community-cta" aria-labelledby="community-heading">
+      <p class="eyebrow">A research project needs falsifiers, not spectators.</p>
+      <h2 id="community-heading">Bring the workflow where “not found” causes a costly decision.</h2>
+      <p>Contribute a matched benchmark case, challenge the state semantics, propose a source profile, or reproduce the deterministic campaign.</p>
+      <div class="hero-actions">
+        <a class="button primary" href="https://github.com/redxking/evidence-state-io/issues/new/choose">Open a structured issue</a>
+        <a class="button secondary" href="https://github.com/redxking/evidence-state-io/wiki">Explore the wiki</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div><strong>Evidence-State I/O</strong><p>Empty is not absent.</p></div>
+    <div class="footer-links"><a href="https://github.com/redxking/evidence-state-io">GitHub</a><a href="https://github.com/redxking/evidence-state-io/blob/main/SECURITY.md">Security</a><a href="https://github.com/redxking/evidence-state-io/blob/main/LICENSE">Apache-2.0</a></div>
+    <p class="footer-note">Pre-alpha research candidate. Local deterministic evidence is not production validation.</p>
+  </footer>
+</body>
+</html>

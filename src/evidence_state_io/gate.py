@@ -41,7 +41,7 @@ from .profiles import (
 MAX_SUBJECT_LENGTH = 160
 DEFAULT_POLICY_ID = "esio-p0-safety-floor"
 DEFAULT_POLICY_VERSION = "1.0-candidate.4"
-EVALUATOR_VERSION = "esio-evaluator-1.0-candidate.4"
+EVALUATOR_VERSION = "esio-evaluator-1.0-candidate.5"
 EVALUATION_INPUT_SCHEMA = "esio-evaluation-input/1.0-candidate.2"
 _ABSOLUTE_SUBJECT_PATTERN = re.compile(
     r"\b(?:nothing|none|anywhere|everywhere|always|never)\b"
@@ -468,6 +468,21 @@ def _qualified_claim(
     )
 
 
+def _insufficient_evidence_statement(
+    request: NegativeClaimRequest,
+    reasons: tuple[GateReason, ...],
+) -> str:
+    """Render a rejection without asserting the positive opposite."""
+
+    reason_text = ", ".join(reason.value for reason in reasons)
+    return (
+        "The evidence is insufficient to support the requested negative claim "
+        f"for subject {json.dumps(request.subject, ensure_ascii=False)} within "
+        f"the declared query scope. Material reasons: {reason_text}. This "
+        "rejection does not establish that the positive opposite is true."
+    )
+
+
 def evaluate_negative_claim(
     request: NegativeClaimRequest,
     context: TrustedProfileContext | None = None,
@@ -480,8 +495,18 @@ def evaluate_negative_claim(
     mandatory input and part of the decision digest.
     """
 
-    if not isinstance(request, NegativeClaimRequest):
+    if type(request) is not NegativeClaimRequest:
         raise ModelValidationError("request must be NegativeClaimRequest")
+    # Frozen dataclasses are not a security boundary: ``object.__setattr__`` can
+    # still corrupt a typed instance.  Reparse its public form before any gate
+    # decision so the library and JSON paths enforce the same invariants.
+    request = NegativeClaimRequest.from_dict(request.to_dict())
+    if context is not None:
+        if type(context) is not TrustedProfileContext:
+            raise ModelValidationError(
+                "context must be TrustedProfileContext or null"
+            )
+        context = TrustedProfileContext.from_dict(context.to_dict())
     envelope = request.envelope
     policy = request.policy
     assessment = evaluate_coverage(envelope.coverage, policy.coverage)
@@ -591,7 +616,11 @@ def evaluate_negative_claim(
         coverage=assessment,
         source_accounting=source_assessment,
         profile=profile_assessment,
-        qualified_claim=_qualified_claim(request, assessment) if allowed else None,
+        qualified_claim=(
+            _qualified_claim(request, assessment)
+            if allowed
+            else _insufficient_evidence_statement(request, tuple(reasons))
+        ),
         limitations=limitations,
         input_digest=_digest_evaluation_input(request, context),
     )

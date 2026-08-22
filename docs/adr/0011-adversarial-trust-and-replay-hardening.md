@@ -64,7 +64,7 @@ The certificate's `effective_valid_until_exclusive` is the earliest applicable
 boundary derived from:
 
 - evidence `valid_until`, treated conservatively as exclusive;
-- profile expiration;
+- profile expiration and effective revocation, when applicable;
 - registry snapshot next-update time;
 - policy observation-age and index-age ceilings; and
 - profile observation-age and index-age ceilings.
@@ -108,7 +108,7 @@ not issuer authentication.
 | Package | `0.6.0` |
 | Wire schema | `1.0` candidate, unfrozen |
 | Policy | `esio-p0-safety-floor/1.0-candidate.4` |
-| Evaluator | `esio-evaluator-1.0-candidate.4` |
+| Evaluator | `esio-evaluator-1.0-candidate.5` |
 | Profile | `esio-coverage-finality-profile/1.0-candidate.2` |
 | Registry snapshot | `esio-profile-registry-snapshot/1.0-candidate.2` |
 | Trust selection | `esio-profile-trust-selection/1.0-candidate.2` |

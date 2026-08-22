@@ -33,7 +33,8 @@ verification is recorded in `PROJECT_STATUS.md` or the task record.
 
 ## Implementation rules
 
-- Support Python 3.11 or newer.
+- Support exactly Python 3.11, 3.12, and 3.13 for P0. Reject an untested-runtime
+  claim even if the implementation happens to run elsewhere.
 - Keep the core package and `evidence-state demo` offline and dependency-light.
 - Keep domain evaluation free of filesystem, network, environment, wall-clock, and random-state dependencies.
 - Pass `evaluation_time` explicitly.
@@ -94,8 +95,17 @@ If a command was not run, say so. If it was interrupted, treat it as unresolved.
 
 ## Stop and request approval before
 
-- publishing, distributing, releasing, or creating any external repository, issue, pull request, package, message, or account;
-- choosing or changing a license;
+The owner has authorized routine public maintenance of
+`redxking/evidence-state-io`: pushing verified commits, maintaining its Wiki,
+Pages site, Discussions, issues, project/roadmap, repository metadata, security
+settings, and branch/tag protections. This standing authorization is limited to
+this repository and does not authorize announcements, outreach, package-registry
+publication, real-data collection, paid services, production designation, or a
+versioned GitHub Release/tag. Preserve the claim and evidence gates below.
+
+- publishing a versioned release/tag, package, or announcement outside the
+  authorized repository-maintenance boundary above;
+- selecting or changing the Apache-2.0 license;
 - contacting a design partner or standards body;
 - incurring cloud/API cost or requiring network access;
 - using real or sensitive data;

@@ -1,0 +1,130 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-test:
+    name: Build and verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONHASHSEED: "0"
+    steps:
+      - name: Check out tagged revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Validate tag and package version
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import os
+          import re
+          import tomllib
+
+          tag = os.environ["GITHUB_REF_NAME"]
+          if re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", tag) is None:
+              raise SystemExit(f"release tag must be stable SemVer vMAJOR.MINOR.PATCH, got {tag!r}")
+          metadata = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+          version = metadata["project"]["version"]
+          if tag != f"v{version}":
+              raise SystemExit(f"tag {tag!r} does not match project version {version!r}")
+          PY
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          git merge-base --is-ancestor "${GITHUB_SHA}" refs/remotes/origin/main
+
+      - name: Install project and build tooling
+        run: python -m pip install '.[dev]' 'build==1.5.0'
+
+      - name: Run release checks
+        run: |
+          bash -n scripts/*.sh
+          node tests/test_dashboard.js
+          python -m compileall -q -f src
+          python -m pip check
+          python -m pytest -p no:cacheprovider -q
+          evidence-state demo --all > "${RUNNER_TEMP}/evidence-state-demo-all.json"
+
+      - name: Build distributions
+        run: python -m build
+
+      - name: Verify built wheel in an isolated environment
+        run: |
+          python -m venv "${RUNNER_TEMP}/wheel-check"
+          "${RUNNER_TEMP}/wheel-check/bin/python" -m pip install dist/*.whl
+          env -u PYTHONPATH "${RUNNER_TEMP}/wheel-check/bin/evidence-state" --help
+          env -u PYTHONPATH "${RUNNER_TEMP}/wheel-check/bin/evidence-state" demo --all > "${RUNNER_TEMP}/wheel-demo-all.json"
+
+      - name: Generate checksums
+        run: sha256sum dist/*.whl dist/*.tar.gz > dist/SHA256SUMS
+
+      - name: Preserve verified distributions
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: python-distributions
+          path: |
+            dist/*.whl
+            dist/*.tar.gz
+            dist/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: Attest and attach
+    needs: build-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      artifact-metadata: write
+      attestations: write
+      contents: write
+      id-token: write
+    steps:
+      - name: Recover verified distributions
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: python-distributions
+          path: dist
+
+      - name: Attest package build provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: |
+            dist/*.whl
+            dist/*.tar.gz
+
+      - name: Create pre-alpha GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            dist/*.whl dist/*.tar.gz dist/SHA256SUMS \
+            --verify-tag \
+            --prerelease \
+            --generate-notes \
+            --title "${GITHUB_REF_NAME}" \
+            --notes "Pre-alpha research artifact. This release records tested package output and build provenance; it does not establish production readiness, external validation, authenticated evidence, or authorization for consequential use."

@@ -11,25 +11,29 @@ with different coverage and pagination sufficiency for one declared source:
 
 The core demonstration uses local synthetic JSON only. Docker, network access, API keys, and a model are not required.
 
-The schema `1.0` candidate now implements single required-versus-observed source
-accounting, query binding, an explicit requirement-owned finality horizon, and
-missing-source and finality seed pairs. The checked-in operator pair still
-changes pagination only. A governed source-profile basis, independent oracle,
-and the remaining identity/adapter/auth benchmark families are target behavior,
-not a frozen-corpus claim.
+Package `0.6.0` implements single required-versus-observed source accounting,
+query binding, exact application-selected profile resolution, profile-derived
+finality, unsigned deterministic replay certificates, and a separated
+EmptyBench seed corpus/oracle under the current candidate contracts. The
+operator demonstration still changes pagination only; the full regression seed
+adds 11 other matched fault families. Independent oracle adjudication, a frozen
+held-out campaign, external reproduction, and schema freeze remain target
+evidence, not achieved benchmark claims.
 
 ## Safety boundary
 
-This lab is for local research with synthetic data. It does not establish source completeness, operational effectiveness, independent validation, legal sufficiency, or production readiness.
+This lab is for local research with synthetic/public-safe data or owner-approved nonsensitive data. It does not establish source completeness, authenticated profile or source evidence, operational effectiveness, independent validation, legal sufficiency, or production readiness.
 
 Do not point the lab at a real source, reuse production credentials, ingest non-public data, expose container ports beyond loopback, or inject faults outside this repository's named Compose project without explicit owner and system-owner approval.
+
+The relying application, not the observation producer, controls `examples/profile_registry.json` and `examples/profile_trust.json`. In any derived deployment, keep the registry snapshot, trust selection, and exact selected profile reference producer-unwritable. Their issuer, authority, source-owner, time, origin, revision, and tree-state labels remain unauthenticated assertions in P0.
 
 ## Prerequisites
 
 Required:
 
 - macOS, Linux, or a Linux VM;
-- Python 3.11 or newer;
+- Python 3.11, 3.12, or 3.13;
 - a POSIX shell;
 - approximately 250 MB free disk for the Python environment.
 
@@ -97,9 +101,26 @@ Do not treat process exit `0` as a permit decision. A valid evaluation that reje
 ## Evaluate a single JSON envelope
 
 ```bash
-evidence-state evaluate --input examples/covered_request.json
-evidence-state evaluate --input examples/partial_request.json
-cat examples/covered_request.json | evidence-state evaluate --input -
+evidence-state evaluate \
+  --input examples/covered_request.json \
+  --registry examples/profile_registry.json \
+  --trust examples/profile_trust.json \
+  --issued-at 2026-08-21T12:06:00Z \
+  --origin SYNTHETIC
+
+evidence-state evaluate \
+  --input examples/partial_request.json \
+  --registry examples/profile_registry.json \
+  --trust examples/profile_trust.json \
+  --issued-at 2026-08-21T12:06:00Z \
+  --origin SYNTHETIC
+
+cat examples/covered_request.json | evidence-state evaluate \
+  --input - \
+  --registry examples/profile_registry.json \
+  --trust examples/profile_trust.json \
+  --issued-at 2026-08-21T12:06:00Z \
+  --origin SYNTHETIC
 ```
 
 The first request should return `PERMIT_SCOPED_NEGATIVE`; the second should return
@@ -107,6 +128,33 @@ The first request should return `PERMIT_SCOPED_NEGATIVE`; the second should retu
 checked-in examples, `evidence-state --help`, and the JSON schema implemented by the
 package are authoritative for the current interface. Use `./scripts/demo.sh` for the
 canonical paired demonstration.
+
+Each `evaluate` result is a self-contained certificate. It duplicates the full
+normalized request, registry snapshot, trust selection, context bindings,
+decision, limitations, origin, and implementation metadata. The SHA-256 digest
+is integrity metadata, not a signature. Do not copy a certificate into source
+control, CI artifacts, tickets, chat, or an external package unless every
+embedded field is approved for that destination.
+
+Replay-check the checked-in permit certificate against separately supplied
+expected state:
+
+```bash
+evidence-state verify-certificate \
+  --input examples/covered_certificate.json \
+  --registry examples/profile_registry.json \
+  --trust examples/profile_trust.json \
+  --expected-digest sha256:5683e522aa22f08145658d49452a4c044d7cf562a6a3987da364b3322d4aab17 \
+  --relying-party-at 2026-08-21T12:30:00Z
+```
+
+Verification reports structural, digest, embedded-binding, replay,
+expected-context, expected-digest, and current-local-reliance dimensions. It
+does not authenticate an issuer or authorize an action. The conservative
+exclusive boundary accounts for evidence validity, snapshot next update,
+applicable resolved-profile expiry/revocation, and policy/profile observation
+and index age deadlines; candidate.2 trust selection has no separate expiration
+field.
 
 ## Target P0 fault matrix
 
@@ -116,6 +164,8 @@ Each disqualifying case needs a covered control with the same visible result.
 |---|---|---|
 | Missing required source | Required source absent or unknown | Preserve partial/indeterminate state; reject negative |
 | Wrong source/query binding | Identity, adapter, authorization context, population, or query fingerprint differs | reject or invalidate before negative evaluation |
+| Producer-selected weak profile | Request reference differs from the application's exact selected profile, or tries an alias/range/fallback | reject before profile content or derived finality can influence the result |
+| Untrusted or stale profile context | Snapshot/profile digest, issuer, authority, validity, or revocation check fails | reject; do not populate resolved references or consult applicability/finality semantics |
 | Truncated pagination | Incomplete pages or continuation remains | `PARTIAL`; reject negative |
 | Missing partition | One required partition incomplete | `PARTIAL`; reject negative |
 | Stale evidence | Freshness limit exceeded at supplied evaluation time | `STALE`; reject negative |
@@ -181,7 +231,7 @@ For stronger process isolation, run the same repository in a disposable Linux VM
 1. Create a non-privileged user.
 2. Copy only the repository and synthetic fixtures.
 3. Disable shared clipboard/folders if the lab is being used to test untrusted inputs.
-4. Install Python 3.11+ and optionally Docker.
+4. Install a supported Python version (3.11, 3.12, or 3.13) and optionally Docker.
 5. Run setup, checks, tests, and demo.
 6. Export only the explicitly reviewed JSON result and runtime-version record.
 7. Destroy the VM through the hypervisor after retaining required evidence.
@@ -194,13 +244,13 @@ For a citable local campaign, retain:
 
 - repository commit or archive digest and dirty-state note;
 - Python, operating system, and dependency versions;
-- schema, evaluator, policy, registry, and fixture versions;
-- supplied evaluation time;
+- schema, evaluator, policy, evaluation-input, profile, registry, trust, certificate, canonicalization, digest, and fixture versions;
+- supplied evaluation, issuance, and relying-party times;
 - exact commands and exit codes;
 - canonical inputs, JSON outputs, and digests;
 - random seeds, if any;
 - excluded or infrastructure-failed runs with reasons;
-- origin label: `synthetic`, `replayed`, or `directly_observed`.
+- exact origin label, such as `SYNTHETIC`, `REPLAYED`, or `LAB_OBSERVED`; the label is descriptive and unauthenticated.
 
 A local record is not an independent reproduction merely because it was run in a VM or container.
 
@@ -208,7 +258,7 @@ A local record is not an independent reproduction merely because it was run in a
 
 ### Setup refuses the Python version
 
-Install Python 3.11 or newer and set `PYTHON_BIN` explicitly:
+Install Python 3.11, 3.12, or 3.13 and set `PYTHON_BIN` explicitly:
 
 ```bash
 PYTHON_BIN=python3.12 ./scripts/setup.sh

@@ -321,8 +321,8 @@ Mitigations include preregistration, independent review of the oracle, strong ba
 ## Security, ethics, and data boundaries
 
 - Use synthetic or public data by default.
-- Obtain explicit owner approval before any external contact, live third-party testing, real partner data, deployment, or public release.
-- No public license has been selected; do not distribute, reuse externally, or characterize the repository as open source until the owner records a licensing decision.
+- Obtain explicit owner approval before any external contact, live third-party testing, real partner data, deployment, versioned/package release, or claims beyond the public pre-alpha boundary.
+- The repository is public under Apache License 2.0; public availability is not evidence of a stable protocol, external reproduction, operational validation, or production readiness.
 - Do not ingest personal, proprietary, regulated, classified, export-controlled, or operationally sensitive data without an approved handling plan.
 - Limit adapters to authorized read-only queries during research.
 - Do not represent an evidence permit as permission to take action, close an incident, or satisfy a legal burden.
@@ -360,7 +360,7 @@ Proceed toward a maintained product only if at least one real adapter can popula
 
 ### Gate D — externalization
 
-Consider a public protocol proposal or release only after independent reproduction, security review, licensing decision, documented governance, and owner approval.
+Consider a frozen public protocol proposal or versioned/package release only after independent reproduction, security review, documented governance, and owner approval.
 
 ## 90-day research schedule
 

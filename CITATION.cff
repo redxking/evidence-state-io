@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: >-
+  If you use this pre-alpha research software, cite the exact version and Git
+  revision. A citation does not imply production readiness or external validation.
+title: Evidence-State I/O
+type: software
+authors:
+  - name: Evidence-State I/O contributors
+repository-code: https://github.com/redxking/evidence-state-io
+url: https://redxking.github.io/evidence-state-io/
+version: 0.6.0
+license: Apache-2.0
+abstract: >-
+  Typed evidence-state envelopes and deterministic gating for negative claims,
+  developed as a local-first pre-alpha research prototype.
+keywords:
+  - artificial intelligence
+  - evidence provenance
+  - negative claims
+  - assurance
+  - deterministic evaluation

@@ -2,26 +2,31 @@
 
 ## Current contribution boundary
 
-Evidence-State I/O is a pre-alpha research prototype. No owner-approved public license has been selected. Do not publish, redistribute, package, or treat the repository as open source unless the project owner records a licensing and release decision.
+Evidence-State I/O is an Apache-2.0 open-source pre-alpha research project.
+Issues, discussions, and pull requests are welcome within the documented claim,
+data, and safety boundaries. Public availability is not a stable release,
+standard, production authorization, or claim of independent validation.
 
-This guide supports owner-authorized local contributors. External contribution mechanics may be added after a release decision.
+By contributing, you agree that your contribution is licensed under the
+project's [Apache License 2.0](LICENSE). Follow the
+[Code of Conduct](CODE_OF_CONDUCT.md) and [governance model](GOVERNANCE.md).
 
 ## Before you begin
 
 Read:
 
-1. [AGENTS.md](AGENTS.md)
-2. [PROJECT_STATUS.md](PROJECT_STATUS.md)
-3. [docs/PRD.md](docs/PRD.md)
-4. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-5. [docs/BACKLOG.md](docs/BACKLOG.md)
-6. [SECURITY.md](SECURITY.md)
+1. [PROJECT_STATUS.md](PROJECT_STATUS.md)
+2. [docs/PRD.md](docs/PRD.md)
+3. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+4. [docs/BACKLOG.md](docs/BACKLOG.md)
+5. [SECURITY.md](SECURITY.md)
+6. [GOVERNANCE.md](GOVERNANCE.md)
 
 Confirm the task, file ownership, acceptance criteria, and approval boundary before editing. Preserve unrelated or concurrent changes.
 
 ## Development setup
 
-Use Python 3.11 or newer and the repository-local environment:
+Use Python 3.11, 3.12, or 3.13 and the repository-local environment:
 
 ```bash
 ./scripts/setup.sh
@@ -55,16 +60,36 @@ The core package deliberately has no required network, model, database, or conta
 ./scripts/demo.sh
 ```
 
+The current `evaluate` interface also requires application-controlled registry
+and trust files plus explicit issuance time and origin. For the synthetic
+checked-in permit vector:
+
+```bash
+evidence-state evaluate \
+  --input examples/covered_request.json \
+  --registry examples/profile_registry.json \
+  --trust examples/profile_trust.json \
+  --issued-at 2026-08-21T12:06:00Z \
+  --origin SYNTHETIC
+```
+
+Do not make the registry snapshot, trust selection, or their exact selected
+profile reference writable by the producer under test. These files provide a
+local application custody boundary, not authenticated registry or source
+evidence.
+
 ## Code design expectations
 
 - Domain models are immutable where practical.
 - The evaluator is pure: no wall-clock, network, filesystem, environment, or mutable-global reads.
 - JSON decoding is strict and rejects unknown evidence-bearing fields unless a versioned compatibility rule explicitly allows them.
-- `evaluation_time` is supplied, normalized, and certificate-bound.
+- `evaluated_at` is supplied, normalized, and certificate-bound.
 - Collections that are semantically unordered have deterministic ordering.
 - Schema `1.0` candidate requests declare exactly one `REQUIRED` source; do not add optional or multi-source behavior without a new composition decision.
 - Source identity, adapter identity/version, authorization context, and accessible population must match; observations and aggregate coverage bind to the normalized query fingerprint.
+- The relying application selects one exact immutable profile reference through a separately supplied registry/trust context. Producers cannot select another profile, use floating/range versions, or cause untrusted profile content to be evaluated before exact trust resolution.
 - Adapters implement narrow read-only ports and expose pagination, partitions, access limits, finality, freshness, and errors.
+- P0 certificates are unsigned deterministic replay records, not authenticated attestations or authorization tokens. Current local reliance and historical replay are separate verification dimensions.
 - Explanatory prose cannot upgrade or override the structured gate decision.
 - Diagnostics go to stderr; machine-readable results go to stdout.
 
@@ -90,7 +115,9 @@ Each fault case must record:
 - the single coverage condition changed from its control;
 - identical visible result and user question where the paired design requires it;
 - expected state, gate disposition, and stable reason codes;
-- evidence origin (`synthetic`, `replayed`, or `directly_observed`);
+- an exact evidence-origin label (`SYNTHETIC`, `REPLAYED`, `LAB_OBSERVED`,
+  `SHADOW_OBSERVED`, `EXTERNALLY_REPRODUCED`, or `OPERATIONAL`), without
+  treating the unauthenticated label as proof;
 - policy, fixture, and schema versions;
 - whether the case is included in the frozen campaign.
 
@@ -110,6 +137,14 @@ Adapters begin read-only and synthetic/replayed. Document:
 
 Accessing a real service, using an account, or handling non-public data requires explicit approval.
 
+The P0 certificate embeds the complete normalized request, registry snapshot,
+trust selection, context binding, decision, limitations, origin, and
+implementation metadata. It is not data-minimized. Use only synthetic/public-
+safe or owner-approved nonsensitive content, and review every embedded field
+before retaining or sharing a certificate. Non-public workflows require a P1
+authenticated registry/source-evidence design and a separately versioned
+redaction, reference, minimization, or selective-disclosure profile.
+
 ## Tests
 
 Tests should cover:
@@ -118,9 +153,10 @@ Tests should cover:
 - invalid state/schema/policy versions;
 - zero, null, unknown, empty, duplicate, and non-finite values;
 - wrong source/adapter/auth context, stale query fingerprints, and optional/multi-source downgrade attempts;
+- producer-selected weak profiles; snapshot/profile identity, digest, issuer, authority, validity, and revocation failures; immutable-version downgrade attempts; and proof that trust failures short-circuit before profile semantics;
 - coverage/freshness/finality values below, at, and above thresholds;
 - input key and semantically unordered collection reordering;
-- deterministic replay and one-field certificate mutation;
+- permit and rejection certificate vectors; deterministic replay; one-field certificate mutation; forged-decision replay; expected-context/digest mismatch; freshness expiry; and current-local-reliance boundaries;
 - malformed and oversized input without stdout stack traces;
 - universal-abstention and naive-empty baselines;
 - adapter-specific partial and failure paths.
@@ -151,9 +187,13 @@ An owner-authorized review should answer:
 - Are oracle, policy, and implementation independent?
 - Is output deterministic?
 - Did the security or claims boundary change?
+- Were registry/trust/profile inputs supplied through the application-controlled, producer-unwritable boundary?
+- Does any self-contained certificate expose data that is not approved for its destination?
 - What was actually run and observed?
 
-Do not create an external pull request or publish a branch without owner approval.
+Use a focused branch and open a pull request with the repository template. A
+pull request is a proposal: review, green automation, or maintainer discussion
+does not by itself establish acceptance, contract freeze, or release approval.
 
 ## Reporting security concerns
 

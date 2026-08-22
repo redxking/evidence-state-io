@@ -2,58 +2,73 @@
 
 ## Active
 
-- [ ] **Define and bind the governed coverage/finality profile** - Add profile ID, version, digest, issuer/authority, validity, late-arrival and reopen assumptions, and exact query/certificate binding; treat the profile as a governed assertion, not proof that the source behavior is true.
-- [ ] **Build the complete deterministic certificate** - Bind schema, evaluator and policy versions, origin classification, canonical input, verdict, reasons, qualification, and evaluation time; keep digest and signature semantics separate.
-- [ ] **Separate the EmptyBench oracle** - Move expected outcomes outside executable request fixtures, freeze corpus and oracle digests, and add source/finality fault families without using the gate as its own truth source.
+- [ ] **Complete the `0.6.0` final acceptance and custody record**
+  - Stabilize and bind the intended implementation and documentation revision.
+  - Run setup, static/local-link checks, source-versus-installed package parity, the full source and installed suites, supported Python 3.11, 3.12, and 3.13 tests, and every benchmark/operator demonstration against that same revision.
+  - Reproduce the checked-in synthetic certificate using issue time `2026-08-21T12:06:00Z`; verify it at `2026-08-21T12:30:00Z` against expected digest `sha256:5683e522aa22f08145658d49452a4c044d7cf562a6a3987da364b3322d4aab17` and the separately supplied expected context.
+  - Record exact commands, runtimes, counts, vector equality, revision, worktree state, and limitations. Obtain a final read-only adversarial review of the stable state.
+  - Do not call this a schema freeze, benchmark freeze, release, external reproduction, production authorization, or proof that profile/source assertions are true.
+
+## Next
+
+- [ ] **Run the first preregistered implementation-owned baseline** — Begin only after the corpus/oracle freeze and stable revision acceptance. Apply thresholds without reinterpretation and do not call it independent reproduction.
+- [ ] **Package one read-only adapter design** — Define authority, data, identity, redaction, and verification gates before implementing any real-system access.
 
 ## Waiting On
 
-- [ ] **Owner licensing decision** - Required before public distribution or package publication.
-- [ ] **Owner approval for external discovery** - Required before contacting design partners or using any real workflow data.
+- [ ] **Owner approval for external discovery** — Required before contacting design partners or using any real workflow data.
+- [ ] **Owner-approved authority and data boundary for a real read-only adapter** — Required before handling non-synthetic workflow evidence.
 
 ## Someday
 
-- [ ] **Evaluate an MCP interoperability profile** - Begin only after the contract survives a real read-only adapter and the frozen benchmark.
-- [ ] **Evaluate trusted-time integration** - Keep separate from P0 evidence-coverage semantics.
+- [ ] **Specify authenticated registry and adapter evidence** — Define signing roots, source-owner and approval delegation, key rotation/revocation, monotonic registry heads, trusted time, and adapter artifact/attestation identity in a separate versioned design.
+- [ ] **Define multi-source composition** — Specify overlapping populations, per-source coverage, temporal alignment, finality, conflicts, and degraded-source behavior before accepting more than one required source.
+- [ ] **Evaluate an MCP interoperability profile** — Begin only after the contract survives a real read-only adapter and the frozen benchmark.
 
 ## Done
 
+- [x] ~~Separate the minimum EmptyBench seed corpus and scoring oracle~~
+  (2026-08-22)
+  - Corpus `esio-emptybench-corpus/1.0-candidate.1` contains 12 matched
+    control/fault pairs and no expected decisions. Oracle
+    `esio-emptybench-oracle/1.0-candidate.1` is stored separately, binds the
+    exact corpus digest, and is checked against a separately retained expected
+    digest.
+  - The 24-case local regression run discriminated 12/12 pairs with zero
+    unsafe permits and zero false rejections. Tamper, swap, missing/duplicate,
+    downgrade, and invalid-mutation tests are checked in.
+  - This closes seed separation and P0 family coverage only. The authors still
+    control the corpus and oracle; no held-out benchmark campaign has been
+    frozen, preregistered, independently adjudicated, or externally reproduced.
+
+- [x] ~~Implement exact application-selected profile governance~~ (2026-08-21)
+  - Package `0.6.0` uses policy `esio-p0-safety-floor/1.0-candidate.4`, evaluator `esio-evaluator-1.0-candidate.5`, profile `esio-coverage-finality-profile/1.0-candidate.2`, registry snapshot `esio-profile-registry-snapshot/1.0-candidate.2`, trust selection `esio-profile-trust-selection/1.0-candidate.2`, and evaluation input `esio-evaluation-input/1.0-candidate.2`; schema `1.0` remains unfrozen.
+  - The producer request carries an exact profile reference. The separately supplied trust selection pins the exact snapshot and exact profile reference selected by the application, closing the weak/strong sibling-profile downgrade.
+  - Snapshot failures return before record content is used; profile digest, issuer, authority, time, and revocation failures return before applicability, freshness, or finality content is used.
+  - Exact source, adapter, authorization, population, query, assumptions, coverage, retention, blind-interval, freshness, and finality mutations fail closed. Floating/alias/range version tokens and abbreviated Git object IDs reject.
+  - Focused profile tests passed `40/40`; the pre-benchmark moving-tree source suite passed `357/357`. Final installed-package and revision custody remain active above.
+
+- [x] ~~Define P0 transition, validation-error, and authorization-identifier contracts~~ (2026-08-22)
+  - `esio-evidence-state-transition-model/1.0-candidate.1` defines deterministic same-lineage state transitions without claiming source truth or successor-evidence validity.
+  - `esio-validation-error/1.0-candidate.1` gives public CLI failures stable machine-readable codes.
+  - `esio-authorization-context-identifier/1.0-candidate.1` rejects a narrow set of credential-like identifiers; it is not a general secret detector.
+
+- [x] ~~Adopt an open-source license and public collaboration model~~ (2026-08-22)
+  - Apache License 2.0 and NOTICE are present. Governance, conduct, support, security, contribution, issue, pull-request, CI, security-analysis, dependency, Pages, release, wiki-source, and roadmap materials are version controlled.
+  - Public availability does not establish a stable release, frozen protocol, production readiness, external validation, or authorization for consequential use.
+
+- [x] ~~Implement the complete deterministic unsigned certificate~~ (2026-08-21)
+  - `esio-evidence-certificate/1.0-candidate.2` binds the request, trusted context, resolved profile references, policy/evaluator/evaluation-input identities, origin, implementation assertion, evaluation and issue times, complete decision, and qualification.
+  - The builder derives the decision internally. Verification reparses typed or JSON input and separates structural support, digest integrity, embedded binding, deterministic replay, expected-context/digest comparison, historical reproducibility, and current local-use eligibility.
+  - The exclusive current-use boundary includes snapshot update, conservative envelope validity, policy freshness, resolved-profile expiry/revocation, and resolved-profile observation/index freshness deadlines.
+  - Decimal-versus-float equivalence, boolean-as-integer confusion, invalid coverage domains, typed-object mutation, stale context, and freshness-boundary attacks were converted to regressions during review.
+  - The record is explicitly unsigned and does not authenticate an issuer or authorize an action. Final frozen-revision acceptance remains active above.
+
 - [x] ~~Derive declared finality chronology explicitly~~ (2026-08-21)
-  - Package `0.3.0`, policy `1.0-candidate.2`, and evaluator
-    `esio-evaluator-1.0-candidate.2` enforce a query-bound declared finality
-    horizon without reading the wall clock.
-  - A permit requires `query.time_end <= finality_horizon <= index_as_of <=
-    observed_at <= evaluated_at <= valid_until`; waiting cannot upgrade an old
-    snapshot.
-  - Missing/null horizon, exact below/equal/above boundaries, malformed time,
-    wait-only reuse, old policy, policy relaxation, stale fingerprint, digest
-    mutation, reason ordering, CLI behavior, and offset normalization are tested.
-  - EmptyBench now contains seven matched pairs/fourteen cases; its finality pair
-    keeps the query, horizon, evaluation time, and visible zero constant while
-    the source index moves by one microsecond.
-  - Python 3.13 source/installed and Python 3.11 source suites passed 244/244;
-    cross-runtime seed output passed 14/14 and was byte-identical.
-  - Independent read-only review reproduced and corrected the legacy-fingerprint
-    compatibility contradiction, then accepted the bounded fail-closed result.
-  - This closes the evaluator chronology increment only. Governed profile
-    authority, watermark authenticity, and source completeness remain open.
-  - Candidate implementation checkpoint:
-    `7deaea1dd79eacd2c4f3ebbef87a314e5293f1f6`.
+  - A query-bound horizon and source-index closure check prevent waiting alone from upgrading an old snapshot. The governed profile now owns the exact horizon calculation.
 
 - [x] ~~Add required and observed source accounting~~ (2026-08-21)
-  - Package `0.2.0` accepts only the schema `1.0` candidate; query requirements and runtime observations are distinct and deterministically ordered.
-  - Missing, non-observed, inaccessible, pending, stale, failed, contradictory, unknown, population-mismatched, and error-bearing required sources reject with source-attributed reasons.
-  - The P0 candidate accepts exactly one declared `REQUIRED` source. Optional and multi-source declarations are rejected because one aggregate coverage object cannot establish source composition.
-  - Required system, locator, adapter ID/version, authorization context, population, and detection assumptions are matched to the observation; coverage and observations are bound to a canonical query fingerprint.
-  - Policy ID/version and evaluator version are explicit; certificate-level version binding remains open.
-  - The schema `0.1` fixture, digests, and pinned `b6fac87` replay boundary are preserved without auto-migration. This is historical local evidence, not a current permit.
-  - Python 3.13 source and installed-package verification and Python 3.11 source-overlay verification passed 224/224; the Python 3.11 source and Python 3.13 installed seed runs passed 12/12 and were byte-identical.
-  - Candidate implementation checkpoint: `bdd7c1e15c45f8d9940fc76604b3dde1fa953faa`.
+  - Query requirements and runtime observations are distinct, fingerprint-bound, and fail closed on missing, non-observed, mismatched, or error-bearing required-source states. P0 remains single-source.
 
 - [x] ~~Initial local covered-versus-partial demonstration~~ (2026-08-21)
-  - Python 3.13.0 source and installed suites and the Python 3.11 suite passed 171/171; the synthetic demonstrations passed 2/2 and 10/10.
-  - Proposed 79-, 114-, 168-, and 169-test baselines were rejected after adversarial review. Reproduced defects were converted to regressions before the 171-test baseline was accepted locally.
-  - Final replay passed the 98/98 core CLI exploit set across source/installed paths, 30/30 EmptyBench adversarial executions, 38/38 direct-library checks, and 6/6 source-index chronology probes.
-  - The stale installed command was detected, the candidate package was reinstalled, and source/install package-file and deterministic-demo parity passed with `PYTHONPATH` unset.
-  - The initial local commit binds the first accepted schema `0.1` and canonicalization-profile `0.1` snapshot; no earlier proposal was released or certificate-bearing.
-  - This is locally tested, not a frozen benchmark or external reproduction.
+  - The schema `0.1` baseline at `b6fac87` remains historical local replay evidence. The active schema `1.0` candidate and EmptyBench remain unfrozen and are not external validation.
