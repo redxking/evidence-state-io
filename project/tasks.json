@@ -64,8 +64,8 @@
       "priority": 1,
       "status": "verified",
       "title": "Verify the complete local MVP gate",
-      "verified_at": "2026-08-22T18:04:54Z",
-      "verified_commit": "fbb07f469c7ae21708201f8ee99179c64290c7db"
+      "verified_at": "2026-08-22T18:15:22Z",
+      "verified_commit": "3c33ed0db5a820d5bcd263b12182f93176c7d1de"
     },
     {
       "acceptance": [
