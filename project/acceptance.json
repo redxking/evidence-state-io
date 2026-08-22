@@ -207,22 +207,53 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T16:47:30Z",
-        "commit": "3ecb1de8091a3e71bd621feb291ffe1437f29e0a",
+        "at": "2026-08-22T17:12:30Z",
+        "commit": "01805095b08aff5fe8951340a65c5dd56c5a3981",
+        "defect": "ESIO-DEF-001",
         "dirty": false,
+        "evidence_class": "observed against the published v0.6.0 release artifact",
         "fingerprint": "sha256:280db6c10f74692a2e4f46378cd482ec12c8617f4b1f5d35cd109b4d368d229e",
-        "output_digests": [
-          "sha256:f988f3966ea6eb60746a44cc583114474bdeebf5f985718bbf53a7bc92771e47"
+        "observations": [
+          "Defect ESIO-DEF-001, found by installing the published v0.6.0 wheel into a fresh virtual environment and running the documented command from a directory that is not a checkout.",
+          "`evidence-state demo` and `evidence-state demo --all` exit 2 with `MODEL_INVALID` outside a checkout, and succeed inside one.",
+          "`emptybench._seed_artifact_directory` searches `Path(__file__).resolve().parents[2] / 'benchmarks'` and then `Path.cwd().resolve() / 'benchmarks'`. For an installed package the first candidate resolves inside the interpreter's lib directory and never exists, so the only working path is the current working directory.",
+          "The wheel ships no benchmark artifacts: `unzip -l` matched zero `emptybench-p0` entries, and `[tool.setuptools.package-data]` declares only `py.typed`. The source distribution does not carry `benchmarks/` either.",
+          "The cwd dependence was demonstrated directly: running the installed CLI in an empty directory exits 2, and running it in a directory that contains a `benchmarks/` folder holding the two JSON files exits 0.",
+          "This violates the stated invariant that the deterministic core must not depend on host paths, filesystem discovery, or the current working directory, and it means the installed CLI discovers its EmptyBench corpus and oracle from an undeclared location outside the package. The separately retained SEED_ORACLE_DIGEST still rejects a swapped oracle, so this is an undeclared discovery and packaging defect rather than a demonstrated oracle substitution.",
+          "The gates did not catch it because `scripts/acceptance.sh`, `.github/workflows/ci.yml`, and `.github/workflows/release.yml` all invoke the wheel-environment CLI with the repository root as the working directory. Each therefore exercised the source tree's `benchmarks/` directory while reporting that it had verified the installed package in isolation."
         ],
         "procedure": [
           [
-            "./scripts/acceptance.sh"
+            "python3.11",
+            "-m",
+            "venv",
+            "<tmp>/relvenv"
+          ],
+          [
+            "<tmp>/relvenv/bin/pip",
+            "install",
+            "evidence_state_io-0.6.0-py3-none-any.whl"
+          ],
+          [
+            "cd",
+            "<directory outside any checkout>"
+          ],
+          [
+            "<tmp>/relvenv/bin/evidence-state",
+            "demo",
+            "--all"
+          ],
+          [
+            "unzip",
+            "-l",
+            "evidence_state_io-0.6.0-py3-none-any.whl"
           ]
         ],
-        "result": "PASS"
+        "result": "FAIL"
       },
+      "failure_reason": "The fresh isolated installation was not isolated from the source tree: the installed CLI resolved its benchmark artifacts from the repository working directory.",
       "id": "MVP-ACC-009",
-      "status": "PASS",
+      "status": "FAIL",
       "title": "Fresh isolated installation and end-to-end API and CLI",
       "watched_paths": [
         "src/**",
@@ -311,22 +342,53 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T16:47:30Z",
-        "commit": "3ecb1de8091a3e71bd621feb291ffe1437f29e0a",
+        "at": "2026-08-22T17:12:30Z",
+        "commit": "01805095b08aff5fe8951340a65c5dd56c5a3981",
+        "defect": "ESIO-DEF-001",
         "dirty": false,
+        "evidence_class": "observed against the published v0.6.0 release artifact",
         "fingerprint": "sha256:1fcd142ae6d3b5134dd6e1d3f6b5c689542eb3309807d8498c1c2e357eb06bf3",
-        "output_digests": [
-          "sha256:f988f3966ea6eb60746a44cc583114474bdeebf5f985718bbf53a7bc92771e47"
+        "observations": [
+          "Defect ESIO-DEF-001, found by installing the published v0.6.0 wheel into a fresh virtual environment and running the documented command from a directory that is not a checkout.",
+          "`evidence-state demo` and `evidence-state demo --all` exit 2 with `MODEL_INVALID` outside a checkout, and succeed inside one.",
+          "`emptybench._seed_artifact_directory` searches `Path(__file__).resolve().parents[2] / 'benchmarks'` and then `Path.cwd().resolve() / 'benchmarks'`. For an installed package the first candidate resolves inside the interpreter's lib directory and never exists, so the only working path is the current working directory.",
+          "The wheel ships no benchmark artifacts: `unzip -l` matched zero `emptybench-p0` entries, and `[tool.setuptools.package-data]` declares only `py.typed`. The source distribution does not carry `benchmarks/` either.",
+          "The cwd dependence was demonstrated directly: running the installed CLI in an empty directory exits 2, and running it in a directory that contains a `benchmarks/` folder holding the two JSON files exits 0.",
+          "This violates the stated invariant that the deterministic core must not depend on host paths, filesystem discovery, or the current working directory, and it means the installed CLI discovers its EmptyBench corpus and oracle from an undeclared location outside the package. The separately retained SEED_ORACLE_DIGEST still rejects a swapped oracle, so this is an undeclared discovery and packaging defect rather than a demonstrated oracle substitution.",
+          "The gates did not catch it because `scripts/acceptance.sh`, `.github/workflows/ci.yml`, and `.github/workflows/release.yml` all invoke the wheel-environment CLI with the repository root as the working directory. Each therefore exercised the source tree's `benchmarks/` directory while reporting that it had verified the installed package in isolation."
         ],
         "procedure": [
           [
-            "./scripts/acceptance.sh"
+            "python3.11",
+            "-m",
+            "venv",
+            "<tmp>/relvenv"
+          ],
+          [
+            "<tmp>/relvenv/bin/pip",
+            "install",
+            "evidence_state_io-0.6.0-py3-none-any.whl"
+          ],
+          [
+            "cd",
+            "<directory outside any checkout>"
+          ],
+          [
+            "<tmp>/relvenv/bin/evidence-state",
+            "demo",
+            "--all"
+          ],
+          [
+            "unzip",
+            "-l",
+            "evidence_state_io-0.6.0-py3-none-any.whl"
           ]
         ],
-        "result": "PASS"
+        "result": "FAIL"
       },
+      "failure_reason": "The offline benchmark does not run from an installed package alone; its corpus and oracle are not packaged.",
       "id": "MVP-ACC-013",
-      "status": "PASS",
+      "status": "FAIL",
       "title": "Offline benchmark emits human and machine readable correctness-first results",
       "watched_paths": [
         "src/evidence_state_io/emptybench.py",
@@ -337,22 +399,53 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T16:47:30Z",
-        "commit": "3ecb1de8091a3e71bd621feb291ffe1437f29e0a",
+        "at": "2026-08-22T17:12:30Z",
+        "commit": "01805095b08aff5fe8951340a65c5dd56c5a3981",
+        "defect": "ESIO-DEF-001",
         "dirty": false,
+        "evidence_class": "observed against the published v0.6.0 release artifact",
         "fingerprint": "sha256:24593886adfe4794e45b90c909ba7918084939c3b3db057377143051b921e4f1",
-        "output_digests": [
-          "sha256:f988f3966ea6eb60746a44cc583114474bdeebf5f985718bbf53a7bc92771e47"
+        "observations": [
+          "Defect ESIO-DEF-001, found by installing the published v0.6.0 wheel into a fresh virtual environment and running the documented command from a directory that is not a checkout.",
+          "`evidence-state demo` and `evidence-state demo --all` exit 2 with `MODEL_INVALID` outside a checkout, and succeed inside one.",
+          "`emptybench._seed_artifact_directory` searches `Path(__file__).resolve().parents[2] / 'benchmarks'` and then `Path.cwd().resolve() / 'benchmarks'`. For an installed package the first candidate resolves inside the interpreter's lib directory and never exists, so the only working path is the current working directory.",
+          "The wheel ships no benchmark artifacts: `unzip -l` matched zero `emptybench-p0` entries, and `[tool.setuptools.package-data]` declares only `py.typed`. The source distribution does not carry `benchmarks/` either.",
+          "The cwd dependence was demonstrated directly: running the installed CLI in an empty directory exits 2, and running it in a directory that contains a `benchmarks/` folder holding the two JSON files exits 0.",
+          "This violates the stated invariant that the deterministic core must not depend on host paths, filesystem discovery, or the current working directory, and it means the installed CLI discovers its EmptyBench corpus and oracle from an undeclared location outside the package. The separately retained SEED_ORACLE_DIGEST still rejects a swapped oracle, so this is an undeclared discovery and packaging defect rather than a demonstrated oracle substitution.",
+          "The gates did not catch it because `scripts/acceptance.sh`, `.github/workflows/ci.yml`, and `.github/workflows/release.yml` all invoke the wheel-environment CLI with the repository root as the working directory. Each therefore exercised the source tree's `benchmarks/` directory while reporting that it had verified the installed package in isolation."
         ],
         "procedure": [
           [
-            "./scripts/acceptance.sh"
+            "python3.11",
+            "-m",
+            "venv",
+            "<tmp>/relvenv"
+          ],
+          [
+            "<tmp>/relvenv/bin/pip",
+            "install",
+            "evidence_state_io-0.6.0-py3-none-any.whl"
+          ],
+          [
+            "cd",
+            "<directory outside any checkout>"
+          ],
+          [
+            "<tmp>/relvenv/bin/evidence-state",
+            "demo",
+            "--all"
+          ],
+          [
+            "unzip",
+            "-l",
+            "evidence_state_io-0.6.0-py3-none-any.whl"
           ]
         ],
-        "result": "PASS"
+        "result": "FAIL"
       },
+      "failure_reason": "The packaging and clean-start gates passed only because they ran with the repository root as the working directory.",
       "id": "MVP-ACC-014",
-      "status": "PASS",
+      "status": "FAIL",
       "title": "Unit schema contract integration property adversarial packaging and clean-start gates pass",
       "watched_paths": [
         "src/**",
@@ -770,8 +863,55 @@
       ]
     },
     {
+      "evidence": {
+        "at": "2026-08-22T17:12:30Z",
+        "commit": "01805095b08aff5fe8951340a65c5dd56c5a3981",
+        "dirty": false,
+        "evidence_class": "externally observed GitHub release state",
+        "fingerprint": "sha256:ef7df2f408b8ed49a7a7f2d10cf5b65487e5f1164d03d259a570c5a328714c3b",
+        "observations": [
+          "Release `v0.6.0 - MVP research candidate` is published, not a draft, not a prerelease, and `isImmutable` is true.",
+          "The annotated tag object `a198f8253b0fb71c036b7a8ee1fadd236448bd55` points at commit `01805095b08aff5fe8951340a65c5dd56c5a3981`, which is the accepted commit and an ancestor of the default branch.",
+          "Six assets are attached: the wheel, the source distribution, SHA256SUMS, EVIDENCE-MANIFEST.json, SBOM.spdx.json, and LIMITATIONS.md.",
+          "Both distributions were downloaded unauthenticated and `shasum -a 256 -c SHA256SUMS` reported OK for each.",
+          "EVIDENCE-MANIFEST.json binds tag `v0.6.0`, commit `01805095b08aff5fe8951340a65c5dd56c5a3981`, source tree `42f841f526cc20cd57ac35fc2e8c14cc419a7855`, version `0.6.0`, a clean tracked worktree, no runtime dependencies, and the two artifact digests and sizes. The recorded tree matches `git rev-parse <commit>^{tree}`.",
+          "The SPDX SBOM declares Apache-2.0, the exact purl, and a download location pinned to the accepted commit. The attached LIMITATIONS.md is byte-identical to `release/LIMITATIONS.md`.",
+          "The release workflow's own gate required every acceptance row other than MVP-ACC-025 to be PASS at the tagged commit, and verified stable SemVer, tag-to-package-version equality, and default-branch ancestry.",
+          "This row records the release binding only. The released package itself carries defect ESIO-DEF-001, recorded under MVP-ACC-009, MVP-ACC-013, and MVP-ACC-014: `evidence-state demo` does not work from an installed wheel outside a checkout. v0.6.0 is immutable and stands as published; the fix ships as a later version."
+        ],
+        "procedure": [
+          [
+            "gh",
+            "release",
+            "view",
+            "v0.6.0"
+          ],
+          [
+            "gh",
+            "api",
+            "repos/redxking/evidence-state-io/git/ref/tags/v0.6.0"
+          ],
+          [
+            "curl",
+            "https://github.com/redxking/evidence-state-io/releases/download/v0.6.0/<asset>"
+          ],
+          [
+            "shasum",
+            "-a",
+            "256",
+            "-c",
+            "SHA256SUMS"
+          ],
+          [
+            "cmp",
+            "LIMITATIONS.md",
+            "release/LIMITATIONS.md"
+          ]
+        ],
+        "result": "PASS"
+      },
       "id": "MVP-ACC-025",
-      "status": "UNVERIFIED",
+      "status": "PASS",
       "title": "Tagged MVP release binds notes checksums manifest SBOM limitations and accepted commit",
       "watched_paths": [
         "CHANGELOG.md",
