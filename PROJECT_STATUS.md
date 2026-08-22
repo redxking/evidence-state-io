@@ -44,6 +44,7 @@ evidence status.
 | Evidence-state transitions | `esio-evidence-state-transition-model/1.0-candidate.1` |
 | Authorization-context identifier | `esio-authorization-context-identifier/1.0-candidate.1` |
 | Validation error | `esio-validation-error/1.0-candidate.1` |
+| Insufficiency remedy | `esio-insufficiency-remedy/1.0-candidate.1` |
 | EmptyBench corpus | `esio-emptybench-corpus/1.0-candidate.1` |
 | EmptyBench oracle | `esio-emptybench-oracle/1.0-candidate.1` |
 | EmptyBench report | `esio-emptybench-report/1.0-candidate.1` |

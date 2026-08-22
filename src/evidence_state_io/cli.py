@@ -23,7 +23,7 @@ from .errors import (
     ValidationErrorCode,
     public_validation_error,
 )
-from .gate import NegativeClaimPolicy, NegativeClaimRequest
+from .gate import NegativeClaimPolicy, NegativeClaimRequest, evaluate_negative_claim
 from .models import (
     MAX_INTEGER_DECIMAL_DIGITS,
     ClaimMode,
@@ -36,6 +36,7 @@ from .profiles import (
     ProfileTrustSelection,
     TrustedProfileContext,
 )
+from .remedy import DisclosureLevel, derive_remedy
 
 MAX_INPUT_BYTES = 1_048_576
 MAX_JSON_DEPTH = 128
@@ -389,6 +390,50 @@ def build_parser() -> argparse.ArgumentParser:
     )
     benchmark.add_argument("--pretty", action="store_true", help="Pretty-print JSON")
 
+    explain = subparsers.add_parser(
+        "explain",
+        help="Explain a rejected negative claim as conditions that would have to become true.",
+    )
+    explain.add_argument("--input", required=True, help="JSON file, or - for stdin")
+    explain.add_argument(
+        "--registry",
+        required=True,
+        help="Operator-controlled profile registry snapshot JSON file",
+    )
+    explain.add_argument(
+        "--trust",
+        required=True,
+        help="Operator-controlled profile trust-selection JSON file",
+    )
+    explain.add_argument(
+        "--disclosure",
+        choices=[level.value for level in DisclosureLevel],
+        default=DisclosureLevel.CONSTRAINT_ONLY.value,
+        help=(
+            "Governed-value disclosure. CONSTRAINT_ONLY (default) names the failing "
+            "constraint without its threshold. WITH_GOVERNED_VALUES additionally carries "
+            "the governed values and is only appropriate for a caller that already holds "
+            "the profile; returning it to the result producer hands that party the values "
+            "it would need to construct a self-consistent fabrication."
+        ),
+    )
+    explain.add_argument(
+        "--evaluated-at",
+        help="ISO-8601 evaluation time; required only when --input is a bare envelope",
+    )
+    explain.add_argument(
+        "--subject",
+        default=None,
+        help="Claim subject used only with a bare envelope",
+    )
+    explain.add_argument(
+        "--mode",
+        choices=[mode.value for mode in ClaimMode],
+        default=None,
+        help="Claim mode used only with a bare envelope (default: SCOPED)",
+    )
+    explain.add_argument("--pretty", action="store_true", help="Pretty-print JSON")
+
     coverage = subparsers.add_parser(
         "coverage", help="Evaluate coverage evidence independently of a claim."
     )
@@ -471,6 +516,24 @@ def main(
             )
             _write_json(emptybench_report.to_dict(), output_stream, args.pretty)
             return 0 if emptybench_report.all_passed else 1
+        if args.command == "explain":
+            context = _trusted_profile_context(args, input_stream)
+            request = _request_input(_read_json(args.input, input_stream), args)
+            decision = evaluate_negative_claim(request, context)
+            if decision.allowed:
+                raise ModelValidationError(
+                    "explain describes an insufficiency; this request is permitted and has "
+                    "none. Use evaluate to issue its certificate.",
+                    code=ValidationErrorCode.CLI_ARGUMENT_INVALID,
+                )
+            remedy = derive_remedy(
+                decision,
+                request,
+                context,
+                disclosure=DisclosureLevel(args.disclosure),
+            )
+            _write_json(remedy.to_dict(), output_stream, args.pretty)
+            return 0
         if args.command == "coverage":
             result = _coverage_input(_read_json(args.input, input_stream))
             _write_json(result, output_stream, args.pretty)

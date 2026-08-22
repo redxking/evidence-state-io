@@ -936,3 +936,63 @@ reader would install.
 recorded evidence describes the version a fresh install actually receives.
 This establishes that the suite passes on pytest 9.1.1. It does not establish
 anything about pytest 10, which is why the upper bound stays.
+
+### Adversarial review of the insufficiency remedy (2026-08-22)
+
+The obvious way to build this feature is also the dangerous one. A rejection
+that printed "set the reported index to `2026-08-21T13:05:00Z` and coverage to
+`0.995`" would be a working recipe for fabricating a permit, handed to the one
+party the design deliberately keeps away from the governance bundle. The review
+below is what the implementation was attacked with.
+
+**Can a remedy be turned into a permit?** No path exists. `derive_remedy`
+refuses an allowed decision outright, so a permit never carries a remedy that
+could be read as conditional. A remedy is not an input to any evaluation: the
+gate takes a request and a trusted context and nothing else, and the remedy
+record is excluded from the decision payload and from the evaluation-input
+digest. It is bound to the decision it explains by that decision's
+`input_digest`, so a remedy cannot be moved onto a different evaluation and
+presented as its explanation.
+
+**Can a remedy be read as an instruction to edit a request?** A regression
+scans every condition string for instruction wording — `set `, `change the`,
+`edit `, `update the request`, `modify the`, `resubmit with` — and fails if any
+appears. `PROFILE_POPULATION_MISMATCH` therefore reads "the query must target
+the accessible population the governed profile declares" and never names the
+value that would satisfy it.
+
+**Can a remedy leak governed thresholds to the producer?** Not at the default
+level. `CONSTRAINT_ONLY` emits `governed_value: null` for every item, and a
+regression asserts that across the whole record. `WITH_GOVERNED_VALUES` is an
+explicit choice by the relying application, is recorded in the record, and adds
+a limitation naming exactly what the disclosure hands over. A paired regression
+asserts that changing the level changes the values and never the set of
+constraints reported, so the level cannot be used to hide or invent a failure.
+
+**Can a reason acquire a remedy by accident?** Every `GateReason` is
+classified, and a regression iterates the whole enum to prove it. Removing an
+entry from the table makes `_classify` raise rather than fall back to a default,
+so a gate reason added later cannot silently inherit a wrong class.
+
+**Can an unsupportable rejection be presented as fixable?** The classes that
+mean "no further evidence of the same kind helps" are computed, not assumed.
+Matched pairs hold the request constant and move one field: a `PARTIAL`
+observation is remediable, a `PRESENT` one is `UNSATISFIABLE`; zero matches is
+remediable, nonzero is not; a scoped claim is remediable, an absolute one is
+not. `satisfiable` is derived from the items rather than stored, so it cannot
+disagree with them.
+
+Determinism was checked by rendering each disclosure level one hundred times
+and asserting a single distinct result, and the CLI path was checked the same
+way across repeated invocations.
+
+### What this establishes and does not establish
+
+This establishes that a rejection can be explained without the explanation
+becoming authority, and that the disclosure boundary is enforced rather than
+merely documented. It does not make the gate safe against a self-consistent
+malicious producer: that still requires authenticated adapter evidence, which
+P0 does not have. It does not establish that any remedy's conditions can be
+met, that meeting them would produce a permit, or that the underlying fact is
+true. And at `WITH_GOVERNED_VALUES` the disclosure risk is not removed, only
+made an explicit and recorded choice.

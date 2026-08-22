@@ -4,6 +4,29 @@ All notable project changes should be recorded here. Dates use ISO 8601.
 
 ## Unreleased
 
+### Added
+
+- `esio-insufficiency-remedy/1.0-candidate.1` and `evidence-state explain`.
+  A rejection previously returned ordered reason codes and a deterministic
+  insufficiency statement, both correct and neither actionable. A remedy states,
+  for each material reason, the condition that would have to become true, and
+  classifies it: await source state, obtain a fresh observation, complete
+  enumeration, obtain a missing declaration, resolve source availability, use
+  the governed scope, resolve governance trust, or `UNSATISFIABLE`.
+- The class is computed from the evidence where the code alone does not settle
+  it. `STATE_NOT_ABSENT_WITHIN_SCOPE` is `UNSATISFIABLE` when the observation
+  reports `PRESENT`, because presence is not an evidence shortfall.
+  `NONZERO_MATCHES`, an absolute claim, a contradictory required source, an
+  exceeded retention window, and a blind interval intersecting the query are
+  likewise never presented as remediable.
+- Disclosure defaults closed. `CONSTRAINT_ONLY` names the failing constraint and
+  carries no governed threshold; `WITH_GOVERNED_VALUES` adds the values and
+  records in the record itself that returning it to the result producer supplies
+  what a self-consistent fabrication would need. No remedy is produced for a
+  permit, and a remedy is bound to the decision it explains by that decision's
+  evaluation-input digest while staying out of the decision payload.
+- ADR-0014 records the contract and the disclosure boundary.
+
 ### Fixed
 
 - **CodeQL `js/bad-tag-filter`, high severity.** The dashboard safe-render

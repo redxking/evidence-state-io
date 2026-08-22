@@ -177,6 +177,33 @@ evidence-state verify-certificate \
   --pretty
 ```
 
+Ask what a rejection would require:
+
+```bash
+evidence-state explain \
+  --input examples/partial_request.json \
+  --registry examples/profile_registry.json \
+  --trust examples/profile_trust.json \
+  --pretty
+```
+
+`explain` turns a rejection into the conditions that would have to become true.
+Each item names the failing constraint and classifies it: whether the source
+index must advance, a fresh observation is needed, enumeration must complete, a
+declaration is missing, source availability must be resolved, the request must
+use the governed scope, governance trust must be resolved, or the reason is
+`UNSATISFIABLE` because no further evidence of the same kind can remove it. A
+remedy carries `satisfiable: false` when any item is unsatisfiable.
+
+Conditions describe what must become true. They never instruct a caller to edit
+a request field, and by default they carry no governed threshold values.
+`--disclosure WITH_GOVERNED_VALUES` adds those values and is only appropriate
+for a caller that already holds the profile: handing them to the party that
+produced the result gives it the values it would need to construct a
+self-consistent fabrication, which the P0 gate cannot detect. The record states
+its own disclosure level, and no remedy is ever produced for a permit. See
+[ADR-0014](docs/adr/0014-insufficiency-remedy-and-disclosure-boundary.md).
+
 The verifier reports separate structural, outer-digest, embedded-binding,
 deterministic-replay, expected-context, expected-digest, and current-local-use
 dimensions. Current local use requires an explicitly supplied relying-party

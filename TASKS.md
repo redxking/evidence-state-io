@@ -35,6 +35,22 @@
 
 ## Done
 
+- [x] ~~Add the insufficiency remedy~~ (2026-08-22)
+  - `esio-insufficiency-remedy/1.0-candidate.1` and `evidence-state explain`
+    turn a rejection into the conditions that would have to become true, with
+    every reason classified and the unsupportable ones marked `UNSATISFIABLE`
+    rather than dressed up as fixable.
+  - Disclosure defaults closed; governed threshold values are emitted only when
+    the relying application asks, and the record says so.
+  - No remedy is produced for a permit, remedies stay out of the decision
+    payload and digest, and a regression forbids any condition that reads as an
+    instruction to edit a request.
+  - ADR-0014 records the contract and the disclosure boundary.
+    `docs/REVIEW_LOG.md` records the adversarial review.
+  - This makes rejections actionable. It does not change what a permit means,
+    add any authority, or make the gate safe against a self-consistent
+    malicious producer.
+
 - [x] ~~Fix ESIO-DEF-001 and ship `0.6.1`~~ (2026-08-22)
   - The installed distribution shipped no EmptyBench artifacts and resolved its
     corpus and oracle from the caller's working directory, so

@@ -20,7 +20,7 @@ BENCHMARKS = PROJECT_ROOT / "src" / "evidence_state_io" / "benchmarks"
 class CliTests(unittest.TestCase):
     def invoke(self, argv, stdin_text=""):
         argv = list(argv)
-        if argv and argv[0] in {"evaluate", "emptybench"}:
+        if argv and argv[0] in {"evaluate", "emptybench", "explain"}:
             if "--registry" not in argv:
                 argv.extend(["--registry", str(EXAMPLES / "profile_registry.json")])
             if "--trust" not in argv:
@@ -567,6 +567,59 @@ class CliTests(unittest.TestCase):
         )
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertTrue(json.loads(completed.stdout)["summary"]["all_passed"])
+
+    def test_explain_reports_conditions_for_a_rejection(self) -> None:
+        code, stdout, _ = self.invoke(
+            ["explain", "--input", str(EXAMPLES / "partial_request.json")]
+        )
+        payload = json.loads(stdout)
+        self.assertEqual(code, 0, "explaining a rejection is not a program failure")
+        self.assertEqual(payload["remedy_schema"], "esio-insufficiency-remedy/1.0-candidate.1")
+        self.assertEqual(payload["decision"], "REJECT_NEGATIVE")
+        self.assertEqual(payload["disclosure"], "CONSTRAINT_ONLY")
+        self.assertTrue(payload["items"])
+        for item in payload["items"]:
+            self.assertIsNone(item["governed_value"])
+            self.assertTrue(item["condition"].strip())
+
+    def test_explain_withholds_governed_values_unless_asked(self) -> None:
+        _, closed_out, _ = self.invoke(
+            ["explain", "--input", str(EXAMPLES / "partial_request.json")]
+        )
+        _, open_out, _ = self.invoke(
+            [
+                "explain",
+                "--input",
+                str(EXAMPLES / "partial_request.json"),
+                "--disclosure",
+                "WITH_GOVERNED_VALUES",
+            ]
+        )
+        closed = json.loads(closed_out)
+        opened = json.loads(open_out)
+        self.assertEqual(
+            [item["reason"] for item in closed["items"]],
+            [item["reason"] for item in opened["items"]],
+        )
+        self.assertTrue(any(item["governed_value"] for item in opened["items"]))
+        self.assertTrue(any("WITH_GOVERNED_VALUES" in text for text in opened["limitations"]))
+
+    def test_explain_refuses_a_permitted_request(self) -> None:
+        code, stdout, stderr = self.invoke(
+            ["explain", "--input", str(EXAMPLES / "covered_request.json")]
+        )
+        self.assertEqual(code, 2)
+        self.assertEqual(stdout, "", "a refused explain must not emit a partial record")
+        self.assertEqual(json.loads(stderr)["error"]["code"], "CLI_ARGUMENT_INVALID")
+
+    def test_explain_is_byte_identical_across_repeated_invocations(self) -> None:
+        outputs = set()
+        for _ in range(5):
+            _, stdout, _ = self.invoke(
+                ["explain", "--input", str(EXAMPLES / "partial_request.json")]
+            )
+            outputs.add(stdout)
+        self.assertEqual(len(outputs), 1)
 
 
 if __name__ == "__main__":
