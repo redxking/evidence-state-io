@@ -42,8 +42,8 @@ from .emptybench import (
     EmptyBenchOutcome,
     EmptyBenchReport,
     demo_cases,
-    parse_corpus,
     parse_cases,
+    parse_corpus,
     parse_oracle,
     run_emptybench,
     run_seed_emptybench,
@@ -70,13 +70,13 @@ from .models import (
     AUTHORIZATION_CONTEXT_IDENTIFIER_PROFILE,
     EVIDENCE_STATE_INTERPRETATIONS,
     EVIDENCE_STATE_TRANSITION_MODEL,
+    MAX_SOURCE_ACCOUNTING_ENTRIES,
     ClaimMode,
-    CoverageProfileReference,
     CoverageEvidence,
+    CoverageProfileReference,
     EvidenceEnvelope,
     EvidenceState,
     EvidenceStateTransition,
-    MAX_SOURCE_ACCOUNTING_ENTRIES,
     PopulationBasis,
     QueryScope,
     SourceDescriptor,
@@ -88,12 +88,6 @@ from .models import (
     authorization_context_identifier,
     bounded_ascii_identifier,
     is_evidence_state_transition_allowed,
-)
-from .sources import (
-    SourceAccountingAssessment,
-    SourceIssue,
-    SourceIssueCode,
-    evaluate_source_accounting,
 )
 from .profiles import (
     COVERAGE_FINALITY_PROFILE_SCHEMA,
@@ -115,6 +109,12 @@ from .profiles import (
     ProfileTrustSelection,
     TrustedProfileContext,
     evaluate_profile_governance,
+)
+from .sources import (
+    SourceAccountingAssessment,
+    SourceIssue,
+    SourceIssueCode,
+    evaluate_source_accounting,
 )
 
 __all__ = [

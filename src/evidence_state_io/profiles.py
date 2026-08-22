@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 from hmac import compare_digest
-from typing import Any, Mapping, Sequence
+from typing import Any, Sequence
 
 from .canonical import canonical_digest
 from .models import (
@@ -24,8 +24,8 @@ from .models import (
     PopulationBasis,
     SourceObservationStatus,
     _concrete_declaration,
-    _mapping,
     _immutable_version,
+    _mapping,
     _nonnegative_int,
     _reject_unknown,
     _require_fields,
@@ -39,16 +39,9 @@ from .models import (
     parse_datetime,
 )
 
-
-COVERAGE_FINALITY_PROFILE_SCHEMA = (
-    "esio-coverage-finality-profile/1.0-candidate.2"
-)
-PROFILE_REGISTRY_SNAPSHOT_SCHEMA = (
-    "esio-profile-registry-snapshot/1.0-candidate.2"
-)
-PROFILE_TRUST_SELECTION_SCHEMA = (
-    "esio-profile-trust-selection/1.0-candidate.2"
-)
+COVERAGE_FINALITY_PROFILE_SCHEMA = "esio-coverage-finality-profile/1.0-candidate.2"
+PROFILE_REGISTRY_SNAPSHOT_SCHEMA = "esio-profile-registry-snapshot/1.0-candidate.2"
+PROFILE_TRUST_SELECTION_SCHEMA = "esio-profile-trust-selection/1.0-candidate.2"
 FINALITY_METHOD = "QUERY_END_PLUS_MAX_DELAY"
 
 
@@ -65,9 +58,7 @@ def _required_identifier_tuple(value: Any, path: str) -> tuple[str, ...]:
         raise ModelValidationError(f"{path} must be an array, not null")
     if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
         raise ModelValidationError(f"{path} must be an array of identifiers")
-    result = tuple(
-        _identifier(item, f"{path}[{index}]") for index, item in enumerate(value)
-    )
+    result = tuple(_identifier(item, f"{path}[{index}]") for index, item in enumerate(value))
     if not result:
         raise ModelValidationError(f"{path} must not be empty")
     if len(set(result)) != len(result):
@@ -112,9 +103,7 @@ def _timedelta_exceeds_seconds(value: timedelta, limit: int) -> bool:
     if value.days < 0:
         return False
     whole_seconds = value.days * 86_400 + value.seconds
-    return whole_seconds > limit or (
-        whole_seconds == limit and value.microseconds > 0
-    )
+    return whole_seconds > limit or (whole_seconds == limit and value.microseconds > 0)
 
 
 @dataclass(frozen=True, slots=True)
@@ -129,13 +118,9 @@ class BlindInterval:
         object.__setattr__(
             self, "start", _validate_aware_datetime(self.start, "blind_interval.start")
         )
-        object.__setattr__(
-            self, "end", _validate_aware_datetime(self.end, "blind_interval.end")
-        )
+        object.__setattr__(self, "end", _validate_aware_datetime(self.end, "blind_interval.end"))
         if self.end <= self.start:
-            raise ModelValidationError(
-                "blind_interval.end must be after blind_interval.start"
-            )
+            raise ModelValidationError("blind_interval.end must be after blind_interval.start")
         object.__setattr__(
             self,
             "reason_code",
@@ -173,16 +158,18 @@ class ProfileSource:
     accessible_population: str
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "source_id", _identifier(self.source_id, "profile.source.source_id"))
+        object.__setattr__(
+            self, "source_id", _identifier(self.source_id, "profile.source.source_id")
+        )
         object.__setattr__(self, "system", _declaration(self.system, "profile.source.system"))
         object.__setattr__(self, "locator", _declaration(self.locator, "profile.source.locator"))
-        object.__setattr__(self, "adapter_id", _identifier(self.adapter_id, "profile.source.adapter_id"))
+        object.__setattr__(
+            self, "adapter_id", _identifier(self.adapter_id, "profile.source.adapter_id")
+        )
         object.__setattr__(
             self,
             "adapter_version",
-            _immutable_version(
-                self.adapter_version, "profile.source.adapter_version"
-            ),
+            _immutable_version(self.adapter_version, "profile.source.adapter_version"),
         )
         object.__setattr__(
             self,
@@ -195,9 +182,7 @@ class ProfileSource:
         object.__setattr__(
             self,
             "accessible_population",
-            _declaration(
-                self.accessible_population, "profile.source.accessible_population"
-            ),
+            _declaration(self.accessible_population, "profile.source.accessible_population"),
         )
 
     @classmethod
@@ -219,9 +204,7 @@ class ProfileSource:
             system=_declaration(data["system"], f"{path}.system"),
             locator=_declaration(data["locator"], f"{path}.locator"),
             adapter_id=_identifier(data["adapter_id"], f"{path}.adapter_id"),
-            adapter_version=_immutable_version(
-                data["adapter_version"], f"{path}.adapter_version"
-            ),
+            adapter_version=_immutable_version(data["adapter_version"], f"{path}.adapter_version"),
             authorization_context_id=authorization_context_identifier(
                 data["authorization_context_id"],
                 f"{path}.authorization_context_id",
@@ -252,7 +235,9 @@ class ProfileApplicability:
     detection_assumptions: tuple[str, ...]
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "target", _declaration(self.target, "profile.applicability.target"))
+        object.__setattr__(
+            self, "target", _declaration(self.target, "profile.applicability.target")
+        )
         object.__setattr__(
             self, "predicate", _declaration(self.predicate, "profile.applicability.predicate")
         )
@@ -284,9 +269,7 @@ class ProfileApplicability:
         )
 
     @classmethod
-    def from_dict(
-        cls, value: Any, path: str = "profile.applicability"
-    ) -> "ProfileApplicability":
+    def from_dict(cls, value: Any, path: str = "profile.applicability") -> "ProfileApplicability":
         data = _mapping(value, path)
         allowed = {
             "target",
@@ -339,16 +322,10 @@ class ProfileCoverage:
 
     def __post_init__(self) -> None:
         if self.population_basis is not PopulationBasis.EXACT:
-            raise ModelValidationError(
-                "profile.coverage.population_basis must be EXACT"
-            )
+            raise ModelValidationError("profile.coverage.population_basis must be EXACT")
         _nonnegative_int(self.population_units, "profile.coverage.population_units")
-        _optional_nonnegative_int(
-            self.pages_expected, "profile.coverage.pages_expected"
-        )
-        _optional_nonnegative_int(
-            self.partitions_expected, "profile.coverage.partitions_expected"
-        )
+        _optional_nonnegative_int(self.pages_expected, "profile.coverage.pages_expected")
+        _optional_nonnegative_int(self.partitions_expected, "profile.coverage.partitions_expected")
         _strict_bool(self.permission_limited, "profile.coverage.permission_limited")
         _nonnegative_int(self.retention_seconds, "profile.coverage.retention_seconds")
         _nonnegative_int(
@@ -366,9 +343,7 @@ class ProfileCoverage:
         if isinstance(self.blind_intervals, (str, bytes)) or not isinstance(
             self.blind_intervals, Sequence
         ):
-            raise ModelValidationError(
-                "profile.coverage.blind_intervals must be an array"
-            )
+            raise ModelValidationError("profile.coverage.blind_intervals must be an array")
         intervals = tuple(self.blind_intervals)
         if any(not isinstance(item, BlindInterval) for item in intervals):
             raise ModelValidationError(
@@ -386,9 +361,7 @@ class ProfileCoverage:
         )
 
     @classmethod
-    def from_dict(
-        cls, value: Any, path: str = "profile.coverage"
-    ) -> "ProfileCoverage":
+    def from_dict(cls, value: Any, path: str = "profile.coverage") -> "ProfileCoverage":
         data = _mapping(value, path)
         allowed = {
             "population_basis",
@@ -406,19 +379,13 @@ class ProfileCoverage:
         try:
             basis = PopulationBasis(data["population_basis"])
         except (TypeError, ValueError) as exc:
-            raise ModelValidationError(
-                f"{path}.population_basis must be EXACT"
-            ) from exc
+            raise ModelValidationError(f"{path}.population_basis must be EXACT") from exc
         raw_intervals = data["blind_intervals"]
-        if isinstance(raw_intervals, (str, bytes)) or not isinstance(
-            raw_intervals, Sequence
-        ):
+        if isinstance(raw_intervals, (str, bytes)) or not isinstance(raw_intervals, Sequence):
             raise ModelValidationError(f"{path}.blind_intervals must be an array")
         return cls(
             population_basis=basis,
-            population_units=_nonnegative_int(
-                data["population_units"], f"{path}.population_units"
-            ),
+            population_units=_nonnegative_int(data["population_units"], f"{path}.population_units"),
             pages_expected=_optional_nonnegative_int(
                 data["pages_expected"], f"{path}.pages_expected"
             ),
@@ -467,9 +434,7 @@ class ProfileFinality:
 
     def __post_init__(self) -> None:
         if self.method != FINALITY_METHOD:
-            raise ModelValidationError(
-                f"profile.finality.method must be {FINALITY_METHOD}"
-            )
+            raise ModelValidationError(f"profile.finality.method must be {FINALITY_METHOD}")
         _nonnegative_int(
             self.late_arrival_bound_seconds,
             "profile.finality.late_arrival_bound_seconds",
@@ -480,9 +445,7 @@ class ProfileFinality:
         )
 
     @classmethod
-    def from_dict(
-        cls, value: Any, path: str = "profile.finality"
-    ) -> "ProfileFinality":
+    def from_dict(cls, value: Any, path: str = "profile.finality") -> "ProfileFinality":
         data = _mapping(value, path)
         allowed = {
             "method",
@@ -540,9 +503,7 @@ class CoverageFinalityProfile:
             "approval_authority_id",
             "issuer_id",
         ):
-            object.__setattr__(
-                self, name, _identifier(getattr(self, name), f"profile.{name}")
-            )
+            object.__setattr__(self, name, _identifier(getattr(self, name), f"profile.{name}"))
         object.__setattr__(
             self,
             "profile_version",
@@ -568,9 +529,7 @@ class CoverageFinalityProfile:
         if not isinstance(self.source, ProfileSource):
             raise ModelValidationError("profile.source must be ProfileSource")
         if not isinstance(self.applicability, ProfileApplicability):
-            raise ModelValidationError(
-                "profile.applicability must be ProfileApplicability"
-            )
+            raise ModelValidationError("profile.applicability must be ProfileApplicability")
         if not isinstance(self.coverage, ProfileCoverage):
             raise ModelValidationError("profile.coverage must be ProfileCoverage")
         if not isinstance(self.finality, ProfileFinality):
@@ -604,31 +563,21 @@ class CoverageFinalityProfile:
         return cls(
             profile_schema=schema,
             profile_id=_identifier(data["profile_id"], f"{path}.profile_id"),
-            profile_version=_immutable_version(
-                data["profile_version"], f"{path}.profile_version"
-            ),
-            source_owner_id=_identifier(
-                data["source_owner_id"], f"{path}.source_owner_id"
-            ),
+            profile_version=_immutable_version(data["profile_version"], f"{path}.profile_version"),
+            source_owner_id=_identifier(data["source_owner_id"], f"{path}.source_owner_id"),
             approval_authority_id=_identifier(
                 data["approval_authority_id"], f"{path}.approval_authority_id"
             ),
             issuer_id=_identifier(data["issuer_id"], f"{path}.issuer_id"),
             issued_at=parse_datetime(data["issued_at"], f"{path}.issued_at"),
-            effective_at=parse_datetime(
-                data["effective_at"], f"{path}.effective_at"
-            ),
+            effective_at=parse_datetime(data["effective_at"], f"{path}.effective_at"),
             expires_at=parse_datetime(data["expires_at"], f"{path}.expires_at"),
             source=ProfileSource.from_dict(data["source"], f"{path}.source"),
             applicability=ProfileApplicability.from_dict(
                 data["applicability"], f"{path}.applicability"
             ),
-            coverage=ProfileCoverage.from_dict(
-                data["coverage"], f"{path}.coverage"
-            ),
-            finality=ProfileFinality.from_dict(
-                data["finality"], f"{path}.finality"
-            ),
+            coverage=ProfileCoverage.from_dict(data["coverage"], f"{path}.coverage"),
+            finality=ProfileFinality.from_dict(data["finality"], f"{path}.finality"),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -674,25 +623,19 @@ class ProfileRegistryRecord:
         if self.profile_digest is None:
             object.__setattr__(self, "profile_digest", expected_digest)
         else:
-            supplied = _sha256_digest(
-                self.profile_digest, "registry_record.profile_digest"
-            )
+            supplied = _sha256_digest(self.profile_digest, "registry_record.profile_digest")
             if not compare_digest(supplied, expected_digest):
                 raise ModelValidationError(
                     "registry_record.profile_digest does not match the canonical profile"
                 )
             object.__setattr__(self, "profile_digest", supplied)
         if not isinstance(self.status, ProfileRegistryStatus):
-            raise ModelValidationError(
-                "registry_record.status must be ACTIVE or REVOKED"
-            )
+            raise ModelValidationError("registry_record.status must be ACTIVE or REVOKED")
         if self.revoked_at is not None:
             object.__setattr__(
                 self,
                 "revoked_at",
-                _validate_aware_datetime(
-                    self.revoked_at, "registry_record.revoked_at"
-                ),
+                _validate_aware_datetime(self.revoked_at, "registry_record.revoked_at"),
             )
         if self.revocation_effective_at is not None:
             object.__setattr__(
@@ -726,9 +669,7 @@ class ProfileRegistryRecord:
         if self.status is ProfileRegistryStatus.REVOKED and any(
             item is None for item in revocation_values
         ):
-            raise ModelValidationError(
-                "REVOKED registry records require all revocation fields"
-            )
+            raise ModelValidationError("REVOKED registry records require all revocation fields")
         if (
             self.status is ProfileRegistryStatus.REVOKED
             and self.revocation_effective_at is not None
@@ -740,9 +681,7 @@ class ProfileRegistryRecord:
             )
 
     @classmethod
-    def from_dict(
-        cls, value: Any, path: str = "registry_record"
-    ) -> "ProfileRegistryRecord":
+    def from_dict(cls, value: Any, path: str = "registry_record") -> "ProfileRegistryRecord":
         data = _mapping(value, path)
         allowed = {
             "profile",
@@ -759,12 +698,8 @@ class ProfileRegistryRecord:
         except (TypeError, ValueError) as exc:
             raise ModelValidationError(f"{path}.status must be ACTIVE or REVOKED") from exc
         return cls(
-            profile=CoverageFinalityProfile.from_dict(
-                data["profile"], f"{path}.profile"
-            ),
-            profile_digest=_sha256_digest(
-                data["profile_digest"], f"{path}.profile_digest"
-            ),
+            profile=CoverageFinalityProfile.from_dict(data["profile"], f"{path}.profile"),
+            profile_digest=_sha256_digest(data["profile_digest"], f"{path}.profile_digest"),
             status=status,
             revoked_at=optional_datetime(data["revoked_at"], f"{path}.revoked_at"),
             revocation_effective_at=optional_datetime(
@@ -817,40 +752,28 @@ class ProfileRegistrySnapshot:
                 "snapshot.snapshot_schema must identify the supported snapshot contract"
             )
         for name in ("registry_id", "snapshot_id", "issuer_id"):
-            object.__setattr__(
-                self, name, _identifier(getattr(self, name), f"snapshot.{name}")
-            )
+            object.__setattr__(self, name, _identifier(getattr(self, name), f"snapshot.{name}"))
         object.__setattr__(
             self,
             "snapshot_version",
             _immutable_version(self.snapshot_version, "snapshot.snapshot_version"),
         )
-        object.__setattr__(
-            self, "as_of", _validate_aware_datetime(self.as_of, "snapshot.as_of")
-        )
+        object.__setattr__(self, "as_of", _validate_aware_datetime(self.as_of, "snapshot.as_of"))
         object.__setattr__(
             self,
             "next_update_at",
-            _validate_aware_datetime(
-                self.next_update_at, "snapshot.next_update_at"
-            ),
+            _validate_aware_datetime(self.next_update_at, "snapshot.next_update_at"),
         )
         if self.as_of >= self.next_update_at:
             raise ModelValidationError("snapshot.as_of must precede next_update_at")
         if self.records is None:
             raise ModelValidationError("snapshot.records must be an array, not null")
-        if isinstance(self.records, (str, bytes)) or not isinstance(
-            self.records, Sequence
-        ):
+        if isinstance(self.records, (str, bytes)) or not isinstance(self.records, Sequence):
             raise ModelValidationError("snapshot.records must be an array")
         records = tuple(self.records)
         if any(not isinstance(item, ProfileRegistryRecord) for item in records):
-            raise ModelValidationError(
-                "snapshot.records must contain ProfileRegistryRecord values"
-            )
-        identities = [
-            (item.profile.profile_id, item.profile.profile_version) for item in records
-        ]
+            raise ModelValidationError("snapshot.records must contain ProfileRegistryRecord values")
+        identities = [(item.profile.profile_id, item.profile.profile_version) for item in records]
         if len(set(identities)) != len(identities):
             raise ModelValidationError(
                 "snapshot.records must map each profile_id/profile_version exactly once"
@@ -886,9 +809,7 @@ class ProfileRegistrySnapshot:
         if self.snapshot_digest is None:
             object.__setattr__(self, "snapshot_digest", expected_digest)
         else:
-            supplied = _sha256_digest(
-                self.snapshot_digest, "snapshot_digest"
-            )
+            supplied = _sha256_digest(self.snapshot_digest, "snapshot_digest")
             if not compare_digest(supplied, expected_digest):
                 raise ModelValidationError(
                     "snapshot_digest does not match the canonical snapshot payload"
@@ -920,27 +841,17 @@ class ProfileRegistrySnapshot:
                 f"{PROFILE_REGISTRY_SNAPSHOT_SCHEMA}"
             )
         raw_records = data["records"]
-        if isinstance(raw_records, (str, bytes)) or not isinstance(
-            raw_records, Sequence
-        ):
-            raise ModelValidationError(
-                "registry_snapshot.snapshot.records must be an array"
-            )
+        if isinstance(raw_records, (str, bytes)) or not isinstance(raw_records, Sequence):
+            raise ModelValidationError("registry_snapshot.snapshot.records must be an array")
         return cls(
             snapshot_schema=schema,
-            registry_id=_identifier(
-                data["registry_id"], "registry_snapshot.snapshot.registry_id"
-            ),
-            snapshot_id=_identifier(
-                data["snapshot_id"], "registry_snapshot.snapshot.snapshot_id"
-            ),
+            registry_id=_identifier(data["registry_id"], "registry_snapshot.snapshot.registry_id"),
+            snapshot_id=_identifier(data["snapshot_id"], "registry_snapshot.snapshot.snapshot_id"),
             snapshot_version=_immutable_version(
                 data["snapshot_version"],
                 "registry_snapshot.snapshot.snapshot_version",
             ),
-            issuer_id=_identifier(
-                data["issuer_id"], "registry_snapshot.snapshot.issuer_id"
-            ),
+            issuer_id=_identifier(data["issuer_id"], "registry_snapshot.snapshot.issuer_id"),
             as_of=parse_datetime(data["as_of"], "registry_snapshot.snapshot.as_of"),
             next_update_at=parse_datetime(
                 data["next_update_at"],
@@ -1004,20 +915,14 @@ class ProfileTrustSelection:
         object.__setattr__(
             self,
             "snapshot_version",
-            _immutable_version(
-                self.snapshot_version, "trust_selection.snapshot_version"
-            ),
+            _immutable_version(self.snapshot_version, "trust_selection.snapshot_version"),
         )
         object.__setattr__(
             self,
             "snapshot_digest",
-            _sha256_digest(
-                self.snapshot_digest, "trust_selection.snapshot_digest"
-            ),
+            _sha256_digest(self.snapshot_digest, "trust_selection.snapshot_digest"),
         )
-        if not isinstance(
-            self.selected_profile_reference, CoverageProfileReference
-        ):
+        if not isinstance(self.selected_profile_reference, CoverageProfileReference):
             raise ModelValidationError(
                 "trust_selection.selected_profile_reference must be a CoverageProfileReference"
             )
@@ -1033,9 +938,7 @@ class ProfileTrustSelection:
             object.__setattr__(
                 self,
                 name,
-                _required_identifier_tuple(
-                    getattr(self, name), f"trust_selection.{name}"
-                ),
+                _required_identifier_tuple(getattr(self, name), f"trust_selection.{name}"),
             )
         expected_digest = canonical_digest(self.payload_dict())
         if self.trust_selection_digest is None:
@@ -1075,12 +978,8 @@ class ProfileTrustSelection:
             )
         return cls(
             trust_schema=schema,
-            registry_id=_identifier(
-                data["registry_id"], "trust_selection.registry_id"
-            ),
-            snapshot_id=_identifier(
-                data["snapshot_id"], "trust_selection.snapshot_id"
-            ),
+            registry_id=_identifier(data["registry_id"], "trust_selection.registry_id"),
+            snapshot_id=_identifier(data["snapshot_id"], "trust_selection.snapshot_id"),
             snapshot_version=_immutable_version(
                 data["snapshot_version"], "trust_selection.snapshot_version"
             ),
@@ -1119,9 +1018,7 @@ class ProfileTrustSelection:
             "selected_profile_reference": self.selected_profile_reference.to_dict(),
             "trusted_snapshot_issuer_ids": list(self.trusted_snapshot_issuer_ids),
             "trusted_profile_issuer_ids": list(self.trusted_profile_issuer_ids),
-            "trusted_approval_authority_ids": list(
-                self.trusted_approval_authority_ids
-            ),
+            "trusted_approval_authority_ids": list(self.trusted_approval_authority_ids),
         }
 
     def to_dict(self) -> dict[str, Any]:
@@ -1192,14 +1089,10 @@ class ProfileIssueCode(str, Enum):
     PROFILE_AUTHORIZATION_MISMATCH = "PROFILE_AUTHORIZATION_MISMATCH"
     PROFILE_POPULATION_MISMATCH = "PROFILE_POPULATION_MISMATCH"
     PROFILE_QUERY_APPLICABILITY_MISMATCH = "PROFILE_QUERY_APPLICABILITY_MISMATCH"
-    PROFILE_DETECTION_ASSUMPTIONS_MISMATCH = (
-        "PROFILE_DETECTION_ASSUMPTIONS_MISMATCH"
-    )
+    PROFILE_DETECTION_ASSUMPTIONS_MISMATCH = "PROFILE_DETECTION_ASSUMPTIONS_MISMATCH"
     PROFILE_COVERAGE_BASIS_MISMATCH = "PROFILE_COVERAGE_BASIS_MISMATCH"
     PROFILE_RETENTION_EXCEEDED = "PROFILE_RETENTION_EXCEEDED"
-    PROFILE_BLIND_INTERVAL_INTERSECTS_QUERY = (
-        "PROFILE_BLIND_INTERVAL_INTERSECTS_QUERY"
-    )
+    PROFILE_BLIND_INTERVAL_INTERSECTS_QUERY = "PROFILE_BLIND_INTERVAL_INTERSECTS_QUERY"
     PROFILE_OBSERVATION_TOO_OLD = "PROFILE_OBSERVATION_TOO_OLD"
     PROFILE_INDEX_TOO_OLD = "PROFILE_INDEX_TOO_OLD"
     FINALITY_HORIZON_PROFILE_MISMATCH = "FINALITY_HORIZON_PROFILE_MISMATCH"
@@ -1215,9 +1108,7 @@ class ProfileIssue:
     def __post_init__(self) -> None:
         if not isinstance(self.code, ProfileIssueCode):
             raise ModelValidationError("profile_issue.code must be ProfileIssueCode")
-        object.__setattr__(
-            self, "detail", _declaration(self.detail, "profile_issue.detail")
-        )
+        object.__setattr__(self, "detail", _declaration(self.detail, "profile_issue.detail"))
         if self.source_id is not None:
             object.__setattr__(
                 self,
@@ -1252,9 +1143,7 @@ class ProfileAssessment:
         if not isinstance(self.meets_policy, bool):
             raise ModelValidationError("profile_assessment.meets_policy must be boolean")
         if any(not isinstance(item, ProfileIssue) for item in self.issues):
-            raise ModelValidationError(
-                "profile_assessment.issues must contain ProfileIssue values"
-            )
+            raise ModelValidationError("profile_assessment.issues must contain ProfileIssue values")
         if any(
             not isinstance(item, CoverageProfileReference)
             for item in self.resolved_profile_references
@@ -1350,9 +1239,7 @@ def evaluate_profile_governance(
                 "profile evaluation context must be TrustedProfileContext or null"
             )
         context = TrustedProfileContext.from_dict(context.to_dict())
-    evaluation_time = _validate_aware_datetime(
-        evaluated_at, "profile_evaluation.evaluated_at"
-    )
+    evaluation_time = _validate_aware_datetime(evaluated_at, "profile_evaluation.evaluated_at")
     issues: list[ProfileIssue] = []
     issue_keys: set[tuple[ProfileIssueCode, str | None, str | None]] = set()
     resolved: list[CoverageProfileReference] = []
@@ -1453,8 +1340,7 @@ def evaluate_profile_governance(
         )
 
     observations_by_id = {
-        observation.source_id: observation
-        for observation in envelope.source_observations
+        observation.source_id: observation for observation in envelope.source_observations
     }
     coverage = envelope.coverage
     query = envelope.query
@@ -1519,10 +1405,7 @@ def evaluate_profile_governance(
                 profile_id=profile.profile_id,
             )
             profile_is_trusted = False
-        if (
-            profile.approval_authority_id
-            not in trust.trusted_approval_authority_ids
-        ):
+        if profile.approval_authority_id not in trust.trusted_approval_authority_ids:
             add_issue(
                 ProfileIssueCode.PROFILE_AUTHORITY_UNTRUSTED,
                 "The profile approval authority is not present in the application trust selection.",
@@ -1591,12 +1474,9 @@ def evaluate_profile_governance(
                 profile_id=profile.profile_id,
             )
         if (
-            requirement.authorization_context_id
-            != profile_source.authorization_context_id
-            or query.authorization_context_id
-            != profile_source.authorization_context_id
-            or query.authorization_boundary
-            != profile.applicability.authorization_boundary
+            requirement.authorization_context_id != profile_source.authorization_context_id
+            or query.authorization_context_id != profile_source.authorization_context_id
+            or query.authorization_boundary != profile.applicability.authorization_boundary
             or coverage.permission_limited != profile.coverage.permission_limited
         ):
             add_issue(
@@ -1615,9 +1495,7 @@ def evaluate_profile_governance(
         if (
             query.target != profile.applicability.target
             or query.predicate != profile.applicability.predicate
-            or not set(profile.applicability.required_exclusions).issubset(
-                query.exclusions
-            )
+            or not set(profile.applicability.required_exclusions).issubset(query.exclusions)
         ):
             add_issue(
                 ProfileIssueCode.PROFILE_QUERY_APPLICABILITY_MISMATCH,
@@ -1625,10 +1503,7 @@ def evaluate_profile_governance(
                 source_id=requirement.source_id,
                 profile_id=profile.profile_id,
             )
-        if (
-            tuple(requirement.detection_assumptions)
-            != profile.applicability.detection_assumptions
-        ):
+        if tuple(requirement.detection_assumptions) != profile.applicability.detection_assumptions:
             add_issue(
                 ProfileIssueCode.PROFILE_DETECTION_ASSUMPTIONS_MISMATCH,
                 "The required detection assumptions do not exactly match the profile.",
@@ -1649,9 +1524,7 @@ def evaluate_profile_governance(
             )
 
         for interval in profile.coverage.blind_intervals:
-            if _query_intersects_blind_interval(
-                query.time_start, query.time_end, interval
-            ):
+            if _query_intersects_blind_interval(query.time_start, query.time_end, interval):
                 add_issue(
                     ProfileIssueCode.PROFILE_BLIND_INTERVAL_INTERSECTS_QUERY,
                     "The inclusive query interval intersects a governed closed-open blind interval.",
@@ -1696,10 +1569,7 @@ def evaluate_profile_governance(
                     source_id=requirement.source_id,
                     profile_id=profile.profile_id,
                 )
-            if (
-                observation.authorization_context_id
-                != profile_source.authorization_context_id
-            ):
+            if observation.authorization_context_id != profile_source.authorization_context_id:
                 add_issue(
                     ProfileIssueCode.PROFILE_AUTHORIZATION_MISMATCH,
                     "The runtime authorization context does not exactly match the profile.",
@@ -1708,8 +1578,7 @@ def evaluate_profile_governance(
                 )
             if (
                 observation.status is SourceObservationStatus.OBSERVED
-                and observation.accessible_population
-                != profile_source.accessible_population
+                and observation.accessible_population != profile_source.accessible_population
             ):
                 add_issue(
                     ProfileIssueCode.PROFILE_POPULATION_MISMATCH,
@@ -1720,12 +1589,9 @@ def evaluate_profile_governance(
             index_as_of = descriptor.index_as_of
 
         if index_as_of is not None:
-            if (
-                index_as_of >= query.time_start
-                and _timedelta_exceeds_seconds(
-                    index_as_of - query.time_start,
-                    profile.coverage.retention_seconds,
-                )
+            if index_as_of >= query.time_start and _timedelta_exceeds_seconds(
+                index_as_of - query.time_start,
+                profile.coverage.retention_seconds,
             ):
                 add_issue(
                     ProfileIssueCode.PROFILE_RETENTION_EXCEEDED,

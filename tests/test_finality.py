@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import unittest
 from copy import deepcopy
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
-import unittest
 
 from evidence_state_io import (
     GateReason,
@@ -13,14 +13,12 @@ from evidence_state_io import (
     evaluate_negative_claim,
 )
 from evidence_state_io.models import datetime_to_json
-
 from tests.helpers import (
     refresh_query_fingerprints,
     request,
     request_dict,
     trusted_context,
 )
-
 
 UTC = timezone.utc
 
@@ -47,9 +45,7 @@ def bind_horizon(data, value):
 
 
 def evaluate(data):
-    return evaluate_negative_claim(
-        NegativeClaimRequest.from_dict(data), trusted_context()
-    )
+    return evaluate_negative_claim(NegativeClaimRequest.from_dict(data), trusted_context())
 
 
 def set_timeline(
@@ -264,12 +260,12 @@ class FinalityContractTests(unittest.TestCase):
 
         self.assertEqual(utc_request, offset_request)
         self.assertEqual(
-            utc_request.envelope.query.source_requirements[0].to_dict()[
-                "finality_horizon"
-            ],
+            utc_request.envelope.query.source_requirements[0].to_dict()["finality_horizon"],
             "2026-08-21T12:00:00Z",
         )
-        self.assertEqual(utc_request.envelope.query.fingerprint(), offset_request.envelope.query.fingerprint())
+        self.assertEqual(
+            utc_request.envelope.query.fingerprint(), offset_request.envelope.query.fingerprint()
+        )
         self.assertEqual(utc_result.input_digest, offset_result.input_digest)
 
     def test_horizon_mutation_requires_rebinding_and_changes_fingerprint_and_digest(self) -> None:
@@ -400,8 +396,7 @@ class FinalityContractTests(unittest.TestCase):
         base = request()
         declared = replace(
             base.envelope.query.source_requirements[0],
-            finality_horizon=base.envelope.query.time_end
-            - timedelta(microseconds=1),
+            finality_horizon=base.envelope.query.time_end - timedelta(microseconds=1),
         )
         with self.assertRaisesRegex(
             ModelValidationError,

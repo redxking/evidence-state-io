@@ -9,14 +9,14 @@ or wall-clock reads.
 
 from __future__ import annotations
 
+import json
+import math
+import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import Decimal
 from enum import Enum
 from hmac import compare_digest
-import json
-import math
-import re
 from typing import Any, Mapping, Sequence
 
 from .canonical import (
@@ -53,15 +53,12 @@ from .models import (
 from .profiles import ProfileIssueCode, TrustedProfileContext
 from .sources import SourceIssueCode
 
-
 CERTIFICATE_FORMAT = "esio-evidence-certificate/1.0-candidate.2"
 WIRE_SCHEMA_VERSION = "1.0"
 IMPLEMENTATION_PACKAGE_NAME = "evidence-state-io"
 
 _REVISION_PATTERN = re.compile(r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
-_VERSION_PATTERN = re.compile(
-    r"^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9a-z]+(?:[.-][0-9a-z]+)*)?$"
-)
+_VERSION_PATTERN = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9a-z]+(?:[.-][0-9a-z]+)*)?$")
 
 
 class EvidenceOrigin(str, Enum):
@@ -93,9 +90,7 @@ class ImplementationIdentity:
     working_tree_state: WorkingTreeState
 
     def __post_init__(self) -> None:
-        package_name = bounded_ascii_identifier(
-            self.package_name, "implementation.package_name"
-        )
+        package_name = bounded_ascii_identifier(self.package_name, "implementation.package_name")
         if package_name != IMPLEMENTATION_PACKAGE_NAME:
             raise ModelValidationError(
                 "implementation.package_name must identify evidence-state-io"
@@ -182,9 +177,7 @@ class CertificateContextBinding:
             object.__setattr__(
                 self,
                 name,
-                bounded_ascii_identifier(
-                    getattr(self, name), f"context_binding.{name}"
-                ),
+                bounded_ascii_identifier(getattr(self, name), f"context_binding.{name}"),
             )
         for name in (
             "context_digest",
@@ -246,16 +239,12 @@ class CertificateContextBinding:
         _reject_unknown(data, allowed, "context_binding")
         _require_fields(data, allowed, "context_binding")
         raw_references = data["resolved_profile_references"]
-        if isinstance(raw_references, (str, bytes)) or not isinstance(
-            raw_references, Sequence
-        ):
+        if isinstance(raw_references, (str, bytes)) or not isinstance(raw_references, Sequence):
             raise ModelValidationError(
                 "context_binding.resolved_profile_references must be an array"
             )
         return cls(
-            context_digest=_sha256_digest(
-                data["context_digest"], "context_binding.context_digest"
-            ),
+            context_digest=_sha256_digest(data["context_digest"], "context_binding.context_digest"),
             registry_id=data["registry_id"],
             snapshot_id=data["snapshot_id"],
             snapshot_version=data["snapshot_version"],
@@ -348,15 +337,9 @@ def _normalized_json_copy(value: Any, path: str = "decision") -> Any:
     if isinstance(value, Mapping):
         if any(type(key) is not str for key in value):
             raise ModelValidationError(f"{path} object keys must be plain strings")
-        return {
-            key: _normalized_json_copy(item, f"{path}.{key}")
-            for key, item in value.items()
-        }
+        return {key: _normalized_json_copy(item, f"{path}.{key}") for key, item in value.items()}
     if isinstance(value, list):
-        return [
-            _normalized_json_copy(item, f"{path}[{index}]")
-            for index, item in enumerate(value)
-        ]
+        return [_normalized_json_copy(item, f"{path}[{index}]") for index, item in enumerate(value)]
     return value
 
 
@@ -386,9 +369,7 @@ def _validate_coverage_assessment(value: Any) -> None:
         _reject_unknown(component, fields, f"decision.coverage.components[{index}]")
         _require_fields(component, fields, f"decision.coverage.components[{index}]")
         if type(component["name"]) is not str or type(component["basis"]) is not str:
-            raise ModelValidationError(
-                "decision coverage component name and basis must be strings"
-            )
+            raise ModelValidationError("decision coverage component name and basis must be strings")
         _unit_interval_number(
             component["lower_bound"],
             f"decision.coverage.components[{index}].lower_bound",
@@ -418,13 +399,9 @@ def _validate_source_assessment(value: Any) -> None:
                 f"decision.source_accounting.{name} must not contain duplicates"
             )
         for index, item in enumerate(values):
-            bounded_ascii_identifier(
-                item, f"decision.source_accounting.{name}[{index}]"
-            )
+            bounded_ascii_identifier(item, f"decision.source_accounting.{name}[{index}]")
     if not isinstance(data["meets_policy"], bool):
-        raise ModelValidationError(
-            "decision.source_accounting.meets_policy must be boolean"
-        )
+        raise ModelValidationError("decision.source_accounting.meets_policy must be boolean")
     seen: set[tuple[str, str]] = set()
     for index, raw_issue in enumerate(
         _required_sequence(data["issues"], "decision.source_accounting.issues")
@@ -434,9 +411,7 @@ def _validate_source_assessment(value: Any) -> None:
         _reject_unknown(issue, fields, f"decision.source_accounting.issues[{index}]")
         _require_fields(issue, fields, f"decision.source_accounting.issues[{index}]")
         if issue["code"] not in {item.value for item in SourceIssueCode}:
-            raise ModelValidationError(
-                "decision.source_accounting issue has an unknown code"
-            )
+            raise ModelValidationError("decision.source_accounting issue has an unknown code")
         source_id = bounded_ascii_identifier(
             issue["source_id"],
             f"decision.source_accounting.issues[{index}].source_id",
@@ -517,13 +492,9 @@ def _validated_decision_dict(value: Any) -> dict[str, Any]:
     _require_fields(data, allowed, "decision")
     if not isinstance(data["allowed"], bool):
         raise ModelValidationError("decision.allowed must be boolean")
-    expected_disposition = (
-        "PERMIT_SCOPED_NEGATIVE" if data["allowed"] else "REJECT_NEGATIVE"
-    )
+    expected_disposition = "PERMIT_SCOPED_NEGATIVE" if data["allowed"] else "REJECT_NEGATIVE"
     if data["decision"] != expected_disposition:
-        raise ModelValidationError(
-            "decision disposition must agree with the allowed field"
-        )
+        raise ModelValidationError("decision disposition must agree with the allowed field")
     reasons = _string_array(data["reasons"], "decision.reasons")
     if any(item not in {reason.value for reason in GateReason} for item in reasons):
         raise ModelValidationError("decision.reasons contains an unknown reason code")
@@ -532,18 +503,14 @@ def _validated_decision_dict(value: Any) -> dict[str, Any]:
     _validate_coverage_assessment(data["coverage"])
     _validate_source_assessment(data["source_accounting"])
     _validate_profile_assessment(data["profile"])
-    if data["qualified_claim"] is not None and not isinstance(
-        data["qualified_claim"], str
-    ):
+    if data["qualified_claim"] is not None and not isinstance(data["qualified_claim"], str):
         raise ModelValidationError("decision.qualified_claim must be a string or null")
     _string_array(data["limitations"], "decision.limitations")
     _sha256_digest(data["input_digest"], "decision.input_digest")
     if type(data["canonicalization_profile"]) is not str or not compare_digest(
         data["canonicalization_profile"], CANONICALIZATION_PROFILE
     ):
-        raise ModelValidationError(
-            "decision.canonicalization_profile is not supported"
-        )
+        raise ModelValidationError("decision.canonicalization_profile is not supported")
     if type(data["digest_algorithm"]) is not str or not compare_digest(
         data["digest_algorithm"], DIGEST_ALGORITHM
     ):
@@ -632,18 +599,12 @@ class EvidenceCertificatePayload:
                 _validate_aware_datetime(getattr(self, name), f"certificate.{name}"),
             )
         if self.issued_at < self.evaluated_at:
-            raise ModelValidationError(
-                "certificate.issued_at must not precede evaluated_at"
-            )
+            raise ModelValidationError("certificate.issued_at must not precede evaluated_at")
         if type(self.evidence_origin) is not EvidenceOrigin:
-            raise ModelValidationError(
-                "certificate.evidence_origin must be an EvidenceOrigin"
-            )
+            raise ModelValidationError("certificate.evidence_origin must be an EvidenceOrigin")
         object.__setattr__(self, "decision", _validated_decision_dict(self.decision))
         if type(self.implementation) is not ImplementationIdentity:
-            raise ModelValidationError(
-                "certificate.implementation must be ImplementationIdentity"
-            )
+            raise ModelValidationError("certificate.implementation must be ImplementationIdentity")
 
     @classmethod
     def from_dict(cls, value: Any) -> "EvidenceCertificatePayload":
@@ -674,9 +635,7 @@ class EvidenceCertificatePayload:
         try:
             origin = EvidenceOrigin(data["evidence_origin"])
         except (TypeError, ValueError) as exc:
-            raise ModelValidationError(
-                "certificate.evidence_origin is not supported"
-            ) from exc
+            raise ModelValidationError("certificate.evidence_origin is not supported") from exc
         return cls(
             certificate_format=data["certificate_format"],
             canonicalization_profile=data["canonicalization_profile"],
@@ -685,9 +644,7 @@ class EvidenceCertificatePayload:
             evaluation_input_schema=data["evaluation_input_schema"],
             policy_id=data["policy_id"],
             policy_version=data["policy_version"],
-            policy_digest=_sha256_digest(
-                data["policy_digest"], "certificate.policy_digest"
-            ),
+            policy_digest=_sha256_digest(data["policy_digest"], "certificate.policy_digest"),
             evaluator_version=data["evaluator_version"],
             request=NegativeClaimRequest.from_dict(data["request"]),
             evaluation_input_digest=_sha256_digest(
@@ -697,9 +654,7 @@ class EvidenceCertificatePayload:
             trusted_profile_context=TrustedProfileContext.from_dict(
                 data["trusted_profile_context"]
             ),
-            context_binding=CertificateContextBinding.from_dict(
-                data["context_binding"]
-            ),
+            context_binding=CertificateContextBinding.from_dict(data["context_binding"]),
             evaluated_at=parse_datetime(data["evaluated_at"], "certificate.evaluated_at"),
             issued_at=parse_datetime(data["issued_at"], "certificate.issued_at"),
             effective_valid_until_exclusive=parse_datetime(
@@ -911,9 +866,7 @@ def build_evidence_certificate(
     if type(origin) is not EvidenceOrigin:
         raise ModelValidationError("certificate origin must be an EvidenceOrigin")
     if type(implementation) is not ImplementationIdentity:
-        raise ModelValidationError(
-            "certificate implementation must be ImplementationIdentity"
-        )
+        raise ModelValidationError("certificate implementation must be ImplementationIdentity")
     # Reparse typed values before evaluation or emission.  This prevents
     # post-construction mutation from bypassing the strict public contracts and
     # keeps rejected credential-like content out of certificate payloads.
@@ -922,9 +875,7 @@ def build_evidence_certificate(
     implementation = ImplementationIdentity.from_dict(implementation.to_dict())
     issuance_time = _validate_aware_datetime(issued_at, "certificate.issued_at")
     if issuance_time < request.evaluated_at:
-        raise ModelValidationError(
-            "certificate.issued_at must not precede request.evaluated_at"
-        )
+        raise ModelValidationError("certificate.issued_at must not precede request.evaluated_at")
     decision = evaluate_negative_claim(request, context)
     input_digest = _evaluation_input_digest(request, context)
     if not compare_digest(decision.input_digest, input_digest):
@@ -1076,15 +1027,11 @@ def verify_evidence_certificate(
 
     if expected_context is not None:
         if type(expected_context) is not TrustedProfileContext:
-            raise ModelValidationError(
-                "expected_context must be TrustedProfileContext or null"
-            )
+            raise ModelValidationError("expected_context must be TrustedProfileContext or null")
         expected_context = TrustedProfileContext.from_dict(expected_context.to_dict())
     reliance_time = None
     if relying_party_at is not None:
-        reliance_time = _validate_aware_datetime(
-            relying_party_at, "relying_party_at"
-        )
+        reliance_time = _validate_aware_datetime(relying_party_at, "relying_party_at")
     try:
         # Typed artifacts contain a nested mapping.  Reparse their public form
         # so mutable nested values cannot bypass the same strict structural and
@@ -1096,20 +1043,16 @@ def verify_evidence_certificate(
         return _unsupported_verification(str(exc))
     payload = artifact.certificate
     recomputed_digest = artifact.recomputed_digest
-    outer_integrity = compare_digest(
-        recomputed_digest, artifact.certificate_digest
-    )
+    outer_integrity = compare_digest(recomputed_digest, artifact.certificate_digest)
     try:
         embedded_integrity = _embedded_integrity(payload)
     except (ModelValidationError, KeyError, TypeError, ValueError):
         embedded_integrity = False
     try:
-        replayed = evaluate_negative_claim(
-            payload.request, payload.trusted_profile_context
+        replayed = evaluate_negative_claim(payload.request, payload.trusted_profile_context)
+        deterministic_replay = canonical_json_bytes(replayed.to_dict()) == canonical_json_bytes(
+            payload.decision
         )
-        deterministic_replay = canonical_json_bytes(
-            replayed.to_dict()
-        ) == canonical_json_bytes(payload.decision)
     except (ModelValidationError, KeyError, TypeError, ValueError):
         deterministic_replay = False
 
@@ -1139,9 +1082,7 @@ def verify_evidence_certificate(
         except ModelValidationError:
             expected_digest_match = False
         else:
-            expected_digest_match = compare_digest(
-                normalized_expected_digest, recomputed_digest
-            )
+            expected_digest_match = compare_digest(normalized_expected_digest, recomputed_digest)
 
     historical_reproducibility = deterministic_replay
     current_reliance: bool | None = None
@@ -1157,9 +1098,7 @@ def verify_evidence_certificate(
             and context_match
             and expected_digest_match
             and payload.decision["allowed"] is True
-            and payload.issued_at
-            <= reliance_time
-            < payload.effective_valid_until_exclusive
+            and payload.issued_at <= reliance_time < payload.effective_valid_until_exclusive
         )
 
     issues: list[str] = []

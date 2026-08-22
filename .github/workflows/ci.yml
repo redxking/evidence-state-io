@@ -14,6 +14,54 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  quality:
+    name: Quality, contracts, and packaging
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONHASHSEED: "0"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install project and development dependencies
+        run: python -m pip install '.[dev]'
+
+      - name: Enforce formatting, linting, and typing
+        run: |
+          ruff check src tests scripts
+          ruff format --check src tests scripts
+          mypy src/evidence_state_io
+
+      - name: Enforce frozen core branch coverage
+        run: |
+          coverage run --branch -m pytest -p no:cacheprovider -q
+          coverage report --fail-under=90
+
+      - name: Verify browser-demo parity and repository checks
+        run: |
+          python scripts/build_site.py --output .site-build
+          node tests/test_site_demo.js
+          ./scripts/check.sh
+
+      - name: Build distributions
+        run: python -m build
+
+      - name: Verify wheel in isolation
+        run: |
+          python -m venv "${RUNNER_TEMP}/wheel-check"
+          "${RUNNER_TEMP}/wheel-check/bin/python" -m pip install dist/*.whl
+          env -u PYTHONPATH "${RUNNER_TEMP}/wheel-check/bin/evidence-state" demo --all > "${RUNNER_TEMP}/wheel-demo.json"
+
   test:
     name: Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest

@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from copy import deepcopy
-from dataclasses import replace
-from datetime import timedelta
 import unittest
+from dataclasses import replace
 
+from evidence_state_io.gate import NegativeClaimRequest, evaluate_negative_claim
 from evidence_state_io.models import (
     CoverageProfileReference,
     EvidenceEnvelope,
@@ -12,7 +11,6 @@ from evidence_state_io.models import (
     QueryScope,
     parse_datetime,
 )
-from evidence_state_io.gate import NegativeClaimRequest, evaluate_negative_claim
 from evidence_state_io.profiles import (
     COVERAGE_FINALITY_PROFILE_SCHEMA,
     FINALITY_METHOD,
@@ -29,7 +27,6 @@ from evidence_state_io.profiles import (
     TrustedProfileContext,
     evaluate_profile_governance,
 )
-
 from tests.helpers import refresh_query_fingerprints, request_dict
 
 
@@ -58,9 +55,7 @@ def _profile_dict() -> dict[str, object]:
             "predicate": "topic:evidence-state language:Python",
             "authorization_boundary": "public repositories visible to the adapter token",
             "required_exclusions": ["deleted repositories"],
-            "detection_assumptions": [
-                "repository is indexed by the declared search endpoint"
-            ],
+            "detection_assumptions": ["repository is indexed by the declared search endpoint"],
         },
         "coverage": {
             "population_basis": "EXACT",
@@ -98,9 +93,7 @@ def _context(
         profile=profile,
         profile_digest=None,
         status=status,
-        revoked_at=(
-            None if revoked_at is None else parse_datetime(revoked_at, "revoked_at")
-        ),
+        revoked_at=(None if revoked_at is None else parse_datetime(revoked_at, "revoked_at")),
         revocation_effective_at=(
             None
             if revocation_effective_at is None
@@ -126,9 +119,7 @@ def _context(
         snapshot_id=snapshot.snapshot_id,
         snapshot_version=snapshot.snapshot_version,
         snapshot_digest=(
-            snapshot.snapshot_digest
-            if pinned_snapshot_digest is None
-            else pinned_snapshot_digest
+            snapshot.snapshot_digest if pinned_snapshot_digest is None else pinned_snapshot_digest
         ),
         selected_profile_reference=CoverageProfileReference(
             registry_id=snapshot.registry_id,
@@ -270,9 +261,7 @@ class GovernedProfileModelTests(unittest.TestCase):
         for suffix in ("candidate.1", "candidate.999"):
             with self.subTest(contract="profile", suffix=suffix):
                 profile_data = _profile_dict()
-                profile_data["profile_schema"] = (
-                    f"esio-coverage-finality-profile/1.0-{suffix}"
-                )
+                profile_data["profile_schema"] = f"esio-coverage-finality-profile/1.0-{suffix}"
                 with self.assertRaisesRegex(ModelValidationError, "profile_schema"):
                     CoverageFinalityProfile.from_dict(profile_data)
 
@@ -286,9 +275,7 @@ class GovernedProfileModelTests(unittest.TestCase):
 
             with self.subTest(contract="trust", suffix=suffix):
                 trust_data = context.trust_selection.to_dict()
-                trust_data["trust_schema"] = (
-                    f"esio-profile-trust-selection/1.0-{suffix}"
-                )
+                trust_data["trust_schema"] = f"esio-profile-trust-selection/1.0-{suffix}"
                 with self.assertRaisesRegex(ModelValidationError, "trust_schema"):
                     ProfileTrustSelection.from_dict(trust_data)
 
@@ -326,12 +313,8 @@ class GovernedProfileModelTests(unittest.TestCase):
 
     def test_request_and_observation_reject_floating_adapter_version(self) -> None:
         data = request_dict()
-        data["envelope"]["query"]["source_requirements"][0][
-            "adapter_version"
-        ] = "latest"
-        data["envelope"]["source_observations"][0]["descriptor"][
-            "adapter_version"
-        ] = "latest"
+        data["envelope"]["query"]["source_requirements"][0]["adapter_version"] = "latest"
+        data["envelope"]["source_observations"][0]["descriptor"]["adapter_version"] = "latest"
         with self.assertRaisesRegex(ModelValidationError, "immutable version"):
             QueryScope.from_dict(data["envelope"]["query"])
 
@@ -353,9 +336,7 @@ class GovernedProfileModelTests(unittest.TestCase):
                 snapshot_version="1",
                 issuer_id="registry-publisher",
                 as_of=parse_datetime("2026-08-21T12:00:00Z", "as_of"),
-                next_update_at=parse_datetime(
-                    "2026-08-21T13:00:00Z", "next_update_at"
-                ),
+                next_update_at=parse_datetime("2026-08-21T13:00:00Z", "next_update_at"),
                 records=(record, record),
                 snapshot_digest=None,
             )
@@ -413,9 +394,7 @@ class GovernedProfileEvaluationTests(unittest.TestCase):
         )
 
     def test_missing_context_and_reference_fail_closed(self) -> None:
-        assessment = evaluate_profile_governance(
-            _envelope(None), _evaluated_at(), None
-        )
+        assessment = evaluate_profile_governance(_envelope(None), _evaluated_at(), None)
         self.assertEqual(
             [item.code for item in assessment.issues],
             [
@@ -712,9 +691,9 @@ class GovernedProfileEvaluationTests(unittest.TestCase):
             trust_selection_digest=None,
         )
         data = request_dict()
-        data["envelope"]["query"]["source_requirements"][0][
-            "profile_ref"
-        ] = wrong_reference.to_dict()
+        data["envelope"]["query"]["source_requirements"][0]["profile_ref"] = (
+            wrong_reference.to_dict()
+        )
         refresh_query_fingerprints(data)
         assessment = evaluate_profile_governance(
             EvidenceEnvelope.from_dict(data["envelope"]),
@@ -744,9 +723,7 @@ class GovernedProfileEvaluationTests(unittest.TestCase):
                     data["envelope"]["query"]["source_requirements"][0].update(
                         source_id="different-source"
                     ),
-                    data["envelope"]["source_observations"][0].update(
-                        source_id="different-source"
-                    ),
+                    data["envelope"]["source_observations"][0].update(source_id="different-source"),
                 ),
                 ProfileIssueCode.PROFILE_SOURCE_MISMATCH,
             ),
@@ -769,9 +746,7 @@ class GovernedProfileEvaluationTests(unittest.TestCase):
                 ProfileIssueCode.PROFILE_ADAPTER_MISMATCH,
             ),
             (
-                lambda data: data["envelope"]["query"].update(
-                    target="Different repository search"
-                ),
+                lambda data: data["envelope"]["query"].update(target="Different repository search"),
                 ProfileIssueCode.PROFILE_QUERY_APPLICABILITY_MISMATCH,
             ),
             (
@@ -787,16 +762,12 @@ class GovernedProfileEvaluationTests(unittest.TestCase):
                 ProfileIssueCode.PROFILE_DETECTION_ASSUMPTIONS_MISMATCH,
             ),
             (
-                lambda data: data["envelope"]["query"].update(
-                    exclusions=["unindexed content"]
-                ),
+                lambda data: data["envelope"]["query"].update(exclusions=["unindexed content"]),
                 ProfileIssueCode.PROFILE_QUERY_APPLICABILITY_MISMATCH,
             ),
             (
                 lambda data: (
-                    data["envelope"]["query"].update(
-                        authorization_context_id="other-context"
-                    ),
+                    data["envelope"]["query"].update(authorization_context_id="other-context"),
                     data["envelope"]["query"]["source_requirements"][0].update(
                         authorization_context_id="other-context"
                     ),
@@ -813,9 +784,7 @@ class GovernedProfileEvaluationTests(unittest.TestCase):
                 ProfileIssueCode.PROFILE_AUTHORIZATION_MISMATCH,
             ),
             (
-                lambda data: data["envelope"]["coverage"].update(
-                    permission_limited=True
-                ),
+                lambda data: data["envelope"]["coverage"].update(permission_limited=True),
                 ProfileIssueCode.PROFILE_AUTHORIZATION_MISMATCH,
             ),
             (
@@ -836,27 +805,27 @@ class GovernedProfileEvaluationTests(unittest.TestCase):
                 ProfileIssueCode.PROFILE_POPULATION_MISMATCH,
             ),
             (
-                lambda data: data["envelope"]["source_observations"][0][
-                    "descriptor"
-                ].update(system="different-search-system"),
+                lambda data: data["envelope"]["source_observations"][0]["descriptor"].update(
+                    system="different-search-system"
+                ),
                 ProfileIssueCode.PROFILE_SOURCE_MISMATCH,
             ),
             (
-                lambda data: data["envelope"]["source_observations"][0][
-                    "descriptor"
-                ].update(locator="different/search/locator"),
+                lambda data: data["envelope"]["source_observations"][0]["descriptor"].update(
+                    locator="different/search/locator"
+                ),
                 ProfileIssueCode.PROFILE_SOURCE_MISMATCH,
             ),
             (
-                lambda data: data["envelope"]["source_observations"][0][
-                    "descriptor"
-                ].update(adapter_id="other-adapter"),
+                lambda data: data["envelope"]["source_observations"][0]["descriptor"].update(
+                    adapter_id="other-adapter"
+                ),
                 ProfileIssueCode.PROFILE_ADAPTER_MISMATCH,
             ),
             (
-                lambda data: data["envelope"]["source_observations"][0][
-                    "descriptor"
-                ].update(adapter_version="other-9.9"),
+                lambda data: data["envelope"]["source_observations"][0]["descriptor"].update(
+                    adapter_version="other-9.9"
+                ),
                 ProfileIssueCode.PROFILE_ADAPTER_MISMATCH,
             ),
             (
@@ -1013,9 +982,7 @@ class GovernedProfileEvaluationTests(unittest.TestCase):
         for horizon, rejected in horizons:
             with self.subTest(horizon=horizon):
                 data = request_dict()
-                data["envelope"]["query"]["source_requirements"][0][
-                    "finality_horizon"
-                ] = horizon
+                data["envelope"]["query"]["source_requirements"][0]["finality_horizon"] = horizon
                 assessment = evaluate_profile_governance(
                     _envelope(profile, data),
                     _evaluated_at(),
@@ -1094,9 +1061,7 @@ class GovernedProfileEvaluationTests(unittest.TestCase):
         baseline = evaluate_negative_claim(request, context).input_digest
 
         query_data = request_dict()
-        query_data["envelope"]["query"]["exclusions"].append(
-            "archived repositories"
-        )
+        query_data["envelope"]["query"]["exclusions"].append("archived repositories")
         query_request = _request_for_profile(profile, query_data)
 
         changed_profile = replace(
@@ -1145,15 +1110,13 @@ class GovernedProfileEvaluationTests(unittest.TestCase):
             policy=replace(request.policy, max_observation_age_seconds=601),
         )
         observation_data = request.to_dict()
-        observation_data["envelope"]["source_observations"][0]["descriptor"][
-            "index_as_of"
-        ] = "2026-08-21T12:03:59.999999Z"
+        observation_data["envelope"]["source_observations"][0]["descriptor"]["index_as_of"] = (
+            "2026-08-21T12:03:59.999999Z"
+        )
         observation_request = NegativeClaimRequest.from_dict(observation_data)
         evaluated_request = replace(
             request,
-            evaluated_at=parse_datetime(
-                "2026-08-21T12:05:00.000001Z", "evaluated_at"
-            ),
+            evaluated_at=parse_datetime("2026-08-21T12:05:00.000001Z", "evaluated_at"),
         )
         variants = (
             evaluate_negative_claim(query_request, context).input_digest,
@@ -1442,9 +1405,7 @@ class GovernedProfileEvaluationTests(unittest.TestCase):
             envelope,
             query=replace(
                 envelope.query,
-                source_requirements=(
-                    replace(requirement, profile_ref=hostile_reference),
-                ),
+                source_requirements=(replace(requirement, profile_ref=hostile_reference),),
             ),
         )
 
@@ -1605,9 +1566,7 @@ class GovernedProfileEvaluationTests(unittest.TestCase):
             revoked_at="2026-08-21T12:00:00Z",
             revocation_reason_code="coverage-contract-invalid",
         )
-        assessment = evaluate_profile_governance(
-            _envelope(profile), _evaluated_at(), context
-        )
+        assessment = evaluate_profile_governance(_envelope(profile), _evaluated_at(), context)
         self.assertIn(
             ProfileIssueCode.PROFILE_REVOKED,
             [item.code for item in assessment.issues],
@@ -1623,9 +1582,7 @@ class GovernedProfileEvaluationTests(unittest.TestCase):
             ),
         )
         with self.assertRaisesRegex(ModelValidationError, "not representable"):
-            evaluate_profile_governance(
-                _envelope(profile), _evaluated_at(), _context(profile)
-            )
+            evaluate_profile_governance(_envelope(profile), _evaluated_at(), _context(profile))
 
 
 if __name__ == "__main__":

@@ -109,9 +109,7 @@ class EvidenceStateTransitionTests(unittest.TestCase):
                 self.assertIn(prior_state, allowed)
 
     def test_absence_can_be_invalidated_by_later_evidence_or_conditions(self) -> None:
-        allowed = allowed_evidence_state_transitions(
-            EvidenceState.ABSENT_WITHIN_SCOPE
-        )
+        allowed = allowed_evidence_state_transitions(EvidenceState.ABSENT_WITHIN_SCOPE)
         self.assertIn(EvidenceState.PRESENT, allowed)
         self.assertIn(EvidenceState.STALE, allowed)
         self.assertIn(EvidenceState.PENDING_WINDOW, allowed)

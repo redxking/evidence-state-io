@@ -26,12 +26,12 @@ function testCurrentFileIsExactlyLossless() {
   assert.ok(document.sections.some((section) => section.tasks.length > 0), 'current TASKS.md must expose tasks');
 
   const task = document.sections.flatMap((section) => section.tasks)
-    .find((candidate) => candidate.rawLines.some((line) => line.includes('Stabilize and bind')));
+    .find((candidate) => candidate.rawLines.some((line) => line.includes('Prepare the exact corpus')));
   assert.ok(task, 'plain indented task detail fixture must be found');
   const originalBlock = task.rawLines.join('');
   model.setTaskChecked(task, !task.checked);
   const changedBlock = task.rawLines.join('');
-  assert.ok(changedBlock.includes('  - Stabilize and bind'), 'plain detail bullet must survive an edit/autosave payload');
+  assert.ok(changedBlock.includes('  - Prepare the exact corpus'), 'plain detail bullet must survive an edit/autosave payload');
   assert.equal(
     changedBlock.replace(/^(-\s+\[)[ xX](\])/m, '$1?$2'),
     originalBlock.replace(/^(-\s+\[)[ xX](\])/m, '$1?$2'),

@@ -27,6 +27,13 @@ command -v node >/dev/null 2>&1 \
   || fail "Node.js is required to validate the browser dashboard"
 node "${REPO_ROOT}/tests/test_dashboard.js" \
   || fail "dashboard lossless/safe-render regression failed"
+PYTHONPATH="${REPO_ROOT}/src" "${VENV_PYTHON}" \
+  "${REPO_ROOT}/scripts/build_site.py" --output "${REPO_ROOT}/.site-build" \
+  || fail "static site build failed"
+node "${REPO_ROOT}/tests/test_site_demo.js" \
+  || fail "browser demo parity regression failed"
+"${VENV_PYTHON}" "${REPO_ROOT}/scripts/public_release_gate.py" --repo "${REPO_ROOT}" \
+  || fail "public-release gate failed"
 
 TEMP_CACHE="$(mktemp -d "${TMPDIR:-/tmp}/evidence-state-io-pyc.XXXXXX")"
 cleanup() {
@@ -52,7 +59,12 @@ from urllib.parse import unquote
 
 
 root = Path(sys.argv[1]).resolve()
-markdown_files = sorted(root.glob("*.md")) + sorted((root / "docs").rglob("*.md"))
+markdown_files = (
+    sorted(root.glob("*.md"))
+    + sorted((root / "docs").rglob("*.md"))
+    + sorted((root / "wiki").rglob("*.md"))
+    + sorted((root / "release").rglob("*.md"))
+)
 link_pattern = re.compile(r"(?<!!)\[[^\]]*\]\(([^)]+)\)")
 failures: list[str] = []
 
@@ -65,6 +77,8 @@ for document in markdown_files:
         target = target.split("#", 1)[0]
         if not target or "://" in target or target.startswith("mailto:"):
             continue
+        if document.parent == root / "wiki" and "/" not in target and "." not in target:
+            target = f"{target}.md"
         destination = (document.parent / unquote(target)).resolve()
         try:
             destination.relative_to(root)

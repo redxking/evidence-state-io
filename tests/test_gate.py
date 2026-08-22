@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import unittest
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-import unittest
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from evidence_state_io import (
@@ -14,14 +14,13 @@ from evidence_state_io import (
     PopulationBasis,
     evaluate_negative_claim,
 )
-
+from evidence_state_io.models import datetime_to_json
 from tests.helpers import (
     refresh_query_fingerprints,
     request,
     request_dict,
     trusted_context,
 )
-from evidence_state_io.models import datetime_to_json
 
 
 def policy_dict(**changes):
@@ -36,9 +35,7 @@ def decision(mutator=None):
     data = request_dict()
     if mutator:
         mutator(data)
-    return evaluate_negative_claim(
-        NegativeClaimRequest.from_dict(data), trusted_context()
-    )
+    return evaluate_negative_claim(NegativeClaimRequest.from_dict(data), trusted_context())
 
 
 class NegativeClaimGateTests(unittest.TestCase):
@@ -150,20 +147,14 @@ class NegativeClaimGateTests(unittest.TestCase):
 
     def test_partial_coverage_is_denied(self) -> None:
         def mutate(data):
-            data["envelope"]["coverage"].update(
-                examined_units=50, pagination_complete=False
-            )
+            data["envelope"]["coverage"].update(examined_units=50, pagination_complete=False)
 
         result = decision(mutate)
         self.assertIn(GateReason.COVERAGE_POLICY_NOT_MET, result.reasons)
 
     def test_half_specified_traversal_counts_fail_before_gate(self) -> None:
         with self.assertRaisesRegex(ModelValidationError, "must both be present"):
-            decision(
-                lambda data: data["envelope"]["coverage"].update(
-                    pages_expected=None
-                )
-            )
+            decision(lambda data: data["envelope"]["coverage"].update(pages_expected=None))
 
     def test_huge_population_one_unit_short_cannot_permit(self) -> None:
         def mutate(data):
@@ -188,9 +179,7 @@ class NegativeClaimGateTests(unittest.TestCase):
             declared_lower_bound=Decimal("0.999999999999"),
         )
         envelope = replace(base.envelope, coverage=coverage)
-        result = evaluate_negative_claim(
-            replace(base, envelope=envelope), trusted_context()
-        )
+        result = evaluate_negative_claim(replace(base, envelope=envelope), trusted_context())
         self.assertIsInstance(coverage.declared_lower_bound, float)
         self.assertFalse(result.allowed)
         self.assertIn(GateReason.COVERAGE_POLICY_NOT_MET, result.reasons)
@@ -200,15 +189,11 @@ class NegativeClaimGateTests(unittest.TestCase):
         self.assertIn(GateReason.VALIDITY_UNDECLARED, result.reasons)
 
     def test_expired_result_is_denied(self) -> None:
-        result = decision(
-            lambda data: data["envelope"].update(valid_until="2026-08-21T12:04:30Z")
-        )
+        result = decision(lambda data: data["envelope"].update(valid_until="2026-08-21T12:04:30Z"))
         self.assertIn(GateReason.RESULT_EXPIRED, result.reasons)
 
     def test_equality_at_validity_boundary_is_allowed(self) -> None:
-        result = decision(
-            lambda data: data.update(evaluated_at="2026-08-21T13:00:00Z")
-        )
+        result = decision(lambda data: data.update(evaluated_at="2026-08-21T13:00:00Z"))
         self.assertTrue(result.allowed)
 
     def test_submicrosecond_validity_alias_is_rejected(self) -> None:
@@ -224,9 +209,7 @@ class NegativeClaimGateTests(unittest.TestCase):
             decision(lambda data: data.update(evaluated_at="2026-08-21T11:00:00Z"))
 
     def test_evaluation_equal_to_observation_is_allowed(self) -> None:
-        result = decision(
-            lambda data: data.update(evaluated_at=data["envelope"]["observed_at"])
-        )
+        result = decision(lambda data: data.update(evaluated_at=data["envelope"]["observed_at"]))
         self.assertTrue(result.allowed)
 
     def test_evaluation_after_observation_is_allowed_inside_validity(self) -> None:
@@ -255,16 +238,12 @@ class NegativeClaimGateTests(unittest.TestCase):
                 time_start=observed_text,
                 time_end=observed_text,
             )
-            data["envelope"]["query"]["source_requirements"][0][
-                "finality_horizon"
-            ] = observed_text
+            data["envelope"]["query"]["source_requirements"][0]["finality_horizon"] = observed_text
             data["envelope"].update(
                 observed_at=observed_text,
                 valid_until=datetime_to_json(evaluated + timedelta(seconds=1)),
             )
-            data["envelope"]["source_observations"][0]["descriptor"][
-                "index_as_of"
-            ] = observed_text
+            data["envelope"]["source_observations"][0]["descriptor"]["index_as_of"] = observed_text
             refresh_query_fingerprints(data)
             data["evaluated_at"] = datetime_to_json(evaluated)
             data["policy"] = policy_dict(max_observation_age_seconds=limit)
@@ -274,9 +253,7 @@ class NegativeClaimGateTests(unittest.TestCase):
 
     def test_required_index_timestamp_is_enforced(self) -> None:
         def mutate(data):
-            data["envelope"]["source_observations"][0]["descriptor"][
-                "index_as_of"
-            ] = None
+            data["envelope"]["source_observations"][0]["descriptor"]["index_as_of"] = None
             data["policy"] = policy_dict(require_index_as_of=True)
 
         result = decision(mutate)
@@ -288,9 +265,9 @@ class NegativeClaimGateTests(unittest.TestCase):
 
     def test_index_before_query_end_cannot_support_the_query_interval(self) -> None:
         result = decision(
-            lambda data: data["envelope"]["source_observations"][0][
-                "descriptor"
-            ].update(index_as_of="2026-08-21T11:59:59Z")
+            lambda data: data["envelope"]["source_observations"][0]["descriptor"].update(
+                index_as_of="2026-08-21T11:59:59Z"
+            )
         )
         self.assertFalse(result.allowed)
         self.assertIn(GateReason.INDEX_PRECEDES_QUERY_END, result.reasons)
@@ -301,9 +278,9 @@ class NegativeClaimGateTests(unittest.TestCase):
             "source_observations descriptor index_as_of must not be after observed_at",
         ):
             decision(
-                lambda data: data["envelope"]["source_observations"][0][
-                    "descriptor"
-                ].update(index_as_of="2026-08-21T13:00:00Z")
+                lambda data: data["envelope"]["source_observations"][0]["descriptor"].update(
+                    index_as_of="2026-08-21T13:00:00Z"
+                )
             )
 
     def test_index_age_policy_is_enforced(self) -> None:
@@ -328,16 +305,16 @@ class NegativeClaimGateTests(unittest.TestCase):
                 observed_at=evaluated_text,
                 valid_until=datetime_to_json(evaluated + timedelta(seconds=1)),
             )
-            data["envelope"]["source_observations"][0]["descriptor"][
-                "index_as_of"
-            ] = datetime_to_json(index_time)
+            data["envelope"]["source_observations"][0]["descriptor"]["index_as_of"] = (
+                datetime_to_json(index_time)
+            )
             data["envelope"]["query"].update(
                 time_start=datetime_to_json(index_time),
                 time_end=datetime_to_json(index_time),
             )
-            data["envelope"]["query"]["source_requirements"][0][
-                "finality_horizon"
-            ] = datetime_to_json(index_time)
+            data["envelope"]["query"]["source_requirements"][0]["finality_horizon"] = (
+                datetime_to_json(index_time)
+            )
             refresh_query_fingerprints(data)
             data["evaluated_at"] = evaluated_text
             data["policy"] = policy_dict(max_index_age_seconds=limit)
@@ -469,9 +446,7 @@ class NegativeClaimGateTests(unittest.TestCase):
         )
 
     def test_missing_required_source_is_rejected_with_attribution(self) -> None:
-        result = decision(
-            lambda data: data["envelope"].update(source_observations=[])
-        )
+        result = decision(lambda data: data["envelope"].update(source_observations=[]))
         self.assertFalse(result.allowed)
         self.assertIn(GateReason.REQUIRED_SOURCE_MISSING, result.reasons)
         self.assertEqual(
@@ -502,9 +477,9 @@ class NegativeClaimGateTests(unittest.TestCase):
         for status, expected in cases:
             with self.subTest(status=status):
                 result = decision(
-                    lambda data, status=status: data["envelope"][
-                        "source_observations"
-                    ][0].update(status=status, accessible_population=None)
+                    lambda data, status=status: data["envelope"]["source_observations"][0].update(
+                        status=status, accessible_population=None
+                    )
                 )
                 self.assertFalse(result.allowed)
                 self.assertIn(expected, result.reasons)
@@ -536,18 +511,18 @@ class NegativeClaimGateTests(unittest.TestCase):
 
     def test_required_source_identity_mismatch_is_rejected(self) -> None:
         result = decision(
-            lambda data: data["envelope"]["source_observations"][0][
-                "descriptor"
-            ].update(system="unrelated-cache")
+            lambda data: data["envelope"]["source_observations"][0]["descriptor"].update(
+                system="unrelated-cache"
+            )
         )
         self.assertFalse(result.allowed)
         self.assertIn(GateReason.REQUIRED_SOURCE_IDENTITY_MISMATCH, result.reasons)
 
     def test_required_source_adapter_mismatch_is_rejected(self) -> None:
         result = decision(
-            lambda data: data["envelope"]["source_observations"][0][
-                "descriptor"
-            ].update(adapter_version="other-9.9")
+            lambda data: data["envelope"]["source_observations"][0]["descriptor"].update(
+                adapter_version="other-9.9"
+            )
         )
         self.assertFalse(result.allowed)
         self.assertIn(GateReason.REQUIRED_SOURCE_ADAPTER_MISMATCH, result.reasons)
@@ -566,9 +541,7 @@ class NegativeClaimGateTests(unittest.TestCase):
 
     def test_multiple_declared_sources_are_rejected_until_composition_exists(self) -> None:
         def mutate(data):
-            second_requirement = dict(
-                data["envelope"]["query"]["source_requirements"][0]
-            )
+            second_requirement = dict(data["envelope"]["query"]["source_requirements"][0])
             second_requirement["source_id"] = "second-source"
             second_requirement["locator"] = "https://example.invalid/second-source"
             second_requirement["accessible_population"] = "second bounded population"
@@ -581,18 +554,14 @@ class NegativeClaimGateTests(unittest.TestCase):
                     "locator": "https://example.invalid/second-source",
                 },
             }
-            data["envelope"]["query"]["source_requirements"].append(
-                second_requirement
-            )
+            data["envelope"]["query"]["source_requirements"].append(second_requirement)
             data["envelope"]["source_observations"].append(second_observation)
 
         with self.assertRaisesRegex(ModelValidationError, "exactly one REQUIRED"):
             decision(mutate)
 
     def test_permission_limit_must_match_governed_profile(self) -> None:
-        result = decision(
-            lambda data: data["envelope"]["coverage"].update(permission_limited=True)
-        )
+        result = decision(lambda data: data["envelope"]["coverage"].update(permission_limited=True))
         self.assertFalse(result.allowed)
         self.assertIn(GateReason.PROFILE_AUTHORIZATION_MISMATCH, result.reasons)
 

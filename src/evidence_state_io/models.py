@@ -9,21 +9,20 @@ coverage evidence carried by the same envelope.
 
 from __future__ import annotations
 
+import json
+import re
+import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum
 from fractions import Fraction
 from hashlib import sha256
-import json
 from math import isfinite, nextafter
-import re
 from types import MappingProxyType
 from typing import Any, Mapping, Sequence
-import unicodedata
 
 from .errors import ModelValidationError, ValidationErrorCode
-
 
 MAX_EVIDENCE_STRING_LENGTH = 512
 MAX_FRACTION_DECIMAL_PLACES = 12
@@ -31,9 +30,7 @@ MAX_INTEGER_DECIMAL_DIGITS = 512
 MAX_SOURCE_ACCOUNTING_ENTRIES = 64
 MAX_SOURCE_ID_LENGTH = 128
 _MAX_INTEGER_VALUE = 10**MAX_INTEGER_DECIMAL_DIGITS - 1
-_SOURCE_ID_PATTERN = re.compile(
-    r"^[a-z0-9](?:[a-z0-9._:-]{0,126}[a-z0-9])?$"
-)
+_SOURCE_ID_PATTERN = re.compile(r"^[a-z0-9](?:[a-z0-9._:-]{0,126}[a-z0-9])?$")
 _IMMUTABLE_VERSION_PATTERN = re.compile(
     r"^(?:"
     r"(?:[a-z][a-z0-9._:-]*-)?\d+\.\d+(?:\.\d+)*"
@@ -65,20 +62,12 @@ _KNOWN_TOKEN_PATTERN = re.compile(
     r"|akia[a-z0-9]{16}"
     r")$"
 )
-_JWT_LIKE_PATTERN = re.compile(
-    r"^eyj[a-z0-9_-]{5,}\.[a-z0-9_-]{8,}\.[a-z0-9_-]{16,}$"
-)
-_OPAQUE_TOKEN_PATTERN = re.compile(
-    r"^(?=.{48,128}$)(?=[a-z0-9]*[a-z])(?=[a-z0-9]*[0-9])[a-z0-9]+$"
-)
+_JWT_LIKE_PATTERN = re.compile(r"^eyj[a-z0-9_-]{5,}\.[a-z0-9_-]{8,}\.[a-z0-9_-]{16,}$")
+_OPAQUE_TOKEN_PATTERN = re.compile(r"^(?=.{48,128}$)(?=[a-z0-9]*[a-z])(?=[a-z0-9]*[0-9])[a-z0-9]+$")
 
 
-AUTHORIZATION_CONTEXT_IDENTIFIER_PROFILE = (
-    "esio-authorization-context-identifier/1.0-candidate.1"
-)
-EVIDENCE_STATE_TRANSITION_MODEL = (
-    "esio-evidence-state-transition-model/1.0-candidate.1"
-)
+AUTHORIZATION_CONTEXT_IDENTIFIER_PROFILE = "esio-authorization-context-identifier/1.0-candidate.1"
+EVIDENCE_STATE_TRANSITION_MODEL = "esio-evidence-state-transition-model/1.0-candidate.1"
 
 
 class EvidenceState(str, Enum):
@@ -132,20 +121,20 @@ EVIDENCE_STATE_INTERPRETATIONS: Mapping[EvidenceState, str] = MappingProxyType(
 _NONINITIAL_EVIDENCE_STATES = tuple(
     state for state in EvidenceState if state is not EvidenceState.NOT_OBSERVED
 )
-_ALLOWED_EVIDENCE_STATE_TRANSITIONS: Mapping[
-    EvidenceState, tuple[EvidenceState, ...]
-] = MappingProxyType(
-    {
-        EvidenceState.PRESENT: (EvidenceState.PRESENT,),
-        EvidenceState.ABSENT_WITHIN_SCOPE: _NONINITIAL_EVIDENCE_STATES,
-        EvidenceState.NOT_OBSERVED: tuple(EvidenceState),
-        EvidenceState.PARTIAL: _NONINITIAL_EVIDENCE_STATES,
-        EvidenceState.STALE: _NONINITIAL_EVIDENCE_STATES,
-        EvidenceState.INACCESSIBLE: _NONINITIAL_EVIDENCE_STATES,
-        EvidenceState.PENDING_WINDOW: _NONINITIAL_EVIDENCE_STATES,
-        EvidenceState.FAILED: _NONINITIAL_EVIDENCE_STATES,
-        EvidenceState.CONTRADICTORY: _NONINITIAL_EVIDENCE_STATES,
-    }
+_ALLOWED_EVIDENCE_STATE_TRANSITIONS: Mapping[EvidenceState, tuple[EvidenceState, ...]] = (
+    MappingProxyType(
+        {
+            EvidenceState.PRESENT: (EvidenceState.PRESENT,),
+            EvidenceState.ABSENT_WITHIN_SCOPE: _NONINITIAL_EVIDENCE_STATES,
+            EvidenceState.NOT_OBSERVED: tuple(EvidenceState),
+            EvidenceState.PARTIAL: _NONINITIAL_EVIDENCE_STATES,
+            EvidenceState.STALE: _NONINITIAL_EVIDENCE_STATES,
+            EvidenceState.INACCESSIBLE: _NONINITIAL_EVIDENCE_STATES,
+            EvidenceState.PENDING_WINDOW: _NONINITIAL_EVIDENCE_STATES,
+            EvidenceState.FAILED: _NONINITIAL_EVIDENCE_STATES,
+            EvidenceState.CONTRADICTORY: _NONINITIAL_EVIDENCE_STATES,
+        }
+    )
 )
 
 
@@ -234,14 +223,10 @@ class EvidenceStateTransition:
         allowed = {"transition_model", "prior_state", "next_state"}
         unknown = sorted(set(value) - allowed)
         if unknown:
-            raise ModelValidationError(
-                f"{path} has unknown fields: {', '.join(unknown)}"
-            )
+            raise ModelValidationError(f"{path} has unknown fields: {', '.join(unknown)}")
         missing = sorted(allowed - set(value))
         if missing:
-            raise ModelValidationError(
-                f"{path} is missing required fields: {', '.join(missing)}"
-            )
+            raise ModelValidationError(f"{path} is missing required fields: {', '.join(missing)}")
         _require_transition_model(value["transition_model"])
         try:
             prior_state = EvidenceState(value["prior_state"])
@@ -369,9 +354,7 @@ def bounded_ascii_identifier(
         raise ModelValidationError(
             f"{path} must be a lowercase ASCII identifier using letters, digits, '.', '_', ':', or '-'"
         )
-    if result.casefold() in (
-        _DECLARATION_PLACEHOLDERS | _UNBOUNDED_DECLARATION_PLACEHOLDERS
-    ):
+    if result.casefold() in (_DECLARATION_PLACEHOLDERS | _UNBOUNDED_DECLARATION_PLACEHOLDERS):
         raise ModelValidationError(f"{path} must not use a placeholder identifier")
     return result
 
@@ -421,9 +404,7 @@ def authorization_context_identifier(
 
 def _sha256_digest(value: Any, path: str) -> str:
     if type(value) is not str or not _SHA256_DIGEST_PATTERN.fullmatch(value):
-        raise ModelValidationError(
-            f"{path} must be a lowercase sha256 digest"
-        )
+        raise ModelValidationError(f"{path} must be a lowercase sha256 digest")
     return value
 
 
@@ -438,9 +419,7 @@ def _concrete_declaration(
     if reject_unbounded:
         disallowed = disallowed | _UNBOUNDED_DECLARATION_PLACEHOLDERS
     if result.casefold() in disallowed:
-        raise ModelValidationError(
-            f"{path} must be a concrete declaration, not a placeholder"
-        )
+        raise ModelValidationError(f"{path} must be a concrete declaration, not a placeholder")
     return result
 
 
@@ -544,6 +523,8 @@ def _optional_fraction(value: Any, path: str) -> float | None:
             if digit != 0:
                 break
             trailing_zeros += 1
+        if not isinstance(decimal_tuple.exponent, int):
+            raise ModelValidationError(f"{path} must be a finite number")
         normalized_exponent = decimal_tuple.exponent + trailing_zeros
         decimal_places = max(0, -normalized_exponent)
     if decimal_places > MAX_FRACTION_DECIMAL_PLACES:
@@ -597,9 +578,7 @@ def _string_tuple(value: Any, path: str) -> tuple[str, ...]:
     return tuple(output)
 
 
-def _required_string_tuple(
-    data: Mapping[str, Any], key: str, path: str
-) -> tuple[str, ...]:
+def _required_string_tuple(data: Mapping[str, Any], key: str, path: str) -> tuple[str, ...]:
     if key not in data:
         raise ModelValidationError(f"{path}.{key} is required")
     if data[key] is None:
@@ -612,9 +591,7 @@ def parse_datetime(value: Any, path: str) -> datetime:
         raise ModelValidationError(f"{path} must be an ISO-8601 timestamp")
     candidate = value.strip()
     if candidate != value:
-        raise ModelValidationError(
-            f"{path} must use ISO-8601 without surrounding whitespace"
-        )
+        raise ModelValidationError(f"{path} must use ISO-8601 without surrounding whitespace")
     if not _TIMESTAMP_PATTERN.fullmatch(candidate):
         raise ModelValidationError(
             f"{path} must use ISO-8601 with a UTC offset and at most 6 fractional-second digits"
@@ -671,9 +648,7 @@ class CoverageProfileReference:
             object.__setattr__(
                 self,
                 name,
-                bounded_ascii_identifier(
-                    getattr(self, name), f"profile_ref.{name}"
-                ),
+                bounded_ascii_identifier(getattr(self, name), f"profile_ref.{name}"),
             )
         object.__setattr__(
             self,
@@ -702,18 +677,10 @@ class CoverageProfileReference:
         _reject_unknown(data, allowed, path)
         _require_fields(data, allowed, path)
         return cls(
-            registry_id=bounded_ascii_identifier(
-                data["registry_id"], f"{path}.registry_id"
-            ),
-            profile_id=bounded_ascii_identifier(
-                data["profile_id"], f"{path}.profile_id"
-            ),
-            profile_version=_immutable_version(
-                data["profile_version"], f"{path}.profile_version"
-            ),
-            profile_digest=_sha256_digest(
-                data["profile_digest"], f"{path}.profile_digest"
-            ),
+            registry_id=bounded_ascii_identifier(data["registry_id"], f"{path}.registry_id"),
+            profile_id=bounded_ascii_identifier(data["profile_id"], f"{path}.profile_id"),
+            profile_version=_immutable_version(data["profile_version"], f"{path}.profile_version"),
+            profile_digest=_sha256_digest(data["profile_digest"], f"{path}.profile_digest"),
         )
 
     def to_dict(self) -> dict[str, str]:
@@ -762,16 +729,12 @@ class SourceRequirement:
         object.__setattr__(
             self,
             "adapter_version",
-            _immutable_version(
-                self.adapter_version, "source_requirement.adapter_version"
-            ),
+            _immutable_version(self.adapter_version, "source_requirement.adapter_version"),
         )
         object.__setattr__(
             self,
             "adapter_id",
-            bounded_ascii_identifier(
-                self.adapter_id, "source_requirement.adapter_id"
-            ),
+            bounded_ascii_identifier(self.adapter_id, "source_requirement.adapter_id"),
         )
         object.__setattr__(
             self,
@@ -867,26 +830,18 @@ class SourceRequirement:
         try:
             role = SourceRole(data["role"])
         except (TypeError, ValueError) as exc:
-            raise ModelValidationError(
-                f"{path}.role must be REQUIRED"
-            ) from exc
+            raise ModelValidationError(f"{path}.role must be REQUIRED") from exc
         assumptions = data["detection_assumptions"]
         if assumptions is None:
-            raise ModelValidationError(
-                f"{path}.detection_assumptions must be an array, not null"
-            )
+            raise ModelValidationError(f"{path}.detection_assumptions must be an array, not null")
         return cls(
-            source_id=bounded_ascii_identifier(
-                data["source_id"], f"{path}.source_id"
-            ),
+            source_id=bounded_ascii_identifier(data["source_id"], f"{path}.source_id"),
             role=role,
             system=_required_string(data, "system", path),
             locator=_required_string(data, "locator", path),
-            adapter_id=bounded_ascii_identifier(
-                data["adapter_id"], f"{path}.adapter_id"
-            ),
+            adapter_id=bounded_ascii_identifier(data["adapter_id"], f"{path}.adapter_id"),
             adapter_version=_immutable_version(
-                data["adapter_version"], f"{path}.adapter_version"
+                data.get("adapter_version"), f"{path}.adapter_version"
             ),
             authorization_context_id=authorization_context_identifier(
                 data["authorization_context_id"],
@@ -907,14 +862,12 @@ class SourceRequirement:
             profile_ref=(
                 None
                 if data.get("profile_ref") is None
-                else CoverageProfileReference.from_dict(
-                    data["profile_ref"], f"{path}.profile_ref"
-                )
+                else CoverageProfileReference.from_dict(data["profile_ref"], f"{path}.profile_ref")
             ),
         )
 
     def to_dict(self) -> dict[str, Any]:
-        payload = {
+        payload: dict[str, Any] = {
             "source_id": self.source_id,
             "role": self.role.value,
             "system": self.system,
@@ -981,9 +934,7 @@ class QueryScope:
             raise ModelValidationError("query.time_end must not precede query.time_start")
         if self.exclusions is None:
             raise ModelValidationError("query.exclusions must be an array, not null")
-        object.__setattr__(
-            self, "exclusions", _string_tuple(self.exclusions, "query.exclusions")
-        )
+        object.__setattr__(self, "exclusions", _string_tuple(self.exclusions, "query.exclusions"))
         object.__setattr__(
             self,
             "exclusions",
@@ -997,22 +948,17 @@ class QueryScope:
             ),
         )
         if self.source_requirements is None:
-            raise ModelValidationError(
-                "query.source_requirements must be an array, not null"
-            )
+            raise ModelValidationError("query.source_requirements must be an array, not null")
         if isinstance(self.source_requirements, (str, bytes)) or not isinstance(
             self.source_requirements, Sequence
         ):
             raise ModelValidationError("query.source_requirements must be an array")
         requirements = tuple(self.source_requirements)
         if not requirements:
-            raise ModelValidationError(
-                "query.source_requirements must contain at least one source"
-            )
+            raise ModelValidationError("query.source_requirements must contain at least one source")
         if len(requirements) > MAX_SOURCE_ACCOUNTING_ENTRIES:
             raise ModelValidationError(
-                "query.source_requirements exceeds the "
-                f"{MAX_SOURCE_ACCOUNTING_ENTRIES}-entry limit"
+                f"query.source_requirements exceeds the {MAX_SOURCE_ACCOUNTING_ENTRIES}-entry limit"
             )
         if any(not isinstance(item, SourceRequirement) for item in requirements):
             raise ModelValidationError(
@@ -1035,14 +981,12 @@ class QueryScope:
         invalid_finality_horizons = sorted(
             item.source_id
             for item in requirements
-            if item.finality_horizon is not None
-            and item.finality_horizon < self.time_end
+            if item.finality_horizon is not None and item.finality_horizon < self.time_end
         )
         if invalid_finality_horizons:
             raise ModelValidationError(
                 "query.source_requirements finality_horizon must not precede "
-                "query.time_end for: "
-                + ", ".join(invalid_finality_horizons)
+                "query.time_end for: " + ", ".join(invalid_finality_horizons)
             )
         context_mismatches = sorted(
             item.source_id
@@ -1052,8 +996,7 @@ class QueryScope:
         if context_mismatches:
             raise ModelValidationError(
                 "query.source_requirements authorization_context_id must match "
-                "query.authorization_context_id for: "
-                + ", ".join(context_mismatches)
+                "query.authorization_context_id for: " + ", ".join(context_mismatches)
             )
         object.__setattr__(
             self,
@@ -1093,9 +1036,7 @@ class QueryScope:
             "query",
         )
         raw_requirements = data["source_requirements"]
-        if isinstance(raw_requirements, (str, bytes)) or not isinstance(
-            raw_requirements, Sequence
-        ):
+        if isinstance(raw_requirements, (str, bytes)) or not isinstance(raw_requirements, Sequence):
             raise ModelValidationError("query.source_requirements must be an array")
         return cls(
             target=_required_string(data, "target", "query"),
@@ -1221,9 +1162,7 @@ class CoverageEvidence:
         normalized_declared_lower_bound = _optional_fraction(
             self.declared_lower_bound, "coverage.declared_lower_bound"
         )
-        object.__setattr__(
-            self, "declared_lower_bound", normalized_declared_lower_bound
-        )
+        object.__setattr__(self, "declared_lower_bound", normalized_declared_lower_bound)
         for name in (
             "pages_examined",
             "pages_expected",
@@ -1286,13 +1225,9 @@ class CoverageEvidence:
             )
         deterministic_bounds: list[Fraction] = []
         if self.population_basis is PopulationBasis.EXACT and self.population_units is not None:
-            deterministic_bounds.append(
-                _exact_ratio(self.examined_units, self.population_units)
-            )
+            deterministic_bounds.append(_exact_ratio(self.examined_units, self.population_units))
         if self.pages_examined is not None and self.pages_expected is not None:
-            deterministic_bounds.append(
-                _exact_ratio(self.pages_examined, self.pages_expected)
-            )
+            deterministic_bounds.append(_exact_ratio(self.pages_examined, self.pages_expected))
         if self.partitions_examined is not None and self.partitions_expected is not None:
             deterministic_bounds.append(
                 _exact_ratio(self.partitions_examined, self.partitions_expected)
@@ -1300,8 +1235,7 @@ class CoverageEvidence:
         if (
             self.declared_lower_bound is not None
             and deterministic_bounds
-            and _normalized_float_fraction(self.declared_lower_bound)
-            > min(deterministic_bounds)
+            and _normalized_float_fraction(self.declared_lower_bound) > min(deterministic_bounds)
         ):
             raise ModelValidationError(
                 "coverage.declared_lower_bound cannot exceed the computed deterministic bound"
@@ -1350,9 +1284,7 @@ class CoverageEvidence:
                 "coverage.population_basis must be EXACT, ESTIMATED, or UNKNOWN"
             ) from exc
         return cls(
-            examined_units=_nonnegative_int(
-                data.get("examined_units"), "coverage.examined_units"
-            ),
+            examined_units=_nonnegative_int(data.get("examined_units"), "coverage.examined_units"),
             population_basis=basis,
             population_units=_optional_nonnegative_int(
                 data.get("population_units"), "coverage.population_units"
@@ -1454,11 +1386,9 @@ class SourceDescriptor:
         return cls(
             system=_required_string(data, "system", path),
             locator=_required_string(data, "locator", path),
-            adapter_id=bounded_ascii_identifier(
-                data.get("adapter_id"), f"{path}.adapter_id"
-            ),
+            adapter_id=bounded_ascii_identifier(data.get("adapter_id"), f"{path}.adapter_id"),
             adapter_version=_immutable_version(
-                data["adapter_version"], f"{path}.adapter_version"
+                data.get("adapter_version"), f"{path}.adapter_version"
             ),
             index_as_of=optional_datetime(data.get("index_as_of"), f"{path}.index_as_of"),
         )
@@ -1496,9 +1426,7 @@ class SourceObservation:
                 "source_observation.status must be a SourceObservationStatus"
             )
         if not isinstance(self.descriptor, SourceDescriptor):
-            raise ModelValidationError(
-                "source_observation.descriptor must be a SourceDescriptor"
-            )
+            raise ModelValidationError("source_observation.descriptor must be a SourceDescriptor")
         object.__setattr__(
             self,
             "authorization_context_id",
@@ -1524,16 +1452,12 @@ class SourceObservation:
                     "source_observation.accessible_population",
                 ),
             )
-        if self.status is SourceObservationStatus.OBSERVED and (
-            self.accessible_population is None
-        ):
+        if self.status is SourceObservationStatus.OBSERVED and (self.accessible_population is None):
             raise ModelValidationError(
                 "source_observation.accessible_population is required when status is OBSERVED"
             )
         if self.errors is None:
-            raise ModelValidationError(
-                "source_observation.errors must be an array, not null"
-            )
+            raise ModelValidationError("source_observation.errors must be an array, not null")
         object.__setattr__(
             self,
             "errors",
@@ -1579,13 +1503,9 @@ class SourceObservation:
         if raw_errors is None:
             raise ModelValidationError(f"{path}.errors must be an array, not null")
         return cls(
-            source_id=bounded_ascii_identifier(
-                data["source_id"], f"{path}.source_id"
-            ),
+            source_id=bounded_ascii_identifier(data["source_id"], f"{path}.source_id"),
             status=status,
-            descriptor=SourceDescriptor.from_dict(
-                data["descriptor"], f"{path}.descriptor"
-            ),
+            descriptor=SourceDescriptor.from_dict(data["descriptor"], f"{path}.descriptor"),
             authorization_context_id=authorization_context_identifier(
                 data["authorization_context_id"],
                 f"{path}.authorization_context_id",
@@ -1658,9 +1578,7 @@ class EvidenceEnvelope:
         if self.state is EvidenceState.ABSENT_WITHIN_SCOPE and self.matched_count != 0:
             raise ModelValidationError("ABSENT_WITHIN_SCOPE requires matched_count equal to zero")
         if self.source_observations is None:
-            raise ModelValidationError(
-                "source_observations must be an array, not null"
-            )
+            raise ModelValidationError("source_observations must be an array, not null")
         if isinstance(self.source_observations, (str, bytes)) or not isinstance(
             self.source_observations, Sequence
         ):
@@ -1668,8 +1586,7 @@ class EvidenceEnvelope:
         observations = tuple(self.source_observations)
         if len(observations) > MAX_SOURCE_ACCOUNTING_ENTRIES:
             raise ModelValidationError(
-                "source_observations exceeds the "
-                f"{MAX_SOURCE_ACCOUNTING_ENTRIES}-entry limit"
+                f"source_observations exceeds the {MAX_SOURCE_ACCOUNTING_ENTRIES}-entry limit"
             )
         if any(not isinstance(item, SourceObservation) for item in observations):
             raise ModelValidationError(
@@ -1677,9 +1594,7 @@ class EvidenceEnvelope:
             )
         observation_ids = [item.source_id for item in observations]
         duplicate_observation_ids = sorted(
-            source_id
-            for source_id in set(observation_ids)
-            if observation_ids.count(source_id) > 1
+            source_id for source_id in set(observation_ids) if observation_ids.count(source_id) > 1
         )
         if duplicate_observation_ids:
             raise ModelValidationError(
@@ -1769,9 +1684,7 @@ class EvidenceEnvelope:
         if "matched_count" not in data:
             raise ModelValidationError("envelope.matched_count is required")
         raw_observations = data["source_observations"]
-        if isinstance(raw_observations, (str, bytes)) or not isinstance(
-            raw_observations, Sequence
-        ):
+        if isinstance(raw_observations, (str, bytes)) or not isinstance(raw_observations, Sequence):
             raise ModelValidationError("envelope.source_observations must be an array")
         return cls(
             state=state,

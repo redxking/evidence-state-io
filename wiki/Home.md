@@ -17,11 +17,11 @@ connected product surfaces:
 
 ## Start here
 
-- [Concepts and state semantics](Concepts-and-State-Semantics)
-- [Architecture and trust boundaries](Architecture-and-Trust-Boundaries)
-- [EmptyBench research program](EmptyBench-Research-Program)
-- [Roadmap and contribution paths](Roadmap-and-Contribution-Paths)
-- [Reproducing the candidate](Reproducing-the-Candidate)
+- Leaders: [Executive overview](Executive-Overview) and [product scope](Product-Scope-and-Non-Goals)
+- Architects: [Architecture](Architecture), [pipeline](Gateway-Processing-Pipeline), and [integration guide](Integration-Guide)
+- Security and assurance: [Threat model](Security-and-Threat-Model) and [governance](Governance-and-Assurance)
+- Engineers and operators: [Quick start](Quick-Start), [contracts](Schemas-and-Interface-Contracts), and [operations](Operations-and-Troubleshooting)
+- Researchers: [Benchmark methodology](Benchmark-Methodology), [verification strategy](Test-and-Verification-Strategy), and [open questions](Known-Limitations-and-Open-Questions)
 - [Frequently asked questions](FAQ)
 
 ## Current evidence boundary

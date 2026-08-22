@@ -118,9 +118,7 @@ class CoveragePolicy:
         }
         unknown = sorted(set(value) - allowed)
         if unknown:
-            raise ModelValidationError(
-                f"policy.coverage has unknown fields: {', '.join(unknown)}"
-            )
+            raise ModelValidationError(f"policy.coverage has unknown fields: {', '.join(unknown)}")
         return cls(
             minimum_lower_bound=value.get("minimum_lower_bound", 1.0),
             require_exact_population=_bool(
@@ -224,9 +222,7 @@ def evaluate_coverage(
 
     if evidence.population_basis is PopulationBasis.EXACT:
         assert evidence.population_units is not None  # enforced by the model
-        population_bound = _exact_ratio(
-            evidence.examined_units, evidence.population_units
-        )
+        population_bound = _exact_ratio(evidence.examined_units, evidence.population_units)
         components.append(
             CoverageComponent(
                 name="population",
@@ -261,9 +257,7 @@ def evaluate_coverage(
         )
 
     if evidence.partitions_examined is not None and evidence.partitions_expected is not None:
-        partitions_bound = _exact_ratio(
-            evidence.partitions_examined, evidence.partitions_expected
-        )
+        partitions_bound = _exact_ratio(evidence.partitions_examined, evidence.partitions_expected)
         traversal_bounds.append(partitions_bound)
         components.append(
             CoverageComponent(
@@ -282,9 +276,7 @@ def evaluate_coverage(
 
     if exact_lower_bound is None:
         issues.append(CoverageIssue.UNKNOWN_COVERAGE)
-    elif exact_lower_bound < _normalized_float_fraction(
-        effective_policy.minimum_lower_bound
-    ):
+    elif exact_lower_bound < _normalized_float_fraction(effective_policy.minimum_lower_bound):
         issues.append(CoverageIssue.BELOW_MINIMUM)
 
     if (

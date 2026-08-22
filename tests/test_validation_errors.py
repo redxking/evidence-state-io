@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from io import StringIO
 import json
-from pathlib import Path
 import unittest
+from io import StringIO
+from pathlib import Path
 
 from evidence_state_io import (
     VALIDATION_ERROR_SCHEMA,
@@ -12,7 +12,6 @@ from evidence_state_io import (
     public_validation_error,
 )
 from evidence_state_io.cli import MAX_INPUT_BYTES, main
-
 
 EXAMPLES = Path(__file__).resolve().parents[1] / "examples"
 
@@ -115,9 +114,9 @@ class ValidationErrorContractTests(unittest.TestCase):
     def test_cli_credential_rejection_has_specific_code_without_echo(self) -> None:
         request = json.loads((EXAMPLES / "covered_request.json").read_text())
         credential_like = "bearer:redacted"
-        request["envelope"]["query"]["source_requirements"][0][
-            "authorization_context_id"
-        ] = credential_like
+        request["envelope"]["query"]["source_requirements"][0]["authorization_context_id"] = (
+            credential_like
+        )
         code, stdout, stderr = self.invoke(
             [
                 "evaluate",
@@ -215,11 +214,7 @@ class ValidationErrorContractTests(unittest.TestCase):
         stderr = StringIO()
         code = main(
             ["coverage", "--input", "-"],
-            stdin=StringIO(
-                json.dumps(
-                    {"coverage": request["envelope"]["coverage"], "policy": {}}
-                )
-            ),
+            stdin=StringIO(json.dumps({"coverage": request["envelope"]["coverage"], "policy": {}})),
             stdout=BrokenOutput(),
             stderr=stderr,
         )

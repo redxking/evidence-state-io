@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+import json
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-import json
-import re
 from typing import Any, Mapping
 
 from .canonical import CANONICALIZATION_PROFILE, DIGEST_ALGORITHM, canonical_digest
@@ -25,18 +25,17 @@ from .models import (
     datetime_to_json,
     parse_datetime,
 )
-from .sources import (
-    SourceAccountingAssessment,
-    SourceIssueCode,
-    evaluate_source_accounting,
-)
 from .profiles import (
     ProfileAssessment,
     ProfileIssueCode,
     TrustedProfileContext,
     evaluate_profile_governance,
 )
-
+from .sources import (
+    SourceAccountingAssessment,
+    SourceIssueCode,
+    evaluate_source_accounting,
+)
 
 MAX_SUBJECT_LENGTH = 160
 DEFAULT_POLICY_ID = "esio-p0-safety-floor"
@@ -125,9 +124,7 @@ _SOURCE_REASON_MAP = {
     SourceIssueCode.REQUIRED_SOURCE_ERRORS_PRESENT: GateReason.REQUIRED_SOURCE_ERRORS_PRESENT,
 }
 
-_PROFILE_REASON_MAP = {
-    code: GateReason(code.value) for code in ProfileIssueCode
-}
+_PROFILE_REASON_MAP = {code: GateReason(code.value) for code in ProfileIssueCode}
 
 
 def _strict_bool(value: Any, path: str, default: bool) -> bool:
@@ -148,9 +145,7 @@ def _timedelta_exceeds_seconds(value: timedelta, limit: int) -> bool:
     """Compare exactly without converting microseconds through binary floats."""
 
     whole_seconds = value.days * 86_400 + value.seconds
-    return whole_seconds > limit or (
-        whole_seconds == limit and value.microseconds > 0
-    )
+    return whole_seconds > limit or (whole_seconds == limit and value.microseconds > 0)
 
 
 @dataclass(frozen=True, slots=True)
@@ -205,9 +200,7 @@ class NegativeClaimPolicy:
             raise ModelValidationError(
                 "policy.require_finality_horizon cannot relax the P0 safety floor"
             )
-        _optional_seconds(
-            self.max_observation_age_seconds, "policy.max_observation_age_seconds"
-        )
+        _optional_seconds(self.max_observation_age_seconds, "policy.max_observation_age_seconds")
         _optional_seconds(self.max_index_age_seconds, "policy.max_index_age_seconds")
 
     @classmethod
@@ -230,9 +223,7 @@ class NegativeClaimPolicy:
             raise ModelValidationError(f"policy has unknown fields: {', '.join(unknown)}")
         missing = sorted({"policy_id", "policy_version"} - set(value))
         if missing:
-            raise ModelValidationError(
-                "policy is missing required fields: " + ", ".join(missing)
-            )
+            raise ModelValidationError("policy is missing required fields: " + ", ".join(missing))
         return cls(
             policy_id=bounded_ascii_identifier(value.get("policy_id"), "policy.policy_id"),
             policy_version=bounded_ascii_identifier(
@@ -297,9 +288,7 @@ class NegativeClaimRequest:
             reject_unbounded=True,
         )
         if len(normalized_subject) > MAX_SUBJECT_LENGTH:
-            raise ModelValidationError(
-                f"subject exceeds the {MAX_SUBJECT_LENGTH}-character limit"
-            )
+            raise ModelValidationError(f"subject exceeds the {MAX_SUBJECT_LENGTH}-character limit")
         if _ABSOLUTE_SUBJECT_PATTERN.search(normalized_subject):
             raise ModelValidationError(
                 "subject contains a prohibited universal or absolute-negative formulation"
@@ -394,16 +383,12 @@ def _digest_evaluation_input(
         {
             "evaluation_input_schema": EVALUATION_INPUT_SCHEMA,
             "request": request.to_dict(),
-            "trusted_profile_context": (
-                None if context is None else context.to_dict()
-            ),
+            "trusted_profile_context": (None if context is None else context.to_dict()),
         }
     )
 
 
-def _qualified_claim(
-    request: NegativeClaimRequest, assessment: CoverageAssessment
-) -> str:
+def _qualified_claim(request: NegativeClaimRequest, assessment: CoverageAssessment) -> str:
     envelope = request.envelope
     lower_bound = assessment.lower_bound
     coverage_text = "declared but unquantified"
@@ -503,9 +488,7 @@ def evaluate_negative_claim(
     request = NegativeClaimRequest.from_dict(request.to_dict())
     if context is not None:
         if type(context) is not TrustedProfileContext:
-            raise ModelValidationError(
-                "context must be TrustedProfileContext or null"
-            )
+            raise ModelValidationError("context must be TrustedProfileContext or null")
         context = TrustedProfileContext.from_dict(context.to_dict())
     envelope = request.envelope
     policy = request.policy
@@ -525,8 +508,8 @@ def evaluate_negative_claim(
         if reason not in reasons:
             reasons.append(reason)
 
-    for issue in profile_assessment.issues:
-        add_reason(_PROFILE_REASON_MAP[issue.code])
+    for profile_issue in profile_assessment.issues:
+        add_reason(_PROFILE_REASON_MAP[profile_issue.code])
 
     if request.mode is ClaimMode.ABSOLUTE:
         add_reason(GateReason.ABSOLUTE_NEGATIVE_UNSUPPORTED)
@@ -538,18 +521,15 @@ def evaluate_negative_claim(
         add_reason(GateReason.COVERAGE_POLICY_NOT_MET)
     if policy.reject_envelope_errors and envelope.errors:
         add_reason(GateReason.ENVELOPE_ERRORS_PRESENT)
-    for issue in source_assessment.issues:
-        add_reason(_SOURCE_REASON_MAP[issue.code])
+    for source_issue in source_assessment.issues:
+        add_reason(_SOURCE_REASON_MAP[source_issue.code])
 
     if request.evaluated_at < envelope.observed_at:
         add_reason(GateReason.EVALUATION_PRECEDES_OBSERVATION)
     else:
         observation_age = request.evaluated_at - envelope.observed_at
-        if (
-            policy.max_observation_age_seconds is not None
-            and _timedelta_exceeds_seconds(
-                observation_age, policy.max_observation_age_seconds
-            )
+        if policy.max_observation_age_seconds is not None and _timedelta_exceeds_seconds(
+            observation_age, policy.max_observation_age_seconds
         ):
             add_reason(GateReason.OBSERVATION_TOO_OLD)
 
@@ -565,8 +545,7 @@ def evaluate_negative_claim(
         if requirement.role is SourceRole.REQUIRED
     )
     observations_by_id = {
-        observation.source_id: observation
-        for observation in envelope.source_observations
+        observation.source_id: observation for observation in envelope.source_observations
     }
     for requirement in required_requirements:
         finality_horizon = requirement.finality_horizon
@@ -574,10 +553,7 @@ def evaluate_negative_claim(
             add_reason(GateReason.FINALITY_HORIZON_UNDECLARED)
 
         observation = observations_by_id.get(requirement.source_id)
-        if (
-            observation is None
-            or observation.status is not SourceObservationStatus.OBSERVED
-        ):
+        if observation is None or observation.status is not SourceObservationStatus.OBSERVED:
             continue
         index_as_of = observation.descriptor.index_as_of
         if index_as_of is None:
@@ -590,12 +566,9 @@ def evaluate_negative_claim(
                 add_reason(GateReason.INDEX_PRECEDES_FINALITY_HORIZON)
             if index_as_of > request.evaluated_at:
                 add_reason(GateReason.INDEX_TIME_AFTER_EVALUATION)
-            elif (
-                policy.max_index_age_seconds is not None
-                and _timedelta_exceeds_seconds(
-                    request.evaluated_at - index_as_of,
-                    policy.max_index_age_seconds,
-                )
+            elif policy.max_index_age_seconds is not None and _timedelta_exceeds_seconds(
+                request.evaluated_at - index_as_of,
+                policy.max_index_age_seconds,
             ):
                 add_reason(GateReason.INDEX_TOO_OLD)
 

@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import argparse
-from decimal import Decimal, InvalidOperation
 import json
-from pathlib import Path
 import sys
-from typing import Any, Sequence, TextIO
+from decimal import Decimal, InvalidOperation
+from pathlib import Path
+from typing import Any, NoReturn, Sequence, TextIO
 
-from .coverage import CoveragePolicy, evaluate_coverage
 from .certificates import (
     EvidenceOrigin,
     ImplementationIdentity,
@@ -17,18 +16,19 @@ from .certificates import (
     build_evidence_certificate,
     verify_evidence_certificate,
 )
+from .coverage import CoveragePolicy, evaluate_coverage
 from .emptybench import parse_corpus, parse_oracle, run_emptybench, run_seed_emptybench
 from .errors import (
     ModelValidationError,
     ValidationErrorCode,
     public_validation_error,
 )
-from .gate import NegativeClaimRequest, NegativeClaimPolicy
+from .gate import NegativeClaimPolicy, NegativeClaimRequest
 from .models import (
+    MAX_INTEGER_DECIMAL_DIGITS,
     ClaimMode,
     CoverageEvidence,
     EvidenceEnvelope,
-    MAX_INTEGER_DECIMAL_DIGITS,
     parse_datetime,
 )
 from .profiles import (
@@ -46,7 +46,7 @@ PACKAGE_VERSION = "0.6.0"
 class _JsonArgumentParser(argparse.ArgumentParser):
     """Route command-usage failures through the public JSON error contract."""
 
-    def error(self, message: str) -> None:
+    def error(self, message: str) -> NoReturn:
         raise ModelValidationError(
             "command arguments are invalid",
             code=ValidationErrorCode.CLI_ARGUMENT_INVALID,
@@ -194,9 +194,7 @@ def _write_json(value: Any, stream: TextIO, pretty: bool) -> None:
         if pretty:
             payload = json.dumps(value, indent=2, sort_keys=True, ensure_ascii=True)
         else:
-            payload = json.dumps(
-                value, sort_keys=True, separators=(",", ":"), ensure_ascii=True
-            )
+            payload = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
         payload.encode("utf-8")
     except (TypeError, UnicodeError, ValueError) as exc:
         raise ModelValidationError(
@@ -222,12 +220,8 @@ def _trusted_profile_context(
             code=ValidationErrorCode.CLI_ARGUMENT_INVALID,
         )
     return TrustedProfileContext(
-        snapshot=ProfileRegistrySnapshot.from_dict(
-            _read_json(args.registry, stdin)
-        ),
-        trust_selection=ProfileTrustSelection.from_dict(
-            _read_json(args.trust, stdin)
-        ),
+        snapshot=ProfileRegistrySnapshot.from_dict(_read_json(args.registry, stdin)),
+        trust_selection=ProfileTrustSelection.from_dict(_read_json(args.trust, stdin)),
     )
 
 
@@ -237,9 +231,7 @@ def _request_input(
 ) -> NegativeClaimRequest:
     if isinstance(data, dict) and "envelope" in data:
         supplied_overrides = [
-            name
-            for name in ("evaluated_at", "subject", "mode")
-            if getattr(args, name) is not None
+            name for name in ("evaluated_at", "subject", "mode") if getattr(args, name) is not None
         ]
         if supplied_overrides:
             raise ModelValidationError(
@@ -256,9 +248,7 @@ def _request_input(
         )
     envelope = EvidenceEnvelope.from_dict(data)
     try:
-        mode = ClaimMode(
-            ClaimMode.SCOPED.value if args.mode is None else args.mode
-        )
+        mode = ClaimMode(ClaimMode.SCOPED.value if args.mode is None else args.mode)
     except ValueError as exc:  # argparse choices should make this unreachable
         raise ModelValidationError(
             "--mode must be SCOPED or ABSOLUTE",
@@ -266,11 +256,7 @@ def _request_input(
         ) from exc
     request = NegativeClaimRequest(
         envelope=envelope,
-        subject=(
-            "records matching the query"
-            if args.subject is None
-            else args.subject
-        ),
+        subject=("records matching the query" if args.subject is None else args.subject),
         mode=mode,
         evaluated_at=parse_datetime(args.evaluated_at, "--evaluated-at"),
         policy=NegativeClaimPolicy(),
@@ -299,9 +285,7 @@ def _coverage_input(data: Any) -> dict[str, Any]:
         raise ModelValidationError("coverage input must be a JSON object")
     unknown = sorted(set(data) - {"coverage", "policy"})
     if unknown:
-        raise ModelValidationError(
-            f"coverage input has unknown fields: {', '.join(unknown)}"
-        )
+        raise ModelValidationError(f"coverage input has unknown fields: {', '.join(unknown)}")
     evidence = CoverageEvidence.from_dict(data.get("coverage"))
     policy = CoveragePolicy.from_dict(data.get("policy"))
     return evaluate_coverage(evidence, policy).to_dict()
@@ -452,9 +436,7 @@ def main(
         args = parser.parse_args(list(argv) if argv is not None else None)
         if args.command == "evaluate":
             context = _trusted_profile_context(args, input_stream)
-            request = _request_input(
-                _read_json(args.input, input_stream), args
-            )
+            request = _request_input(_read_json(args.input, input_stream), args)
             artifact = build_evidence_certificate(
                 request,
                 context,
@@ -465,9 +447,9 @@ def main(
             _write_json(artifact.to_dict(), output_stream, args.pretty)
             return 0
         if args.command == "demo":
-            report = run_seed_emptybench(all_cases=args.all)
-            _write_json(report.to_dict(), output_stream, args.pretty)
-            return 0 if report.all_passed else 1
+            demo_report = run_seed_emptybench(all_cases=args.all)
+            _write_json(demo_report.to_dict(), output_stream, args.pretty)
+            return 0 if demo_report.all_passed else 1
         if args.command == "emptybench":
             if args.oracle == "-":
                 raise ModelValidationError(
@@ -481,14 +463,14 @@ def main(
                 corpus,
                 expected_digest=args.expected_oracle_digest,
             )
-            report = run_emptybench(
+            emptybench_report = run_emptybench(
                 corpus,
                 oracle,
                 context,
                 expected_oracle_digest=args.expected_oracle_digest,
             )
-            _write_json(report.to_dict(), output_stream, args.pretty)
-            return 0 if report.all_passed else 1
+            _write_json(emptybench_report.to_dict(), output_stream, args.pretty)
+            return 0 if emptybench_report.all_passed else 1
         if args.command == "coverage":
             result = _coverage_input(_read_json(args.input, input_stream))
             _write_json(result, output_stream, args.pretty)
@@ -500,11 +482,9 @@ def main(
                     code=ValidationErrorCode.CLI_ARGUMENT_INVALID,
                 )
             expected_context = (
-                None
-                if args.registry is None
-                else _trusted_profile_context(args, input_stream)
+                None if args.registry is None else _trusted_profile_context(args, input_stream)
             )
-            report = verify_evidence_certificate(
+            verification = verify_evidence_certificate(
                 _read_json(args.input, input_stream),
                 expected_context=expected_context,
                 expected_certificate_digest=args.expected_digest,
@@ -514,15 +494,15 @@ def main(
                     else parse_datetime(args.relying_party_at, "--relying-party-at")
                 ),
             )
-            _write_json(report.to_dict(), output_stream, args.pretty)
+            _write_json(verification.to_dict(), output_stream, args.pretty)
             checks = (
-                report.structural_support,
-                report.certificate_digest_integrity,
-                report.embedded_digest_integrity,
-                report.deterministic_replay,
-                report.expected_context_match is not False,
-                report.expected_certificate_digest_match is not False,
-                report.current_local_reliance_eligible is not False,
+                verification.structural_support,
+                verification.certificate_digest_integrity,
+                verification.embedded_digest_integrity,
+                verification.deterministic_replay,
+                verification.expected_context_match is not False,
+                verification.expected_certificate_digest_match is not False,
+                verification.current_local_reliance_eligible is not False,
             )
             return 0 if all(checks) else 1
         parser.error(f"unknown command: {args.command}")

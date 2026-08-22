@@ -131,7 +131,7 @@ source truth independently. That remains a deliberate evidence boundary.
 | Evidence evaluator | Produce a deterministic decision and complete stable reasons from explicit inputs. | Read the wall clock, network, filesystem, or mutable global state. |
 | Negative-claim gate | Permit only the generated bounded negative when every required check passes. | Rewrite indeterminate evidence as absence. |
 | Certificate builder | Own evaluation and bind request, trusted context, contract IDs, origin, times, decision, implementation identity, and validity boundary. | Accept a caller-created decision or call a digest a signature. |
-| Certificate verifier | Reparse, check structural support and bindings, reproduce the decision, and report independent custody/current-use dimensions. | Emit one aggregate `valid` assertion or establish issuer identity/authorization. |
+| Certificate verifier | Reparse, check structural support and bindings, reproduce the decision, and report separately supplied custody-comparison and current-use dimensions. | Emit one aggregate `valid` assertion or establish issuer identity/authorization. |
 | Benchmark harness | Compare paired cases with a separately stored, versioned, corpus-bound expected-outcome oracle. | Use the implementation verdict as its own ground truth or describe author-controlled separation as independent adjudication. |
 | CLI adapter | Read strict JSON, supply application context, call domain services, and separate stdout from diagnostics. | Contain domain policy or require a network service. |
 
@@ -326,8 +326,9 @@ a P0 dependency or production environment.
 
 If persistence is later added, certificates must be append-only. A correction
 creates a successor linked to the prior artifact; it does not mutate an issued
-record. Independent custody requires a separately controlled store or retained
-expected digest and is not supplied by a local file alone.
+record. A retained expected digest enables comparison only. Independent custody
+requires organizationally independent control and is not supplied by a local
+file or by an author-retained digest alone.
 
 ## Security boundaries and failure behavior
 

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import json
+import unittest
 from copy import deepcopy
 from dataclasses import replace
-import json
 from pathlib import Path
-import unittest
 
 from evidence_state_io import ModelValidationError
 from evidence_state_io.canonical import canonical_digest
@@ -24,7 +24,6 @@ from evidence_state_io.emptybench import (
     seed_cases,
     seed_profile_context,
 )
-
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CORPUS_PATH = PROJECT_ROOT / "benchmarks" / "emptybench-p0-corpus.json"
@@ -119,13 +118,11 @@ class EmptyBenchTests(unittest.TestCase):
         self.assertEqual(len(cases), 2)
         control, fault = cases
         self.assertEqual(
-            control.request.envelope.source_observations[0]
-            .descriptor.to_dict()["index_as_of"],
+            control.request.envelope.source_observations[0].descriptor.to_dict()["index_as_of"],
             "2026-08-21T12:04:00Z",
         )
         self.assertEqual(
-            fault.request.envelope.source_observations[0]
-            .descriptor.to_dict()["index_as_of"],
+            fault.request.envelope.source_observations[0].descriptor.to_dict()["index_as_of"],
             "2026-08-21T12:03:59.999999Z",
         )
         corpus, oracle = seed_benchmark()
@@ -262,9 +259,7 @@ class EmptyBenchTests(unittest.TestCase):
 
     def test_duplicate_mutation_pointer_is_rejected(self) -> None:
         raw = load_corpus_dict()
-        raw["cases"][1]["mutations"].append(
-            deepcopy(raw["cases"][1]["mutations"][0])
-        )
+        raw["cases"][1]["mutations"].append(deepcopy(raw["cases"][1]["mutations"][0]))
         refresh_digest(raw, "corpus_digest")
         with self.assertRaisesRegex(ModelValidationError, "must not repeat"):
             parse_corpus(raw)

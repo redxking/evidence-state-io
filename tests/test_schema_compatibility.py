@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import json
+import unittest
 from copy import deepcopy
 from io import StringIO
-import json
 from pathlib import Path
-import unittest
 
 from evidence_state_io import (
     CANONICALIZATION_PROFILE,
@@ -17,7 +17,6 @@ from evidence_state_io import (
 from evidence_state_io.cli import main
 from tests.helpers import trusted_context
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 EXAMPLES = PROJECT_ROOT / "examples"
 LEGACY = EXAMPLES / "legacy"
@@ -27,12 +26,8 @@ ACTIVE_FIXTURE = EXAMPLES / "covered_request.json"
 
 FROZEN_COMMIT = "b6fac8706fc3496ceb46003c0d5b836a3dc23096"
 FROZEN_PROFILE = "esio-canonical-json-0.1"
-FROZEN_RAW_DIGEST = (
-    "sha256:c265c5f2c1b5054cb3a37a88ae833ac781daa196edef04d8074a13dd0864a189"
-)
-FROZEN_INPUT_DIGEST = (
-    "sha256:da688bad283bb84fd88ef6bfba35893f61266d61cf01f07ac9bf852b0255b554"
-)
+FROZEN_RAW_DIGEST = "sha256:c265c5f2c1b5054cb3a37a88ae833ac781daa196edef04d8074a13dd0864a189"
+FROZEN_INPUT_DIGEST = "sha256:da688bad283bb84fd88ef6bfba35893f61266d61cf01f07ac9bf852b0255b554"
 LEGACY_SCHEMA_1_QUERY_FINGERPRINT = (
     "sha256:8b058cd455be9b3fe33c8a9cbf8fa7e7f1954ae8a6c360b816997702530060ac"
 )
@@ -178,9 +173,7 @@ class SchemaCompatibilityTests(unittest.TestCase):
             index_as_of="2026-08-21T12:00:00Z",
         )
         candidate["envelope"]["observed_at"] = "2026-08-21T12:00:00Z"
-        candidate["envelope"][
-            "coverage_query_fingerprint"
-        ] = LEGACY_SCHEMA_1_QUERY_FINGERPRINT
+        candidate["envelope"]["coverage_query_fingerprint"] = LEGACY_SCHEMA_1_QUERY_FINGERPRINT
         observation["query_fingerprint"] = LEGACY_SCHEMA_1_QUERY_FINGERPRINT
 
         parsed = NegativeClaimRequest.from_dict(candidate)

@@ -1,13 +1,13 @@
 from __future__ import annotations
 
+import unittest
 from dataclasses import replace
 from datetime import datetime, timezone
-import unittest
 
 from evidence_state_io import (
     AUTHORIZATION_CONTEXT_IDENTIFIER_PROFILE,
-    EvidenceOrigin,
     EvidenceEnvelope,
+    EvidenceOrigin,
     ImplementationIdentity,
     ModelValidationError,
     NegativeClaimRequest,
@@ -18,7 +18,6 @@ from evidence_state_io import (
     build_evidence_certificate,
     evaluate_negative_claim,
 )
-
 from tests.helpers import refresh_query_fingerprints, request_dict, trusted_context
 
 
@@ -197,9 +196,7 @@ class AuthorizationContextIdentifierTests(unittest.TestCase):
                             build_evidence_certificate(
                                 request,
                                 context,
-                                issued_at=datetime(
-                                    2026, 8, 21, 12, 6, tzinfo=timezone.utc
-                                ),
+                                issued_at=datetime(2026, 8, 21, 12, 6, tzinfo=timezone.utc),
                                 origin=EvidenceOrigin.SYNTHETIC,
                                 implementation=implementation,
                             )

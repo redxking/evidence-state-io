@@ -5,6 +5,10 @@ on:
     branches: [main]
     paths:
       - "site/**"
+      - "scripts/build_site.py"
+      - "examples/**"
+      - "src/evidence_state_io/**"
+      - "tests/test_site_demo.js"
   workflow_dispatch:
 
 permissions:
@@ -23,10 +27,22 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - name: Build the parity-bound static site
+        run: PYTHONPATH=src python scripts/build_site.py --output .site-build
+
+      - name: Verify browser demo parity
+        run: node tests/test_site_demo.js
+
       - name: Validate static site boundary
         run: |
-          test -f site/index.html
-          if find site -type l -print -quit | grep -q .; then
+          test -f .site-build/index.html
+          test -f .site-build/demo-fixtures.json
+          if find .site-build -type l -print -quit | grep -q .; then
             echo "Pages source must not contain symbolic links" >&2
             exit 1
           fi
@@ -34,7 +50,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
-          path: site
+          path: .site-build
           retention-days: 1
 
   deploy:

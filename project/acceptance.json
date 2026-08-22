@@ -1,0 +1,33 @@
+{
+  "criteria": [
+    {"id": "MVP-ACC-001", "status": "UNVERIFIED", "title": "Complete product specification", "watched_paths": ["docs/PRD.md", "docs/CLAIMS_AND_BOUNDARIES.md"]},
+    {"id": "MVP-ACC-002", "status": "UNVERIFIED", "title": "Documented architecture and versioned ADRs", "watched_paths": ["docs/ARCHITECTURE.md", "docs/adr/**"]},
+    {"id": "MVP-ACC-003", "status": "UNVERIFIED", "title": "Phased roadmap and traceable task system", "watched_paths": ["TASKS.md", "PROJECT_STATUS.md", "docs/BACKLOG.md", "project/**"]},
+    {"id": "MVP-ACC-004", "status": "UNVERIFIED", "title": "Working deterministic fail-closed Python API and CLI", "watched_paths": ["src/**", "pyproject.toml"]},
+    {"id": "MVP-ACC-005", "status": "UNVERIFIED", "title": "Versioned schemas fixtures examples and compatibility rules", "watched_paths": ["src/**", "examples/**", "benchmarks/**", "docs/adr/0007-*.md"]},
+    {"id": "MVP-ACC-006", "status": "UNVERIFIED", "title": "Reproducible benchmark and adversarial scaffold", "watched_paths": ["benchmarks/**", "src/evidence_state_io/emptybench.py", "tests/test_emptybench.py", "docs/VALIDATION_PLAN.md"]},
+    {"id": "MVP-ACC-007", "status": "UNVERIFIED", "title": "Comprehensive automated tests and branch coverage", "watched_paths": ["src/**", "tests/**", "pyproject.toml", "scripts/acceptance.sh"]},
+    {"id": "MVP-ACC-008", "status": "UNVERIFIED", "title": "Complete developer operator security integration and audience documentation", "watched_paths": ["README.md", "SECURITY.md", "SUPPORT.md", "CONTRIBUTING.md", "GOVERNANCE.md", "HANDOFF.md", "docs/**"]},
+    {"id": "MVP-ACC-009", "status": "UNVERIFIED", "title": "Fresh isolated installation and end-to-end API and CLI", "watched_paths": ["src/**", "examples/**", "pyproject.toml", "scripts/setup.sh", "scripts/acceptance.sh"]},
+    {"id": "MVP-ACC-010", "status": "UNVERIFIED", "title": "One hundred repetitions of every golden fixture are byte-identical", "watched_paths": ["src/**", "examples/**", "benchmarks/**", "tests/test_determinism_acceptance.py"]},
+    {"id": "MVP-ACC-011", "status": "UNVERIFIED", "title": "Every documented fail-closed reason has negative evidence", "watched_paths": ["src/**", "tests/**", "docs/VALIDATION_PLAN.md"]},
+    {"id": "MVP-ACC-012", "status": "UNVERIFIED", "title": "Tamper replay and idempotency contracts pass", "watched_paths": ["src/**", "tests/test_certificates.py", "tests/test_emptybench.py", "tests/test_determinism_acceptance.py"]},
+    {"id": "MVP-ACC-013", "status": "UNVERIFIED", "title": "Offline benchmark emits human and machine readable correctness-first results", "watched_paths": ["src/evidence_state_io/emptybench.py", "benchmarks/**", "README.md", "scripts/acceptance.sh"]},
+    {"id": "MVP-ACC-014", "status": "UNVERIFIED", "title": "Unit schema contract integration property adversarial packaging and clean-start gates pass", "watched_paths": ["src/**", "tests/**", "scripts/**", "pyproject.toml", "compose.yaml"]},
+    {"id": "MVP-ACC-015", "status": "UNVERIFIED", "title": "No unresolved MVP critical or high defect", "watched_paths": ["src/**", "tests/**", "SECURITY.md", "docs/REVIEW_LOG.md", "project/tasks.json"]},
+    {"id": "MVP-ACC-016", "status": "UNVERIFIED", "title": "Documentation matches observed behavior", "watched_paths": ["README.md", "PROJECT_STATUS.md", "TASKS.md", "docs/**", "src/**", "tests/**"]},
+    {"id": "MVP-ACC-017", "status": "UNVERIFIED", "title": "Public release gate and Apache-2.0 licensing pass", "watched_paths": ["LICENSE", "NOTICE", "SECURITY.md", "docs/SOURCE_REGISTER.md", "docs/CLAIMS_AND_BOUNDARIES.md", ".gitignore"]},
+    {"id": "MVP-ACC-018", "status": "UNVERIFIED", "title": "Professional public GitHub repository contains all required tracked source", "watched_paths": ["**"]},
+    {"id": "MVP-ACC-019", "status": "UNVERIFIED", "title": "Local accepted commit equals remote default branch", "watched_paths": ["**"]},
+    {"id": "MVP-ACC-020", "status": "UNVERIFIED", "title": "Required CI and security checks pass at exact accepted commit", "watched_paths": [".github/workflows/**", "src/**", "tests/**", "site/**", "wiki/**", "pyproject.toml"]},
+    {"id": "MVP-ACC-021", "status": "UNVERIFIED", "title": "Pages site and real browser-local demo are deployed and verified", "watched_paths": ["site/**", ".github/workflows/pages.yml", "tests/test_site_demo.js"]},
+    {"id": "MVP-ACC-022", "status": "UNVERIFIED", "title": "Repository site and demonstration are publicly accessible", "watched_paths": ["site/**", "README.md"]},
+    {"id": "MVP-ACC-023", "status": "UNVERIFIED", "title": "Remote Wiki contains and renders every required page", "watched_paths": ["wiki/**", "docs/**"]},
+    {"id": "MVP-ACC-024", "status": "UNVERIFIED", "title": "Issues Project milestones workflows security Discussions metadata and rules are populated", "watched_paths": [".github/**", "CODE_OF_CONDUCT.md", "CONTRIBUTING.md", "GOVERNANCE.md", "SECURITY.md", "SUPPORT.md"]},
+    {"id": "MVP-ACC-025", "status": "UNVERIFIED", "title": "Tagged MVP release binds notes checksums manifest SBOM limitations and accepted commit", "watched_paths": ["CHANGELOG.md", ".github/workflows/release.yml", "release/**", "project/acceptance.json"]},
+    {"id": "MVP-ACC-026", "status": "UNVERIFIED", "title": "Bounded repository-local and scheduled continuation mechanisms are verified", "watched_paths": ["src/evidence_state_io/advance.py", "tests/test_advance.py", "project/**", "automation/**", "docs/AUTOMATION.md"]},
+    {"id": "MVP-ACC-027", "status": "UNVERIFIED", "title": "Independent clean clone reproduces setup tests benchmark and local demo", "watched_paths": ["**"]}
+  ],
+  "schema": "esio-acceptance-ledger/1.0",
+  "status_vocabulary": ["PASS", "FAIL", "BLOCKED", "UNVERIFIED", "STALE"]
+}

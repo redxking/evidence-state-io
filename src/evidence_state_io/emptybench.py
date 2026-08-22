@@ -8,10 +8,10 @@ boundary, not authentication or proof that the oracle is correct.
 
 from __future__ import annotations
 
+import json
 from copy import deepcopy
 from dataclasses import dataclass
 from hmac import compare_digest
-import json
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
@@ -45,7 +45,6 @@ from .profiles import (
     ProfileTrustSelection,
     TrustedProfileContext,
 )
-
 
 EMPTYBENCH_CORPUS_SCHEMA = "esio-emptybench-corpus/1.0-candidate.1"
 EMPTYBENCH_ORACLE_SCHEMA = "esio-emptybench-oracle/1.0-candidate.1"
@@ -141,7 +140,7 @@ def _replace_at_pointer(document: Any, pointer: tuple[str, ...], value: Any) -> 
     current = document
     for depth, segment in enumerate(pointer[:-1]):
         location = "/" + "/".join(pointer[: depth + 1])
-        if isinstance(current, Mapping):
+        if type(current) is dict:
             if segment not in current:
                 raise ModelValidationError(f"case mutation path does not exist at {location}")
             current = current[segment]
@@ -161,7 +160,7 @@ def _replace_at_pointer(document: Any, pointer: tuple[str, ...], value: Any) -> 
         raise ModelValidationError(f"case mutation path traverses a scalar at {location}")
 
     final = pointer[-1]
-    if isinstance(current, Mapping):
+    if type(current) is dict:
         if final not in current:
             raise ModelValidationError("case mutation may replace only an existing object field")
         current[final] = deepcopy(value)
@@ -216,9 +215,7 @@ class EmptyBenchCase:
         if not isinstance(self.request, NegativeClaimRequest):
             raise ModelValidationError("case.request must be a NegativeClaimRequest")
         if any(not isinstance(item, EmptyBenchMutation) for item in self.mutations):
-            raise ModelValidationError(
-                "case.mutations must contain only EmptyBenchMutation values"
-            )
+            raise ModelValidationError("case.mutations must contain only EmptyBenchMutation values")
 
     @classmethod
     def from_definition(
@@ -539,9 +536,7 @@ def _validate_case_structure(cases: Iterable[EmptyBenchCase]) -> tuple[EmptyBenc
     if not materialized:
         raise ModelValidationError("benchmark corpus must contain at least one case")
     if len(materialized) > MAX_BENCHMARK_CASES:
-        raise ModelValidationError(
-            f"benchmark corpus exceeds the {MAX_BENCHMARK_CASES}-case limit"
-        )
+        raise ModelValidationError(f"benchmark corpus exceeds the {MAX_BENCHMARK_CASES}-case limit")
     if any(not isinstance(case, EmptyBenchCase) for case in materialized):
         raise ModelValidationError("benchmark corpus must contain EmptyBenchCase values")
     case_ids = [case.case_id for case in materialized]
@@ -553,9 +548,7 @@ def _validate_case_structure(cases: Iterable[EmptyBenchCase]) -> tuple[EmptyBenc
     for pair_id in sorted(pairs):
         pair = pairs[pair_id]
         if len(pair) != 2:
-            raise ModelValidationError(
-                f"benchmark pair {pair_id!r} must contain exactly two cases"
-            )
+            raise ModelValidationError(f"benchmark pair {pair_id!r} must contain exactly two cases")
         if {case.variant for case in pair} != {"control", "fault"}:
             raise ModelValidationError(
                 f"benchmark pair {pair_id!r} must contain one control and one fault"
@@ -666,9 +659,7 @@ def parse_oracle(
     try:
         corpus = parse_corpus(EmptyBenchCorpus.to_dict(corpus))
     except (AttributeError, KeyError, TypeError, ValueError) as exc:
-        raise ModelValidationError(
-            "oracle requires an intact parsed EmptyBenchCorpus"
-        ) from exc
+        raise ModelValidationError("oracle requires an intact parsed EmptyBenchCorpus") from exc
     fields = {
         "oracle_schema",
         "oracle_id",
@@ -717,16 +708,12 @@ def parse_oracle(
     rules_by_id = {rule.rule_id: rule for rule in rules}
     assignments = tuple(
         EmptyBenchOracleAssignment.from_dict(assignment, f"oracle.assignments[{index}]")
-        for index, assignment in enumerate(
-            _array(data["assignments"], "oracle.assignments")
-        )
+        for index, assignment in enumerate(_array(data["assignments"], "oracle.assignments"))
     )
     assigned_case_ids = [assignment.case_id for assignment in assignments]
     if len(set(assigned_case_ids)) != len(assigned_case_ids):
         raise ModelValidationError("oracle assignments must not duplicate case_id values")
-    unknown_rules = sorted(
-        {assignment.rule_id for assignment in assignments} - set(rules_by_id)
-    )
+    unknown_rules = sorted({assignment.rule_id for assignment in assignments} - set(rules_by_id))
     if unknown_rules:
         raise ModelValidationError(
             "oracle assignments reference unknown rules: " + ", ".join(unknown_rules)
@@ -749,8 +736,7 @@ def parse_oracle(
         pairs.setdefault(case.pair_id, []).append(case)
     for pair_id, pair in sorted(pairs.items()):
         results = [
-            rules_by_id[assignments_by_case[case.case_id].rule_id].expected_allowed
-            for case in pair
+            rules_by_id[assignments_by_case[case.case_id].rule_id].expected_allowed for case in pair
         ]
         if sorted(results) != [False, True]:
             raise ModelValidationError(
@@ -799,9 +785,7 @@ def run_emptybench(
         if type(corpus.cases) is not tuple or any(
             type(case) is not EmptyBenchCase for case in corpus.cases
         ):
-            raise ModelValidationError(
-                "EmptyBench corpus cases must be exact parsed case values"
-            )
+            raise ModelValidationError("EmptyBench corpus cases must be exact parsed case values")
         supplied_expanded_cases = [
             EmptyBenchCase.from_dict(EmptyBenchCase.to_dict(case)).to_dict()
             for case in corpus.cases
@@ -820,9 +804,7 @@ def run_emptybench(
             corpus,
             expected_digest=expected_oracle_digest,
         )
-        context = TrustedProfileContext.from_dict(
-            TrustedProfileContext.to_dict(context)
-        )
+        context = TrustedProfileContext.from_dict(TrustedProfileContext.to_dict(context))
     except (AttributeError, KeyError, TypeError, ValueError) as exc:
         if isinstance(exc, ModelValidationError):
             raise
@@ -835,8 +817,7 @@ def run_emptybench(
         tuple(cases_by_id)
         if case_ids is None
         else tuple(
-            _identifier(case_id, f"case_ids[{index}]")
-            for index, case_id in enumerate(case_ids)
+            _identifier(case_id, f"case_ids[{index}]") for index, case_id in enumerate(case_ids)
         )
     )
     if not selected_ids:
@@ -857,8 +838,7 @@ def run_emptybench(
     )
     if incomplete_pairs:
         raise ModelValidationError(
-            "EmptyBench selection must include complete pairs: "
-            + ", ".join(incomplete_pairs)
+            "EmptyBench selection must include complete pairs: " + ", ".join(incomplete_pairs)
         )
     rules_by_id = {rule.rule_id: rule for rule in oracle.rules}
     assignments_by_case = {assignment.case_id: assignment for assignment in oracle.assignments}
@@ -907,9 +887,7 @@ def _seed_artifact_directory() -> Path:
         Path.cwd().resolve() / "benchmarks",
     )
     for candidate in candidates:
-        if (candidate / _SEED_CORPUS_FILE).is_file() and (
-            candidate / _SEED_ORACLE_FILE
-        ).is_file():
+        if (candidate / _SEED_CORPUS_FILE).is_file() and (candidate / _SEED_ORACLE_FILE).is_file():
             return candidate
     raise ModelValidationError(
         "seed EmptyBench artifacts were not found; run from the repository or supply explicit corpus and oracle files"

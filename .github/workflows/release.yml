@@ -61,11 +61,26 @@ jobs:
       - name: Run release checks
         run: |
           bash -n scripts/*.sh
+          ruff check src tests scripts
+          ruff format --check src tests scripts
+          mypy src/evidence_state_io
           node tests/test_dashboard.js
+          python scripts/build_site.py --output .site-build
+          node tests/test_site_demo.js
           python -m compileall -q -f src
           python -m pip check
-          python -m pytest -p no:cacheprovider -q
+          coverage run --branch -m pytest -p no:cacheprovider -q
+          coverage report --fail-under=90
           evidence-state demo --all > "${RUNNER_TEMP}/evidence-state-demo-all.json"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          ledger = json.loads(Path("project/acceptance.json").read_text(encoding="utf-8"))
+          unresolved = [row["id"] for row in ledger["criteria"] if row["status"] != "PASS"]
+          if unresolved:
+              raise SystemExit("release acceptance rows are not PASS: " + ", ".join(unresolved))
+          PY
 
       - name: Build distributions
         run: python -m build
@@ -78,7 +93,14 @@ jobs:
           env -u PYTHONPATH "${RUNNER_TEMP}/wheel-check/bin/evidence-state" demo --all > "${RUNNER_TEMP}/wheel-demo-all.json"
 
       - name: Generate checksums
-        run: sha256sum dist/*.whl dist/*.tar.gz > dist/SHA256SUMS
+        run: |
+          python scripts/generate_release_evidence.py \
+            --repo . \
+            --artifacts dist \
+            --output dist \
+            --tag "${GITHUB_REF_NAME}" \
+            --commit "${GITHUB_SHA}"
+          cp release/LIMITATIONS.md dist/LIMITATIONS.md
 
       - name: Preserve verified distributions
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -88,6 +110,9 @@ jobs:
             dist/*.whl
             dist/*.tar.gz
             dist/SHA256SUMS
+            dist/EVIDENCE-MANIFEST.json
+            dist/SBOM.spdx.json
+            dist/LIMITATIONS.md
           if-no-files-found: error
           retention-days: 7
 
@@ -116,15 +141,16 @@ jobs:
             dist/*.whl
             dist/*.tar.gz
 
-      - name: Create pre-alpha GitHub release
+      - name: Create MVP research-candidate GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
           gh release create "${GITHUB_REF_NAME}" \
             dist/*.whl dist/*.tar.gz dist/SHA256SUMS \
+            dist/EVIDENCE-MANIFEST.json dist/SBOM.spdx.json dist/LIMITATIONS.md \
             --verify-tag \
-            --prerelease \
+            --latest=false \
             --generate-notes \
-            --title "${GITHUB_REF_NAME}" \
-            --notes "Pre-alpha research artifact. This release records tested package output and build provenance; it does not establish production readiness, external validation, authenticated evidence, or authorization for consequential use."
+            --title "${GITHUB_REF_NAME} — MVP research candidate" \
+            --notes "MVP research-candidate release for synthetic, local, and authorized shadow evaluation. Assets include exact checksums, an evidence manifest, an SPDX SBOM, limitations, and build provenance. This release does not establish production readiness, external validation, authenticated evidence, source truth, or authorization for consequential use."

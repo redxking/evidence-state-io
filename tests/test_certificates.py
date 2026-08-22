@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+import inspect
+import unittest
 from copy import deepcopy
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-import inspect
-import unittest
 
 from evidence_state_io.canonical import canonical_digest
 from evidence_state_io.certificates import (
@@ -40,9 +40,7 @@ from evidence_state_io.profiles import (
     ProfileTrustSelection,
     TrustedProfileContext,
 )
-
 from tests.helpers import refresh_query_fingerprints, request_dict
-
 
 UTC = timezone.utc
 EVALUATED_AT = datetime(2026, 8, 21, 12, 5, tzinfo=UTC)
@@ -218,9 +216,7 @@ def with_profile_age_limits(
         trust_selection_digest=None,
     )
     data = request.to_dict()
-    data["envelope"]["query"]["source_requirements"][0][
-        "profile_ref"
-    ] = reference.to_dict()
+    data["envelope"]["query"]["source_requirements"][0]["profile_ref"] = reference.to_dict()
     refresh_query_fingerprints(data)
     return (
         NegativeClaimRequest.from_dict(data),
@@ -423,9 +419,7 @@ class EvidenceCertificateTests(unittest.TestCase):
 
     def test_decision_tamper_with_rehash_still_fails_replay(self) -> None:
         data = certificate().to_dict()
-        data["certificate"]["decision"]["limitations"].append(
-            "Caller-injected limitation."
-        )
+        data["certificate"]["decision"]["limitations"].append("Caller-injected limitation.")
         data["certificate_digest"] = canonical_digest(data["certificate"])
         report = verify_evidence_certificate(data)
         self.assertTrue(report.certificate_digest_integrity)
@@ -569,9 +563,7 @@ class EvidenceCertificateTests(unittest.TestCase):
 
     def test_unknown_certificate_contract_is_structurally_unsupported(self) -> None:
         data = certificate().to_dict()
-        data["certificate"]["certificate_format"] = (
-            "esio-evidence-certificate/1.0-candidate.0"
-        )
+        data["certificate"]["certificate_format"] = "esio-evidence-certificate/1.0-candidate.0"
         data["certificate_digest"] = canonical_digest(data["certificate"])
         report = verify_evidence_certificate(data)
         self.assertFalse(report.structural_support)
@@ -735,9 +727,7 @@ class EvidenceCertificateTests(unittest.TestCase):
 
         request, context = governed_inputs()
         data = certificate(request=request, context=context).to_dict()
-        data["certificate"]["evaluator_version"] = EqualityBypass(
-            "esio-evaluator-1.0-candidate.4"
-        )
+        data["certificate"]["evaluator_version"] = EqualityBypass("esio-evaluator-1.0-candidate.4")
         data["certificate_digest"] = canonical_digest(data["certificate"])
 
         report = verify_evidence_certificate(

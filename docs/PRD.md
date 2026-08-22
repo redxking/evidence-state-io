@@ -414,22 +414,33 @@ Thresholds are frozen before the corresponding evaluation. They may be changed o
 
 ### Phase 0 — 0 to 30 days: falsifiable core
 
-- Preserve the accepted local schema `0.1` replay baseline; harden and later freeze the breaking schema `1.0` candidate, state invariants, policy format, reason-code taxonomy, and seed EmptyBench oracle under ADR-0007.
-- Complete acceptance and freeze evidence for the implemented dependency-light library, CLI, deterministic gate, governed local profile binding, unsigned canonical replay certificate, and fault tests.
+- Preserve the accepted local schema `0.1` replay baseline and the hash-bound
+  `0.6.0` local implementation record. Schema `1.0`, candidate contracts, and
+  EmptyBench remain unfrozen unless separately approved.
+- Draft the first implementation-owned comparative campaign preregistration
+  for owner review.
 - Establish naive, prompt-only, and always-block baselines.
 
-### Phase 1 — 31 to 60 days: real adapter pressure test
+### Phase 1 — 31 to 60 days: comparative decision gate
 
-- Implement one read-only adapter first, then GitHub/SQL/operational-search profiles if the schema survives.
-- Freeze recorded/replayed fixtures for pagination, rate limits, permissions, stale caches, and query failures.
-- Run discovery interviews and select an authorized shadow workflow.
+- After recorded owner approval, freeze and run the preregistered comparative
+  campaign without reinterpretation.
+- Decide stop, narrow, continue, or revise prospectively from the declared
+  thresholds.
+- Do not treat an implementation-owned campaign as independent adjudication or
+  external reproduction.
 
-### Phase 2 — 61 to 90 days: decision evidence
+### Phase 2 — 61 to 90 days: conditional adapter pressure test
 
-- Run the preregistered held-out benchmark.
+- Begin only if the Phase 1 comparative gate passes.
+- Implement one read-only adapter, then consider GitHub, SQL, or operational
+  search profiles if the contract survives.
+- Freeze recorded/replayed fixtures for pagination, rate limits, permissions,
+  stale caches, and query failures.
+- Run approved discovery interviews and select an authorized shadow workflow.
 - Add certificate signing only if deterministic semantics are stable.
 - Conduct an authorized shadow evaluation and seek independent reproduction.
-- Decide stop, narrow, continue, or prepare a protocol proposal.
+- Decide whether to prepare a protocol proposal.
 
 ## Open decisions
 

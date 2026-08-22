@@ -1,0 +1,38 @@
+name: DCO
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dco-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  signoff:
+    name: Commit signoff
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out complete pull-request history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Require a DCO signoff on each contributed commit
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          failure=0
+          for commit in $(git rev-list --no-merges "${BASE_SHA}..${HEAD_SHA}"); do
+            if ! git show --no-patch --format=%B "${commit}" \
+              | grep -Eiq '^Signed-off-by: .+ <[^>]+>$'; then
+              echo "::error::Commit ${commit} is missing a Signed-off-by trailer."
+              failure=1
+            fi
+          done
+          exit "${failure}"

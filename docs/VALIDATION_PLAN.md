@@ -204,6 +204,17 @@ digests where an attacker could do so. The test suite must kill every mutation
 in a defined critical-gate/certificate set. Report mutation score separately
 from code coverage; line coverage alone is not an acceptance criterion.
 
+For the MVP acceptance gate, the frozen deterministic core enforces at least
+90% branch coverage across `canonical`, `certificates`, `cli`, `coverage`,
+`emptybench`, `errors`, `gate`, `models`, `profiles`, and `sources`. The trivial
+`__main__` launcher and `advance` project-operations controller are excluded
+from that core metric: the launcher delegates directly, while the controller
+intentionally reads Git state and wall time outside the decision boundary.
+They remain acceptance-critical and are exercised through separate CLI, lock,
+ledger-validation, stale-invalidation, clean-tree execution, failure, and
+bounded-iteration functional tests. This exclusion cannot be used to omit a
+gateway decision path or lower the 90% threshold.
+
 ### Profile, certificate, and reliance verification
 
 The 0.6.0 candidate adds the following required test families:

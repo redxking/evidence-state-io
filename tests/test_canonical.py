@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import unittest
 from copy import deepcopy
 from dataclasses import replace
 from decimal import Decimal
-import unittest
 
 from evidence_state_io import (
     ModelValidationError,
@@ -13,9 +13,10 @@ from evidence_state_io import (
 )
 from evidence_state_io.gate import (
     NegativeClaimRequest,
+)
+from evidence_state_io.gate import (
     evaluate_negative_claim as _evaluate_negative_claim,
 )
-
 from tests.helpers import refresh_query_fingerprints, request_dict, trusted_context
 
 
@@ -41,13 +42,12 @@ class CanonicalDigestTests(unittest.TestCase):
 
     def test_semantically_unordered_detection_assumptions_do_not_change_digest(self) -> None:
         first = request_dict()
-        first["envelope"]["query"]["source_requirements"][0][
-            "detection_assumptions"
-        ] = ["assumption-b", "assumption-a"]
+        first["envelope"]["query"]["source_requirements"][0]["detection_assumptions"] = [
+            "assumption-b",
+            "assumption-a",
+        ]
         second = deepcopy(first)
-        second["envelope"]["query"]["source_requirements"][0][
-            "detection_assumptions"
-        ].reverse()
+        second["envelope"]["query"]["source_requirements"][0]["detection_assumptions"].reverse()
         refresh_query_fingerprints(first)
         refresh_query_fingerprints(second)
 

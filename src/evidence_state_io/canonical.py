@@ -7,13 +7,12 @@ custody mechanism.
 
 from __future__ import annotations
 
+import json
 from hashlib import sha256
 from hmac import compare_digest
-import json
 from typing import Any
 
 from .models import ModelValidationError
-
 
 CANONICALIZATION_PROFILE = "esio-canonical-json-0.1"
 DIGEST_ALGORITHM = "sha256"
@@ -31,9 +30,7 @@ def canonical_json_bytes(value: Any) -> bytes:
             allow_nan=False,
         ).encode("utf-8")
     except (OverflowError, TypeError, UnicodeError, ValueError) as exc:
-        raise ModelValidationError(
-            "canonical JSON input contains an unsupported value"
-        ) from exc
+        raise ModelValidationError("canonical JSON input contains an unsupported value") from exc
 
 
 def canonical_digest(value: Any) -> str:

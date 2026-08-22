@@ -7,10 +7,9 @@ safe and useful for an operator, but are not a compatibility surface.
 
 from __future__ import annotations
 
-from enum import Enum
 import json
+from enum import Enum
 from typing import Any
-
 
 VALIDATION_ERROR_SCHEMA = "esio-validation-error/1.0-candidate.1"
 
@@ -43,9 +42,7 @@ _PUBLIC_MESSAGES: dict[ValidationErrorCode, str] = {
     ValidationErrorCode.JSON_SYNTAX_INVALID: "JSON syntax is invalid",
     ValidationErrorCode.JSON_DUPLICATE_KEY: "JSON contains a duplicate object key",
     ValidationErrorCode.JSON_NUMBER_INVALID: "JSON contains an unsupported numeric value",
-    ValidationErrorCode.JSON_DEPTH_EXCEEDED: (
-        "JSON nesting exceeds the supported parser depth"
-    ),
+    ValidationErrorCode.JSON_DEPTH_EXCEEDED: ("JSON nesting exceeds the supported parser depth"),
     ValidationErrorCode.INPUT_SIZE_EXCEEDED: "JSON input exceeds the supported size",
     ValidationErrorCode.INPUT_ENCODING_INVALID: "JSON input or output is not valid UTF-8",
     ValidationErrorCode.INPUT_READ_FAILED: "JSON input could not be read",
@@ -87,10 +84,7 @@ def public_validation_error(exc: BaseException) -> dict[str, Any]:
         message = _PUBLIC_MESSAGES[code]
     elif isinstance(exc, json.JSONDecodeError):
         code = ValidationErrorCode.JSON_SYNTAX_INVALID
-        message = (
-            "JSON syntax is invalid at "
-            f"line {exc.lineno}, column {exc.colno}"
-        )
+        message = f"JSON syntax is invalid at line {exc.lineno}, column {exc.colno}"
     elif isinstance(exc, OSError):
         code = ValidationErrorCode.INPUT_READ_FAILED
         message = "JSON input could not be read"

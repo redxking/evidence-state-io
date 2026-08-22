@@ -2,19 +2,21 @@
 
 **Status date:** 2026-08-22
 
-**Lifecycle stage:** public Apache-2.0 pre-alpha; package `0.6.0` acceptance and custody verification open
+**Lifecycle stage:** public Apache-2.0 pre-alpha; package `0.6.0` locally accepted at a hash-bound implementation checkpoint
 
 **Claim level:** local research prototype only; schema `1.0` is unfrozen
 
 ## Current objective
 
-Bind one stable `0.6.0` revision to a complete local acceptance record. The
-implementation now binds application-selected profiles, emits deterministic
-replay records, defines versioned evidence-state transitions and validation
-errors, rejects credential-like authorization-context identifiers, and carries
-a separated 24-case EmptyBench seed corpus and declarative oracle. The public
-repository, Apache-2.0 license, community controls, and delivery automation do
-not change its pre-alpha evidence status.
+Prepare the first implementation-owned campaign preregistration for owner
+review without silently converting the accepted local regression record into a
+frozen benchmark. The implementation binds application-selected profiles,
+emits deterministic replay records, defines versioned evidence-state
+transitions and validation errors, rejects credential-like
+authorization-context identifiers, and carries a separate 24-case EmptyBench
+seed corpus and declarative oracle. The public repository, Apache-2.0 license,
+community controls, and delivery automation do not change its pre-alpha
+evidence status.
 
 ## Continuation mechanism
 
@@ -73,39 +75,58 @@ These identifiers are exact boundaries, not a negotiation mechanism. Older, newe
   digest. Tampering, swapping, missing/duplicate assignments, contract
   downgrade, and invalid mutation paths fail closed.
 
-## Interim verification evidence
+## Hash-bound local acceptance record
 
-The following results were observed during the moving-tree hardening and adversarial-review cycle:
+Implementation checkpoint
+`38f390fdae6870f10e4e5bfc4fabef8db6a7c4c3` was clean when the
+following local acceptance evidence was collected:
 
-- `./scripts/test.sh -q` — `367 passed` against the integrated moving tree on
-  2026-08-22; all 24 seed cases and all 12 pairs passed with zero unsafe
-  permits and zero false rejections.
-- `./scripts/test.sh -q tests/test_profiles.py` — `40 passed`, including exact selected-profile trust, unsupported contracts, direct applicability mutations, and microsecond boundary cases.
-- Separate in-project read-only attack attempts did not reproduce the
-  weak/strong dual-profile downgrade once the trust selection pinned the exact
-  profile reference.
-- Rehashed replacement profile/snapshot content rejected against the original fixed trust context. Replacing and rehashing both configuration files remained possible, correctly exposing the configuration-custody boundary rather than claiming cryptographic trust.
-- Untrusted snapshot or profile content with extreme finality values returned the trust failure without using the untrusted content for applicability or horizon calculations.
-- `git diff --check` was clean at the interim review point.
+- `./scripts/setup.sh` rebuilt and installed `evidence-state-io 0.6.0`.
+- `./scripts/test.sh -q` and the installed-package pytest path each passed
+  `372/372`.
+- Python 3.11.16, 3.12.14, and 3.13.0 each passed `372/372` source tests.
+- `env -u PYTHONPATH ./scripts/check.sh` passed shell, dashboard, compilation,
+  dependency, local-link, source/installed snapshot, installed CLI, and
+  deterministic demo checks. Docker Compose was available and its optional
+  configuration validation also passed.
+- The 24-case seed regression passed with 12/12 matched pairs discriminated,
+  zero unsafe permits, and zero false rejections.
+- Permit, rejection, `demo --all`, and verifier outputs were byte-identical
+  across Python 3.11, 3.12, 3.13, and the installed package. Generated permit
+  and rejection output also matched the checked-in certificate vectors.
+- The permit and rejection certificate digests remained
+  `sha256:5683e522aa22f08145658d49452a4c044d7cf562a6a3987da364b3322d4aab17`
+  and
+  `sha256:9ad778636a8e013081d62d0a62e05e7cc0374a211444e5a951773607468f7462`.
+- At relying-party time `2026-08-21T12:30:00Z`, verification of the checked-in
+  permit reported structural support, both integrity dimensions,
+  deterministic replay, expected context, expected digest, historical
+  reproducibility, and current local reliance eligibility as true. Issuer
+  authentication and action authorization remained false.
+- A final separate in-project read-only adversarial review found no surviving
+  P0 bypass. Wrong retained digests, contract downgrades, post-parse mutation,
+  rehashed assignment swaps, hostile container subclasses, credential-like
+  context mutation, and non-discriminating reports all failed closed.
 
-These are useful implementation observations, not the final acceptance record. The worktree was still moving, the installed package and supported-runtime matrix had not yet been rerun against a frozen revision, and no independent external party held the oracle or expected digests.
+This accepts only the named implementation checkpoint as a locally tested
+candidate. It does not freeze schema `1.0` or EmptyBench, authenticate the
+configuration or evidence, establish independent custody or adjudication,
+demonstrate market demand, authorize deployment, or establish production
+readiness.
 
-## Open final acceptance and custody work
+## Next evidence gates
 
-The `0.6.0` handoff must remain open until one stable revision completes and records all of the following:
+Local package acceptance is complete. Advancement beyond it requires distinct,
+non-implied decisions and evidence:
 
-1. freeze or commit the intended implementation and documentation state;
-2. run `./scripts/setup.sh` and confirm project, imported module, and installed distribution all report `0.6.0`;
-3. run `./scripts/check.sh` with `PYTHONPATH` unset and preserve its source-versus-installed package and deterministic-demo parity result;
-4. rerun the full source and installed-package suites plus supported Python
-   3.11, 3.12, and 3.13 source tests;
-5. rerun the seed, operator, and custom paired demonstrations and compare cross-runtime output byte-for-byte where specified;
-6. issue and verify the checked-in synthetic certificate using issue time `2026-08-21T12:06:00Z`, relying-party time `2026-08-21T12:30:00Z`, and expected digest `sha256:5683e522aa22f08145658d49452a4c044d7cf562a6a3987da364b3322d4aab17`;
-7. record the exact revision, commands, runtime versions, counts, generated-vector equality, and any environment limitations; and
-8. obtain a final in-project read-only review of the stable state before calling
-   the local handoff accepted.
-
-Completion of this list may establish a locally tested, hash-bound candidate. It does not freeze schema `1.0`, freeze EmptyBench, authenticate configuration or evidence, demonstrate market demand, authorize deployment, or establish production readiness.
+1. complete an owner-reviewed campaign preregistration;
+2. record owner approval before freezing or executing that campaign;
+3. run the implementation-owned baseline without reinterpretation;
+4. obtain independently governed oracle custody and external reproduction;
+5. define and authorize one real read-only adapter boundary before handling any
+   non-synthetic evidence; and
+6. make separate security, privacy/legal, reliability, operational, deployment,
+   and support decisions before any production claim.
 
 ## Known limitations
 

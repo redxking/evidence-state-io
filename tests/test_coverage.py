@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import unittest
 from copy import deepcopy
 from dataclasses import replace
 from decimal import Decimal, localcontext
 from fractions import Fraction
-import unittest
 
 from evidence_state_io import (
     CoverageEvidence,
@@ -14,7 +14,6 @@ from evidence_state_io import (
     PopulationBasis,
     evaluate_coverage,
 )
-
 from tests.helpers import request_dict
 
 
@@ -82,9 +81,7 @@ class CoverageEvaluationTests(unittest.TestCase):
         data.update(examined_units=1, population_units=10)
         assessment = evaluate_coverage(CoverageEvidence.from_dict(data))
         assert assessment.lower_bound is not None
-        self.assertLessEqual(
-            Fraction.from_float(assessment.lower_bound), Fraction(1, 10)
-        )
+        self.assertLessEqual(Fraction.from_float(assessment.lower_bound), Fraction(1, 10))
 
     def test_declared_full_bound_cannot_override_one_unit_short_ratio(self) -> None:
         data = coverage_data()
@@ -140,9 +137,7 @@ class CoverageEvaluationTests(unittest.TestCase):
                     population_units=None,
                     declared_lower_bound=Decimal("0.1234567890123"),
                 )
-                with self.assertRaisesRegex(
-                    ModelValidationError, "at most 12 decimal places"
-                ):
+                with self.assertRaisesRegex(ModelValidationError, "at most 12 decimal places"):
                     CoverageEvidence.from_dict(data)
 
     def test_accepted_fraction_normalization_is_decimal_context_invariant(self) -> None:
@@ -156,9 +151,7 @@ class CoverageEvaluationTests(unittest.TestCase):
                     population_units=None,
                     declared_lower_bound=Decimal("0.123456789012"),
                 )
-                normalized.append(
-                    CoverageEvidence.from_dict(data).declared_lower_bound
-                )
+                normalized.append(CoverageEvidence.from_dict(data).declared_lower_bound)
         self.assertEqual(normalized, [normalized[0]] * 3)
 
     def test_extreme_decimal_exponent_is_rejected_without_underflow(self) -> None:
@@ -276,9 +269,7 @@ class CoverageEvaluationTests(unittest.TestCase):
 
     def test_policy_rejects_overprecise_minimum_before_rounding(self) -> None:
         with self.assertRaisesRegex(ModelValidationError, "at most 12 decimal places"):
-            CoveragePolicy(
-                minimum_lower_bound=Decimal("0.9999999999996")
-            )
+            CoveragePolicy(minimum_lower_bound=Decimal("0.9999999999996"))
 
     def test_programmatic_policy_cannot_disable_required_checks(self) -> None:
         unsafe = {

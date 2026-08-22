@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import unittest
 from dataclasses import replace
 from datetime import datetime, timezone
-import unittest
 
 from evidence_state_io.models import (
     MAX_SOURCE_ACCOUNTING_ENTRIES,
@@ -19,7 +19,6 @@ from evidence_state_io.models import (
     SourceRole,
 )
 from evidence_state_io.sources import SourceIssueCode, evaluate_source_accounting
-
 
 UTC = timezone.utc
 AUTHORIZATION_BOUNDARY = "public repositories visible to the adapter token"
@@ -63,9 +62,7 @@ def observation(
     adapter_version: str = "test-1.0",
     authorization_context_id: str = AUTHORIZATION_CONTEXT_ID,
     query_fingerprint: str = PLACEHOLDER_QUERY_FINGERPRINT,
-    accessible_population: str | None = (
-        "all public repositories visible to the adapter"
-    ),
+    accessible_population: str | None = ("all public repositories visible to the adapter"),
     errors: tuple[str, ...] | list[str] = (),
 ) -> SourceObservation:
     return SourceObservation(
@@ -296,8 +293,7 @@ class SourceAccountingTests(unittest.TestCase):
                 )
                 self.assertEqual(
                     issue_pairs(assessment),
-                    ((SourceIssueCode.REQUIRED_SOURCE_IDENTITY_MISMATCH,
-                      "primary-source"),),
+                    ((SourceIssueCode.REQUIRED_SOURCE_IDENTITY_MISMATCH, "primary-source"),),
                 )
 
     def test_adapter_identity_or_version_mismatch_is_incomplete(self) -> None:
@@ -312,8 +308,7 @@ class SourceAccountingTests(unittest.TestCase):
                 )
                 self.assertEqual(
                     issue_pairs(assessment),
-                    ((SourceIssueCode.REQUIRED_SOURCE_ADAPTER_MISMATCH,
-                      "primary-source"),),
+                    ((SourceIssueCode.REQUIRED_SOURCE_ADAPTER_MISMATCH, "primary-source"),),
                 )
 
     def test_authorization_context_mismatch_is_incomplete(self) -> None:
@@ -323,8 +318,7 @@ class SourceAccountingTests(unittest.TestCase):
         )
         self.assertEqual(
             issue_pairs(assessment),
-            ((SourceIssueCode.REQUIRED_SOURCE_AUTHORIZATION_MISMATCH,
-              "primary-source"),),
+            ((SourceIssueCode.REQUIRED_SOURCE_AUTHORIZATION_MISMATCH, "primary-source"),),
         )
 
     def test_duplicate_required_source_ids_are_rejected(self) -> None:
@@ -361,17 +355,14 @@ class SourceAccountingTests(unittest.TestCase):
 
     def test_requirement_collection_over_limit_is_rejected(self) -> None:
         requirements = tuple(
-            requirement(f"source-{index:03d}")
-            for index in range(MAX_SOURCE_ACCOUNTING_ENTRIES + 1)
+            requirement(f"source-{index:03d}") for index in range(MAX_SOURCE_ACCOUNTING_ENTRIES + 1)
         )
 
         with self.assertRaisesRegex(ModelValidationError, "entry limit"):
             evaluate_source_accounting(requirements, ())
 
     def test_observation_collection_over_limit_is_rejected_before_matching(self) -> None:
-        observations = tuple(
-            observation() for _ in range(MAX_SOURCE_ACCOUNTING_ENTRIES + 1)
-        )
+        observations = tuple(observation() for _ in range(MAX_SOURCE_ACCOUNTING_ENTRIES + 1))
 
         with self.assertRaisesRegex(ModelValidationError, "entry limit"):
             evaluate_source_accounting((requirement(),), observations)
@@ -426,9 +417,7 @@ class SourceAccountingTests(unittest.TestCase):
         with self.assertRaisesRegex(ModelValidationError, "undeclared"):
             envelope((requirement(),), [observation("extra-source")])
 
-        over_limit = [
-            observation() for _ in range(MAX_SOURCE_ACCOUNTING_ENTRIES + 1)
-        ]
+        over_limit = [observation() for _ in range(MAX_SOURCE_ACCOUNTING_ENTRIES + 1)]
         with self.assertRaisesRegex(ModelValidationError, "entry limit"):
             envelope((requirement(),), over_limit)
 
@@ -437,8 +426,7 @@ class SourceAccountingTests(unittest.TestCase):
             query([requirement(), requirement()])
 
         over_limit = [
-            requirement(f"source-{index:03d}")
-            for index in range(MAX_SOURCE_ACCOUNTING_ENTRIES + 1)
+            requirement(f"source-{index:03d}") for index in range(MAX_SOURCE_ACCOUNTING_ENTRIES + 1)
         ]
         with self.assertRaisesRegex(ModelValidationError, "entry limit"):
             query(over_limit)
@@ -512,9 +500,7 @@ class SourceAccountingTests(unittest.TestCase):
         with self.assertRaisesRegex(ModelValidationError, "query_fingerprint"):
             replace(
                 base,
-                source_observations=(
-                    replace(observed, query_fingerprint="sha256:" + "2" * 64),
-                ),
+                source_observations=(replace(observed, query_fingerprint="sha256:" + "2" * 64),),
             )
 
     def test_query_mutation_requires_new_coverage_and_observation_bindings(self) -> None:

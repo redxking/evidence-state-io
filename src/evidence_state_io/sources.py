@@ -58,9 +58,7 @@ class SourceIssue:
                 bounded_ascii_identifier(self.source_id, "source_issue.source_id"),
             )
         if self.source_id is None:
-            raise ModelValidationError(
-                "required-source issue must identify the affected source"
-            )
+            raise ModelValidationError("required-source issue must identify the affected source")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -93,13 +91,9 @@ class SourceAccountingAssessment:
                 for index, item in enumerate(value)
             )
             if len(set(normalized)) != len(normalized):
-                raise ModelValidationError(
-                    f"source assessment {name} must not contain duplicates"
-                )
+                raise ModelValidationError(f"source assessment {name} must not contain duplicates")
             object.__setattr__(self, name, tuple(sorted(normalized)))
-        if isinstance(self.issues, (str, bytes)) or not isinstance(
-            self.issues, Sequence
-        ):
+        if isinstance(self.issues, (str, bytes)) or not isinstance(self.issues, Sequence):
             raise ModelValidationError("source assessment issues must be an array")
         normalized_issues = tuple(self.issues)
         if any(not isinstance(issue, SourceIssue) for issue in normalized_issues):
@@ -126,9 +120,7 @@ class SourceAccountingAssessment:
         observed_ids = set(self.observed_source_ids)
         complete_ids = set(self.complete_source_ids)
         if not required_ids:
-            raise ModelValidationError(
-                "source assessment required_source_ids must not be empty"
-            )
+            raise ModelValidationError("source assessment required_source_ids must not be empty")
         if not observed_ids <= required_ids:
             raise ModelValidationError(
                 "source assessment observed_source_ids must be required sources"
@@ -198,13 +190,9 @@ def _materialize_inputs(
             f"source observations exceeds the {MAX_SOURCE_ACCOUNTING_ENTRIES}-entry limit"
         )
     if any(not isinstance(item, SourceRequirement) for item in declared):
-        raise ModelValidationError(
-            "source requirements must contain only SourceRequirement values"
-        )
+        raise ModelValidationError("source requirements must contain only SourceRequirement values")
     if any(not isinstance(item, SourceObservation) for item in observed):
-        raise ModelValidationError(
-            "source observations must contain only SourceObservation values"
-        )
+        raise ModelValidationError("source observations must contain only SourceObservation values")
     declared_ids = [item.source_id for item in declared]
     observed_ids = [item.source_id for item in observed]
     if len(set(declared_ids)) != len(declared_ids):
@@ -221,8 +209,7 @@ def _materialize_inputs(
     undeclared = sorted(set(observed_ids) - set(declared_ids))
     if undeclared:
         raise ModelValidationError(
-            "source observations contains undeclared source IDs: "
-            + ", ".join(undeclared)
+            "source observations contains undeclared source IDs: " + ", ".join(undeclared)
         )
     return (
         tuple(sorted(declared, key=lambda item: item.source_id)),
@@ -259,9 +246,7 @@ def evaluate_source_accounting(
             )
             continue
 
-        population_matches = (
-            observation.accessible_population == requirement.accessible_population
-        )
+        population_matches = observation.accessible_population == requirement.accessible_population
         identity_matches = (
             observation.descriptor.system == requirement.system
             and observation.descriptor.locator == requirement.locator
@@ -271,8 +256,7 @@ def evaluate_source_accounting(
             and observation.descriptor.adapter_version == requirement.adapter_version
         )
         authorization_matches = (
-            observation.authorization_context_id
-            == requirement.authorization_context_id
+            observation.authorization_context_id == requirement.authorization_context_id
         )
         if observation.status is SourceObservationStatus.OBSERVED:
             observed_source_ids.append(requirement.source_id)
@@ -284,10 +268,7 @@ def evaluate_source_accounting(
                 )
             )
 
-        if (
-            observation.status is SourceObservationStatus.OBSERVED
-            and not identity_matches
-        ):
+        if observation.status is SourceObservationStatus.OBSERVED and not identity_matches:
             issues.append(
                 SourceIssue(
                     code=SourceIssueCode.REQUIRED_SOURCE_IDENTITY_MISMATCH,
@@ -295,10 +276,7 @@ def evaluate_source_accounting(
                 )
             )
 
-        if (
-            observation.status is SourceObservationStatus.OBSERVED
-            and not adapter_matches
-        ):
+        if observation.status is SourceObservationStatus.OBSERVED and not adapter_matches:
             issues.append(
                 SourceIssue(
                     code=SourceIssueCode.REQUIRED_SOURCE_ADAPTER_MISMATCH,
@@ -306,10 +284,7 @@ def evaluate_source_accounting(
                 )
             )
 
-        if (
-            observation.status is SourceObservationStatus.OBSERVED
-            and not authorization_matches
-        ):
+        if observation.status is SourceObservationStatus.OBSERVED and not authorization_matches:
             issues.append(
                 SourceIssue(
                     code=SourceIssueCode.REQUIRED_SOURCE_AUTHORIZATION_MISMATCH,
@@ -317,10 +292,7 @@ def evaluate_source_accounting(
                 )
             )
 
-        if (
-            observation.status is SourceObservationStatus.OBSERVED
-            and not population_matches
-        ):
+        if observation.status is SourceObservationStatus.OBSERVED and not population_matches:
             issues.append(
                 SourceIssue(
                     code=SourceIssueCode.REQUIRED_SOURCE_POPULATION_MISMATCH,
