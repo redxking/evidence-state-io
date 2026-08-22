@@ -5,7 +5,7 @@ from dataclasses import replace
 from datetime import datetime
 
 from evidence_state_io import EvidenceEnvelope, EvidenceState, ModelValidationError
-from evidence_state_io.models import datetime_to_json, parse_datetime
+from evidence_state_io.models import QueryScope, datetime_to_json, parse_datetime
 from tests.helpers import refresh_query_fingerprints, request_dict
 
 
@@ -76,12 +76,75 @@ class EvidenceStateModelTests(unittest.TestCase):
             EvidenceEnvelope.from_dict(data)
 
     def test_legacy_and_unknown_schema_versions_are_rejected(self) -> None:
-        for version in ("0.1", "0.2", "1.1", "2.0"):
+        for version in ("0.1", "0.2", "1.0.0", "1.2", "2.0"):
             with self.subTest(version=version):
                 data = request_dict()["envelope"]
                 data["schema_version"] = version
-                with self.assertRaisesRegex(ModelValidationError, "supported string value '1.0'"):
+                with self.assertRaisesRegex(
+                    ModelValidationError, "supported string values '1.0', '1.1'"
+                ):
                     EvidenceEnvelope.from_dict(data)
+
+    def test_declaring_composition_changes_the_query_fingerprint(self) -> None:
+        """Composition cannot be smuggled into an existing record."""
+
+        data = request_dict()["envelope"]
+        before = data["coverage_query_fingerprint"]
+        data["query"]["composition"] = "CORROBORATION"
+        self.assertNotEqual(QueryScope.from_dict(data["query"]).fingerprint(), before)
+
+    def test_schema_1_0_may_not_declare_a_composition_mode(self) -> None:
+        """Composition must not change what an existing record means."""
+
+        data = request_dict()["envelope"]
+        data["query"]["composition"] = "CORROBORATION"
+        refresh_query_fingerprints({"envelope": data})
+        with self.assertRaisesRegex(ModelValidationError, "requires schema_version '1.1'"):
+            EvidenceEnvelope.from_dict(data)
+
+    def test_schema_1_0_may_not_carry_a_per_source_assessment(self) -> None:
+        """The old version keeps its exact meaning: accounting, never assessment."""
+
+        data = request_dict()["envelope"]
+        observation = data["source_observations"][0]
+        observation["coverage"] = data["coverage"]
+        observation["state"] = data["state"]
+        observation["matched_count"] = data["matched_count"]
+        observation["observed_at"] = data["observed_at"]
+        with self.assertRaisesRegex(
+            ModelValidationError,
+            "per-source assessment fields require schema_version '1.1'",
+        ):
+            EvidenceEnvelope.from_dict(data)
+
+    def test_a_per_source_assessment_must_be_complete(self) -> None:
+        """Coverage alone says how hard a source looked, not what it concluded."""
+
+        data = request_dict()["envelope"]
+        data["schema_version"] = "1.1"
+        data["query"]["composition"] = "CORROBORATION"
+        data["source_observations"][0]["coverage"] = data["coverage"]
+        with self.assertRaisesRegex(ModelValidationError, "together; missing"):
+            EvidenceEnvelope.from_dict(data)
+
+    def test_schema_1_1_must_declare_a_composition_mode(self) -> None:
+        """The new version is not a relabelling of the old one."""
+
+        data = request_dict()["envelope"]
+        data["schema_version"] = "1.1"
+        with self.assertRaisesRegex(ModelValidationError, "requires"):
+            EvidenceEnvelope.from_dict(data)
+
+    def test_a_single_source_query_canonicalizes_exactly_as_before(self) -> None:
+        """The composition field must be invisible when it is absent.
+
+        Every schema 1.0 fingerprint, digest, and certificate depends on this.
+        """
+
+        envelope = EvidenceEnvelope.from_dict(request_dict()["envelope"])
+        self.assertNotIn("composition", envelope.query.to_dict())
+        for observation in envelope.source_observations:
+            self.assertNotIn("coverage", observation.to_dict())
 
     def test_utc_timestamp_is_canonicalized(self) -> None:
         value = parse_datetime("2026-08-21T08:00:00-04:00", "test")

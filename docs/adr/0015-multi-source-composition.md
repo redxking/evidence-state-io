@@ -1,9 +1,49 @@
 # ADR-0015: Multi-Source Composition
 
-**Status:** Accepted for local candidate implementation, `CORROBORATION` only;
-not a schema freeze, not wired into the envelope, and not a release decision
+**Status:** Accepted for local candidate implementation and wired into
+envelope schema `1.1`, `CORROBORATION` only; not a schema freeze and not a
+release decision
 **Date:** 2026-08-22
 **Deciders:** Project owner (pending); architecture maintainer
+
+## Status update, 2026-08-22
+
+Composition is now reachable from an envelope. Schema `1.1` is additive and
+`1.0` is unchanged: a `1.0` envelope may not declare a composition mode or
+carry a per-source assessment, every new field is omitted from the canonical
+form when absent, and every recorded `1.0` fingerprint, digest, and
+certificate still verifies.
+
+The three structural facts named in the Context below were resolved rather
+than worked around.
+
+*One envelope-level `CoverageEvidence`.* `SourceObservation` now carries its
+own optional assessment: `coverage`, `state`, `matched_count`, `observed_at`,
+and `valid_until`. A composed envelope must supply the first four for every
+required source, because composition is a conclusion drawn from per-source
+evidence and cannot be drawn from evidence that was never supplied. A source's
+declared state must also be compatible with its runtime status, so a producer
+cannot relabel a failed fetch as an in-scope absence.
+
+*One `selected_profile_reference`.* `ProfileTrustSelection` gained
+`additional_selected_profile_references`. The singular field remains the
+schema `1.0` form and stays first, so a single-source selection keeps its exact
+canonical form and digest, and governance now matches a producer's reference
+against any profile the relying application selected.
+
+*One finality horizon.* Each source is checked against **its own** horizon and
+the composed claim binds on the latest of them. Freshness now ages from the
+stalest contributing observation rather than from the envelope timestamp, so a
+late-sealed envelope cannot hide a source that was read hours earlier.
+
+Two conditions were added at the gate that the composer alone could not
+express: an envelope may not declare a coverage floor above what the sources
+jointly guarantee (`COMPOSED_COVERAGE_OVERSTATED`), and it may not remain
+valid past the earliest boundary any contributing source declared
+(`COMPOSED_VALIDITY_OVERSTATED`).
+
+`PARTITION` and `OPTIONAL` sources remain deferred for the reasons recorded
+below.
 
 ## Context
 

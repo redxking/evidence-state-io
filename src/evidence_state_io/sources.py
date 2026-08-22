@@ -172,6 +172,8 @@ _STATUS_ISSUE = {
 def _materialize_inputs(
     requirements: Sequence[SourceRequirement],
     observations: Sequence[SourceObservation],
+    *,
+    max_required: int = 1,
 ) -> tuple[tuple[SourceRequirement, ...], tuple[SourceObservation, ...]]:
     if isinstance(requirements, (str, bytes)) or not isinstance(requirements, Sequence):
         raise ModelValidationError("source requirements must be an array")
@@ -199,13 +201,32 @@ def _materialize_inputs(
         raise ModelValidationError("source requirements must not contain duplicate IDs")
     if len(set(observed_ids)) != len(observed_ids):
         raise ModelValidationError("source observations must not contain duplicate IDs")
-    if len(declared) != 1:
-        raise ModelValidationError(
-            "source requirements must contain exactly one REQUIRED source "
-            "in the schema 1.0 candidate"
+    if max_required == 1:
+        # The single-source contract, unchanged: one declared source, and it
+        # must be REQUIRED.
+        if len(declared) != 1:
+            raise ModelValidationError(
+                "source requirements must contain exactly one REQUIRED source "
+                "in the schema 1.0 candidate"
+            )
+        if declared[0].role is not SourceRole.REQUIRED:
+            raise ModelValidationError("source requirements must contain a REQUIRED source")
+    else:
+        if len(declared) > max_required:
+            raise ModelValidationError(
+                f"a composed query accepts at most {max_required} required sources"
+            )
+        # Every declared source in a composed query is accounted as required.
+        # An OPTIONAL source would contribute evidence nothing checks, so it is
+        # refused rather than silently ignored.
+        non_required = sorted(
+            item.source_id for item in declared if item.role is not SourceRole.REQUIRED
         )
-    if declared[0].role is not SourceRole.REQUIRED:
-        raise ModelValidationError("source requirements must contain a REQUIRED source")
+        if non_required:
+            raise ModelValidationError(
+                "a composed query accepts only REQUIRED sources; other roles declared for: "
+                + ", ".join(non_required)
+            )
     undeclared = sorted(set(observed_ids) - set(declared_ids))
     if undeclared:
         raise ModelValidationError(
@@ -220,15 +241,25 @@ def _materialize_inputs(
 def evaluate_source_accounting(
     requirements: Sequence[SourceRequirement],
     observations: Sequence[SourceObservation],
+    *,
+    max_required: int = 1,
 ) -> SourceAccountingAssessment:
     """Compare explicit requirements with runtime observations, fail closed.
 
-    The schema 1.0 candidate accepts one declared required source. Multi-source
-    coverage remains outside the candidate until a separately versioned
-    composition method exists.
+    The default accepts one declared required source, which is the schema 1.0
+    contract. A caller that has established a declared composition method may
+    raise ``max_required`` to that method's bound; accounting then checks every
+    declared source individually and composes nothing itself. Composition is
+    the composer's conclusion, not this function's.
     """
 
-    declared, reported = _materialize_inputs(requirements, observations)
+    if type(max_required) is not int or max_required < 1:
+        raise ModelValidationError("max_required must be a positive integer")
+    declared, reported = _materialize_inputs(
+        requirements,
+        observations,
+        max_required=max_required,
+    )
     required = declared
     observations_by_id = {item.source_id: item for item in reported}
     observed_source_ids: list[str] = []

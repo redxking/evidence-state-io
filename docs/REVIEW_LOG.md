@@ -1043,3 +1043,50 @@ measures whether a suite defends a decision, not whether the decision is
 correct. It establishes nothing about envelopes: the composition is not yet
 reachable from one, so no multi-source request can be evaluated, and no claim
 about multi-source behaviour of the gate follows from it.
+
+## 2026-08-22 — Composition wired into envelope schema 1.1
+
+The entry above closed on the observation that the composition was not
+reachable from an envelope. Semantics nothing can call are a promise, not a
+capability, so the remaining wiring was done.
+
+### What was added
+
+`SourceObservation` gained an optional per-source assessment: `coverage`,
+`state`, `matched_count`, `observed_at`, and `valid_until`. A composed envelope
+must supply the first four for every required source. Per-source `state` and
+`matched_count` are what make disagreement detectable at all; without them the
+contradiction rule would have nothing to compare and would never fire.
+
+A source's declared state must be compatible with its runtime status. Without
+that table a producer could label a `FAILED`, `PENDING`, or `INACCESSIBLE`
+source as `ABSENT_WITHIN_SCOPE`, and a composed envelope could reach a permit
+from sources that returned nothing because they broke.
+
+`ProfileTrustSelection` gained `additional_selected_profile_references` so the
+relying application can select one governed profile per required source. The
+singular field remains the schema `1.0` form and stays first.
+
+Two conditions were added at the gate that the composer alone could not
+express, because they compare a composed conclusion with what the envelope
+itself declared: an envelope may not declare a coverage floor above the
+composed floor, and it may not remain valid past the earliest boundary any
+contributing source declared. Freshness now ages a composed claim from its
+stalest contributing observation rather than from the envelope timestamp, so a
+late-sealed envelope cannot hide a source that was read hours earlier.
+
+### What this establishes and does not establish
+
+A composed claim can now be permitted and rejected through the public gate,
+with the composed assessment recorded in the decision. Fifteen envelope-level
+tests exercise the permit, the maximum-not-sum rule, per-source horizons, the
+stalest-observation rule, the earliest-validity rule, and a dissenting source
+that three agreeing sources do not outvote.
+
+It does not establish that the composition is correct for any real system.
+Every source in these tests is synthetic and every profile is locally
+authored. No adapter evidence is authenticated, so a self-consistent producer
+that fabricates several agreeing sources is not detected by anything here.
+Corroboration establishes agreement among the declared sources and never
+independence between them: sources drawing on a common upstream record can
+agree while all being wrong, and the decision's limitations now say so.

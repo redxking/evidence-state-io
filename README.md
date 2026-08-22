@@ -266,12 +266,17 @@ requires an application-trusted, exact, effective profile; a query outside
 retention or across a blind interval rejects. Its finality horizon must equal
 the query end plus the larger of the profile's late-arrival and reopen windows,
 and the reported source index must reach it; advancing evaluation time alone
-cannot repair an older snapshot. Because population
-composition is not yet defined, the candidate accepts exactly one declared
-`REQUIRED` source and rejects multi-source input before evaluation.
+cannot repair an older snapshot. Schema `1.0` accepts exactly one declared `REQUIRED` source. Schema `1.1`
+adds `CORROBORATION` across up to four required sources, each supplying its own
+coverage, state, match count, and observation time, and each checked against its
+own finality horizon. Corroborated coverage composes by maximum and never by
+sum, disagreement composes to `CONTRADICTORY` rather than being resolved by
+counting, and a composed claim ages from its stalest contributing source.
 Authenticated registry custody, authenticated adapter and watermark evidence,
 monotonic registry heads, empirical profile validation, operational revocation
-distribution, and multi-source composition remain active gaps.
+distribution, and composition across sources covering disjoint parts of a
+population remain active gaps. Corroboration establishes agreement among the
+declared sources; it never establishes independence between them.
 
 ## Success threshold for the first gate
 

@@ -269,6 +269,50 @@ class ClaimMode(str, Enum):
     ABSOLUTE = "ABSOLUTE"
 
 
+# A fail-closed bound on the multi-source composition surface (ADR-0015),
+# chosen so a composed assessment stays reviewable by hand.
+MAX_REQUIRED_SOURCES = 4
+
+# Schema `1.0` is the single-source contract and never changes. Schema `1.1`
+# adds multi-source composition; a `1.0` envelope may not use it, so every
+# existing record keeps its exact meaning and canonical form.
+SCHEMA_VERSION_SINGLE_SOURCE = "1.0"
+SCHEMA_VERSION_COMPOSED = "1.1"
+SUPPORTED_SCHEMA_VERSIONS = frozenset({SCHEMA_VERSION_SINGLE_SOURCE, SCHEMA_VERSION_COMPOSED})
+
+#: Fields that carry one source's own assessment rather than its accounting.
+#: A schema 1.0 observation carries none of them, so its canonical form is
+#: byte-identical to what it was before composition existed.  A composed
+#: envelope must supply every one of them except ``valid_until`` for each
+#: REQUIRED source, because composition is a conclusion drawn from per-source
+#: evidence and cannot be drawn from evidence that was never supplied.
+SOURCE_ASSESSMENT_FIELDS: tuple[str, ...] = (
+    "coverage",
+    "state",
+    "matched_count",
+    "observed_at",
+    "valid_until",
+)
+REQUIRED_SOURCE_ASSESSMENT_FIELDS: tuple[str, ...] = (
+    "coverage",
+    "state",
+    "matched_count",
+    "observed_at",
+)
+
+
+class CompositionMode(str, Enum):
+    """Declared intent when a query names more than one required source.
+
+    Absent means single-source, which is the schema 1.0 behaviour and is
+    unchanged. `PARTITION` is deliberately not defined: it is the only mode in
+    which coverage accumulates, and no governed profile can yet express the
+    disjoint accessible subpopulation it would require.
+    """
+
+    CORROBORATION = "CORROBORATION"
+
+
 class SourceRole(str, Enum):
     """The P0 role of the single source declared for a query."""
 
@@ -293,12 +337,60 @@ class SourceObservationStatus(str, Enum):
     UNKNOWN = "UNKNOWN"
 
 
+#: Which evidence states a given runtime status can honestly carry.
+#:
+#: A source that failed, was never reached, or is still inside its window has
+#: not observed an in-scope absence, and no producer may relabel it as one.
+#: Without this table a composed envelope could reach a permit by declaring
+#: ABSENT_WITHIN_SCOPE for sources that returned nothing because they broke.
+_STATUS_PERMITS_STATES: Mapping[SourceObservationStatus, frozenset[EvidenceState]] = (
+    MappingProxyType(
+        {
+            SourceObservationStatus.OBSERVED: frozenset(
+                {
+                    EvidenceState.PRESENT,
+                    EvidenceState.ABSENT_WITHIN_SCOPE,
+                    EvidenceState.PARTIAL,
+                }
+            ),
+            SourceObservationStatus.NOT_OBSERVED: frozenset({EvidenceState.NOT_OBSERVED}),
+            SourceObservationStatus.INACCESSIBLE: frozenset({EvidenceState.INACCESSIBLE}),
+            SourceObservationStatus.PENDING: frozenset({EvidenceState.PENDING_WINDOW}),
+            SourceObservationStatus.STALE: frozenset({EvidenceState.STALE}),
+            SourceObservationStatus.FAILED: frozenset({EvidenceState.FAILED}),
+            SourceObservationStatus.CONTRADICTORY: frozenset({EvidenceState.CONTRADICTORY}),
+            SourceObservationStatus.UNKNOWN: frozenset({EvidenceState.NOT_OBSERVED}),
+        }
+    )
+)
+
+
 def _mapping(value: Any, path: str) -> Mapping[str, Any]:
     if not isinstance(value, Mapping):
         raise ModelValidationError(f"{path} must be a JSON object")
     if any(type(key) is not str for key in value):
         raise ModelValidationError(f"{path} object keys must be plain strings")
     return value
+
+
+def _optional_evidence_state(value: Any, path: str) -> "EvidenceState | None":
+    if value is None:
+        return None
+    try:
+        return EvidenceState(value)
+    except (TypeError, ValueError) as exc:
+        raise ModelValidationError(
+            f"{path} must be one of " + ", ".join(f"'{state.value}'" for state in EvidenceState)
+        ) from exc
+
+
+def _optional_composition_mode(value: Any) -> "CompositionMode | None":
+    if value is None:
+        return None
+    try:
+        return CompositionMode(value)
+    except (TypeError, ValueError) as exc:
+        raise ModelValidationError("query.composition must be CORROBORATION or absent") from exc
 
 
 def _reject_unknown(data: Mapping[str, Any], allowed: set[str], path: str) -> None:
@@ -897,8 +989,11 @@ class QueryScope:
     time_end: datetime
     exclusions: tuple[str, ...]
     source_requirements: tuple[SourceRequirement, ...]
+    composition: CompositionMode | None = None
 
     def __post_init__(self) -> None:
+        if self.composition is not None and not isinstance(self.composition, CompositionMode):
+            raise ModelValidationError("query.composition must be a CompositionMode or null")
         for name in ("target", "predicate"):
             object.__setattr__(
                 self,
@@ -973,10 +1068,21 @@ class QueryScope:
                 "query.source_requirements contains duplicate source_id values: "
                 + ", ".join(duplicate_ids)
             )
-        if len(requirements) != 1 or requirements[0].role is not SourceRole.REQUIRED:
+        if any(item.role is not SourceRole.REQUIRED for item in requirements):
             raise ModelValidationError(
-                "query.source_requirements must contain exactly one REQUIRED source "
-                "in the schema 1.0 candidate"
+                "query.source_requirements must declare every source as REQUIRED; "
+                "OPTIONAL sources are not defined in this candidate"
+            )
+        if self.composition is None:
+            if len(requirements) != 1:
+                raise ModelValidationError(
+                    "query.source_requirements must contain exactly one REQUIRED source "
+                    "unless query.composition declares a multi-source mode"
+                )
+        elif not 1 <= len(requirements) <= MAX_REQUIRED_SOURCES:
+            raise ModelValidationError(
+                "a composed query must declare between one and "
+                f"{MAX_REQUIRED_SOURCES} REQUIRED sources"
             )
         invalid_finality_horizons = sorted(
             item.source_id
@@ -1018,6 +1124,7 @@ class QueryScope:
                 "time_end",
                 "exclusions",
                 "source_requirements",
+                "composition",
             },
             "query",
         )
@@ -1056,10 +1163,11 @@ class QueryScope:
                 )
                 for index, item in enumerate(raw_requirements)
             ),
+            composition=_optional_composition_mode(data.get("composition")),
         )
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        payload: dict[str, Any] = {
             "target": self.target,
             "predicate": self.predicate,
             "authorization_boundary": self.authorization_boundary,
@@ -1071,6 +1179,12 @@ class QueryScope:
                 requirement.to_dict() for requirement in self.source_requirements
             ],
         }
+        # Omitted rather than emitted as null when absent: a single-source query
+        # must canonicalize exactly as it did before this field existed, so
+        # every schema 1.0 fingerprint, digest, and certificate is unchanged.
+        if self.composition is not None:
+            payload["composition"] = self.composition.value
+        return payload
 
     def fingerprint(self) -> str:
         payload = json.dumps(
@@ -1414,8 +1528,17 @@ class SourceObservation:
     query_fingerprint: str
     accessible_population: str | None
     errors: tuple[str, ...]
+    coverage: "CoverageEvidence | None" = None
+    state: EvidenceState | None = None
+    matched_count: int | None = None
+    observed_at: datetime | None = None
+    valid_until: datetime | None = None
 
     def __post_init__(self) -> None:
+        if self.coverage is not None and not isinstance(self.coverage, CoverageEvidence):
+            raise ModelValidationError(
+                "source_observation.coverage must be CoverageEvidence or null"
+            )
         object.__setattr__(
             self,
             "source_id",
@@ -1467,6 +1590,80 @@ class SourceObservation:
             raise ModelValidationError(
                 "source_observation.errors must contain at least one error when status is FAILED"
             )
+        self._validate_assessment()
+
+    @property
+    def declared_assessment_fields(self) -> tuple[str, ...]:
+        """Return which per-source assessment fields this observation carries."""
+
+        return tuple(name for name in SOURCE_ASSESSMENT_FIELDS if getattr(self, name) is not None)
+
+    def _validate_assessment(self) -> None:
+        """Validate one source's own assessment, or its complete absence.
+
+        These fields are what makes a source's contribution checkable: without
+        a state and a match count, two sources cannot be seen to disagree, and
+        without an observation time the composition cannot report its stalest
+        source. They are validated here rather than in the composer so that an
+        incoherent observation cannot be constructed at all.
+        """
+
+        if self.state is not None and not isinstance(self.state, EvidenceState):
+            raise ModelValidationError("source_observation.state must be an EvidenceState or null")
+        if self.matched_count is not None:
+            _nonnegative_int(self.matched_count, "source_observation.matched_count")
+        for name in ("observed_at", "valid_until"):
+            value = getattr(self, name)
+            if value is not None:
+                object.__setattr__(
+                    self,
+                    name,
+                    _validate_aware_datetime(value, f"source_observation.{name}"),
+                )
+
+        declared = set(self.declared_assessment_fields)
+        if not declared:
+            return
+
+        # A state without a count, or a count without a state, cannot be
+        # checked against anything, so neither is accepted alone.
+        missing = [name for name in REQUIRED_SOURCE_ASSESSMENT_FIELDS if name not in declared]
+        if missing:
+            raise ModelValidationError(
+                "source_observation assessment requires "
+                + ", ".join(REQUIRED_SOURCE_ASSESSMENT_FIELDS)
+                + " together; missing: "
+                + ", ".join(missing)
+            )
+
+        assert self.state is not None  # narrowed by the completeness check above
+        permitted = _STATUS_PERMITS_STATES[self.status]
+        if self.state not in permitted:
+            raise ModelValidationError(
+                f"source_observation.state '{self.state.value}' is not compatible with "
+                f"status '{self.status.value}'; permitted: "
+                + ", ".join(sorted(item.value for item in permitted))
+            )
+        if self.state is EvidenceState.PRESENT and self.matched_count == 0:
+            raise ModelValidationError(
+                "source_observation PRESENT requires matched_count greater than zero"
+            )
+        if self.state is EvidenceState.ABSENT_WITHIN_SCOPE and self.matched_count != 0:
+            raise ModelValidationError(
+                "source_observation ABSENT_WITHIN_SCOPE requires matched_count equal to zero"
+            )
+        if self.valid_until is not None and self.observed_at is not None:
+            if self.valid_until < self.observed_at:
+                raise ModelValidationError(
+                    "source_observation.valid_until must not precede source_observation.observed_at"
+                )
+        index_as_of = self.descriptor.index_as_of
+        if index_as_of is not None and self.observed_at is not None:
+            if index_as_of > self.observed_at:
+                raise ModelValidationError(
+                    "source_observation.descriptor.index_as_of must not be after "
+                    "source_observation.observed_at"
+                )
 
     @classmethod
     def from_dict(
@@ -1484,7 +1681,10 @@ class SourceObservation:
             "accessible_population",
             "errors",
         }
-        _reject_unknown(data, allowed, path)
+        # The assessment fields are accepted but not required: a schema 1.0
+        # observation carries none of them, and its canonical form must not
+        # change.  The envelope decides which schema version may declare them.
+        _reject_unknown(data, allowed | set(SOURCE_ASSESSMENT_FIELDS), path)
         _require_fields(data, allowed, path)
         try:
             status = SourceObservationStatus(data["status"])
@@ -1515,10 +1715,23 @@ class SourceObservation:
             ),
             accessible_population=accessible_population,
             errors=_string_tuple(raw_errors, f"{path}.errors"),
+            coverage=(
+                None
+                if data.get("coverage") is None
+                else CoverageEvidence.from_dict(data["coverage"])
+            ),
+            state=_optional_evidence_state(data.get("state"), f"{path}.state"),
+            matched_count=(
+                None
+                if data.get("matched_count") is None
+                else _nonnegative_int(data["matched_count"], f"{path}.matched_count")
+            ),
+            observed_at=optional_datetime(data.get("observed_at"), f"{path}.observed_at"),
+            valid_until=optional_datetime(data.get("valid_until"), f"{path}.valid_until"),
         )
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        payload: dict[str, Any] = {
             "source_id": self.source_id,
             "status": self.status.value,
             "descriptor": self.descriptor.to_dict(),
@@ -1527,6 +1740,20 @@ class SourceObservation:
             "accessible_population": self.accessible_population,
             "errors": sorted(self.errors),
         }
+        # Omitted when absent for the same reason as query.composition: a
+        # schema 1.0 observation must serialise to exactly the bytes it did
+        # before these fields existed, so every recorded digest still verifies.
+        if self.coverage is not None:
+            payload["coverage"] = self.coverage.to_dict()
+        if self.state is not None:
+            payload["state"] = self.state.value
+        if self.matched_count is not None:
+            payload["matched_count"] = self.matched_count
+        if self.observed_at is not None:
+            payload["observed_at"] = datetime_to_json(self.observed_at)
+        if self.valid_until is not None:
+            payload["valid_until"] = datetime_to_json(self.valid_until)
+        return payload
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -1637,8 +1864,71 @@ class EvidenceEnvelope:
             raise ModelValidationError("errors must be an array, not null")
         object.__setattr__(self, "errors", _string_tuple(self.errors, "errors"))
         object.__setattr__(self, "notes", _string_tuple(self.notes, "notes"))
-        if self.schema_version != "1.0":
-            raise ModelValidationError("schema_version must be the supported string value '1.0'")
+        if self.schema_version not in SUPPORTED_SCHEMA_VERSIONS:
+            raise ModelValidationError(
+                "schema_version must be one of the supported string values "
+                + ", ".join(f"'{version}'" for version in sorted(SUPPORTED_SCHEMA_VERSIONS))
+            )
+        self._validate_composition_boundary()
+
+    def _validate_composition_boundary(self) -> None:
+        """Keep multi-source strictly inside schema 1.1.
+
+        A schema 1.0 record must mean exactly what it meant before composition
+        existed, so it may neither declare a composition mode nor carry
+        per-source coverage. A composed record must do both, and must supply
+        coverage for every required source: composition is the evaluator's
+        conclusion from per-source evidence, and it cannot be drawn from
+        evidence that was never supplied.
+        """
+
+        composed = self.query.composition is not None
+        assessed = {
+            observation.source_id: set(observation.declared_assessment_fields)
+            for observation in self.source_observations
+            if observation.declared_assessment_fields
+        }
+        if self.schema_version == SCHEMA_VERSION_SINGLE_SOURCE:
+            if composed:
+                raise ModelValidationError(
+                    "envelope.query.composition requires schema_version "
+                    f"'{SCHEMA_VERSION_COMPOSED}'"
+                )
+            if assessed:
+                raise ModelValidationError(
+                    "per-source assessment fields require schema_version "
+                    f"'{SCHEMA_VERSION_COMPOSED}'; supplied for: " + ", ".join(sorted(assessed))
+                )
+            return
+
+        if not composed:
+            raise ModelValidationError(
+                f"schema_version '{SCHEMA_VERSION_COMPOSED}' requires "
+                "envelope.query.composition to declare a composition mode"
+            )
+        required_ids = {
+            requirement.source_id
+            for requirement in self.query.source_requirements
+            if requirement.role is SourceRole.REQUIRED
+        }
+        missing = sorted(required_ids - set(assessed))
+        if missing:
+            raise ModelValidationError(
+                "a composed envelope requires a per-source assessment for every required "
+                "source; missing for: " + ", ".join(missing)
+            )
+        # A source that reports its own observation time may not claim to have
+        # looked after the envelope was sealed.
+        late = sorted(
+            observation.source_id
+            for observation in self.source_observations
+            if observation.observed_at is not None and observation.observed_at > self.observed_at
+        )
+        if late:
+            raise ModelValidationError(
+                "source_observation.observed_at must not be after envelope observed_at "
+                "for: " + ", ".join(late)
+            )
 
     @classmethod
     def from_dict(cls, value: Any) -> "EvidenceEnvelope":
@@ -1647,9 +1937,10 @@ class EvidenceEnvelope:
         schema_version = data["schema_version"]
         if type(schema_version) is not str:
             raise ModelValidationError("envelope.schema_version must be the string '1.0'")
-        if schema_version != "1.0":
+        if schema_version not in SUPPORTED_SCHEMA_VERSIONS:
             raise ModelValidationError(
-                "envelope.schema_version must be the supported string value '1.0'"
+                "envelope.schema_version must be one of the supported string values "
+                + ", ".join(f"'{version}'" for version in sorted(SUPPORTED_SCHEMA_VERSIONS))
             )
         allowed = {
             "state",

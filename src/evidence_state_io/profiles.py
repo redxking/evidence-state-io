@@ -900,8 +900,21 @@ class ProfileTrustSelection:
     trusted_profile_issuer_ids: tuple[str, ...]
     trusted_approval_authority_ids: tuple[str, ...]
     trust_selection_digest: str | None = None
+    additional_selected_profile_references: tuple[CoverageProfileReference, ...] = ()
 
     def __post_init__(self) -> None:
+        if any(
+            not isinstance(item, CoverageProfileReference)
+            for item in self.additional_selected_profile_references
+        ):
+            raise ModelValidationError(
+                "trust_selection.additional_selected_profile_references must contain "
+                "CoverageProfileReference values"
+            )
+        selected = self.selected_profile_references
+        keys = [(item.registry_id, item.profile_id, item.profile_version) for item in selected]
+        if len(set(keys)) != len(keys):
+            raise ModelValidationError("trust_selection selects the same profile more than once")
         if self.trust_schema != PROFILE_TRUST_SELECTION_SCHEMA:
             raise ModelValidationError(
                 "trust_selection.trust_schema must identify the supported trust contract"
@@ -969,7 +982,11 @@ class ProfileTrustSelection:
             "trusted_approval_authority_ids",
             "trust_selection_digest",
         }
-        _reject_unknown(data, allowed, "trust_selection")
+        # Accepted but not required: a single-source selection never carries
+        # one, and its canonical form and digest must not change.
+        _reject_unknown(
+            data, allowed | {"additional_selected_profile_references"}, "trust_selection"
+        )
         _require_fields(data, allowed, "trust_selection")
         schema = data["trust_schema"]
         if type(schema) is not str or schema != PROFILE_TRUST_SELECTION_SCHEMA:
@@ -1006,10 +1023,31 @@ class ProfileTrustSelection:
                 data["trust_selection_digest"],
                 "trust_selection.trust_selection_digest",
             ),
+            additional_selected_profile_references=tuple(
+                CoverageProfileReference.from_dict(
+                    item,
+                    f"trust_selection.additional_selected_profile_references[{index}]",
+                )
+                for index, item in enumerate(
+                    data.get("additional_selected_profile_references") or ()
+                )
+            ),
         )
 
+    @property
+    def selected_profile_references(self) -> tuple[CoverageProfileReference, ...]:
+        """Every profile the relying application selected, primary first.
+
+        A composed query needs one selected profile per required source. The
+        singular `selected_profile_reference` remains the schema 1.0 form and
+        is always the first element, so a single-source selection keeps its
+        exact meaning and canonical form.
+        """
+
+        return (self.selected_profile_reference, *self.additional_selected_profile_references)
+
     def payload_dict(self) -> dict[str, Any]:
-        return {
+        payload: dict[str, Any] = {
             "trust_schema": self.trust_schema,
             "registry_id": self.registry_id,
             "snapshot_id": self.snapshot_id,
@@ -1020,6 +1058,11 @@ class ProfileTrustSelection:
             "trusted_profile_issuer_ids": list(self.trusted_profile_issuer_ids),
             "trusted_approval_authority_ids": list(self.trusted_approval_authority_ids),
         }
+        if self.additional_selected_profile_references:
+            payload["additional_selected_profile_references"] = [
+                item.to_dict() for item in self.additional_selected_profile_references
+            ]
+        return payload
 
     def to_dict(self) -> dict[str, Any]:
         assert self.trust_selection_digest is not None
@@ -1354,7 +1397,10 @@ def evaluate_profile_governance(
                 source_id=requirement.source_id,
             )
             continue
-        if not _same_profile_reference(reference, trust.selected_profile_reference):
+        if not any(
+            _same_profile_reference(reference, selected)
+            for selected in trust.selected_profile_references
+        ):
             add_issue(
                 ProfileIssueCode.PROFILE_TRUST_SELECTION_MISMATCH,
                 "The producer-selected profile reference does not match the exact application-selected profile reference.",

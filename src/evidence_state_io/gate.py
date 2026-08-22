@@ -10,6 +10,13 @@ from enum import Enum
 from typing import Any, Mapping
 
 from .canonical import CANONICALIZATION_PROFILE, DIGEST_ALGORITHM, canonical_digest
+from .composition import (
+    MAX_REQUIRED_SOURCES,
+    CompositionAssessment,
+    CompositionIssueCode,
+    SourceContribution,
+    compose_sources,
+)
 from .coverage import CoverageAssessment, CoveragePolicy, evaluate_coverage
 from .models import (
     ClaimMode,
@@ -106,6 +113,18 @@ class GateReason(str, Enum):
     REQUIRED_SOURCE_AUTHORIZATION_MISMATCH = "REQUIRED_SOURCE_AUTHORIZATION_MISMATCH"
     REQUIRED_SOURCE_POPULATION_MISMATCH = "REQUIRED_SOURCE_POPULATION_MISMATCH"
     REQUIRED_SOURCE_ERRORS_PRESENT = "REQUIRED_SOURCE_ERRORS_PRESENT"
+    COMPOSED_COVERAGE_OVERSTATED = "COMPOSED_COVERAGE_OVERSTATED"
+    COMPOSED_VALIDITY_OVERSTATED = "COMPOSED_VALIDITY_OVERSTATED"
+    COMPOSED_TOO_MANY_REQUIRED_SOURCES = "COMPOSED_TOO_MANY_REQUIRED_SOURCES"
+    COMPOSED_DUPLICATE_SOURCE_ID = "COMPOSED_DUPLICATE_SOURCE_ID"
+    COMPOSED_SOURCE_STATES_DISAGREE = "COMPOSED_SOURCE_STATES_DISAGREE"
+    COMPOSED_SOURCE_NOT_ABSENT_WITHIN_SCOPE = "COMPOSED_SOURCE_NOT_ABSENT_WITHIN_SCOPE"
+    COMPOSED_SOURCE_REPORTS_MATCHES = "COMPOSED_SOURCE_REPORTS_MATCHES"
+    COMPOSED_SOURCE_COVERAGE_NOT_MET = "COMPOSED_SOURCE_COVERAGE_NOT_MET"
+    COMPOSED_COVERAGE_UNQUANTIFIED = "COMPOSED_COVERAGE_UNQUANTIFIED"
+    COMPOSED_SOURCE_FINALITY_HORIZON_UNDECLARED = "COMPOSED_SOURCE_FINALITY_HORIZON_UNDECLARED"
+    COMPOSED_SOURCE_INDEX_UNDECLARED = "COMPOSED_SOURCE_INDEX_UNDECLARED"
+    COMPOSED_SOURCE_INDEX_PRECEDES_OWN_HORIZON = "COMPOSED_SOURCE_INDEX_PRECEDES_OWN_HORIZON"
 
 
 _SOURCE_REASON_MAP = {
@@ -125,6 +144,17 @@ _SOURCE_REASON_MAP = {
 }
 
 _PROFILE_REASON_MAP = {code: GateReason(code.value) for code in ProfileIssueCode}
+
+# Every issue the composer can emit maps to a gate reason.
+# `NO_REQUIRED_SOURCES` is excluded because `compose_sources` raises on an
+# empty contribution list rather than issuing it, so it can never reach a
+# decision; `test_every_emittable_composition_issue_maps_to_a_reason` keeps
+# that exclusion honest.
+_COMPOSITION_REASON_MAP: dict[CompositionIssueCode, GateReason] = {
+    code: GateReason("COMPOSED_" + code.value.removeprefix("COMPOSED_"))
+    for code in CompositionIssueCode
+    if code is not CompositionIssueCode.NO_REQUIRED_SOURCES
+}
 
 
 def _strict_bool(value: Any, path: str, default: bool) -> bool:
@@ -354,12 +384,13 @@ class GateDecision:
     qualified_claim: str | None
     limitations: tuple[str, ...]
     input_digest: str
+    composition: CompositionAssessment | None = None
     canonicalization_profile: str = CANONICALIZATION_PROFILE
     digest_algorithm: str = DIGEST_ALGORITHM
     evaluator_version: str = EVALUATOR_VERSION
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        payload: dict[str, Any] = {
             "allowed": self.allowed,
             "decision": self.decision,
             "reasons": [reason.value for reason in self.reasons],
@@ -373,6 +404,12 @@ class GateDecision:
             "digest_algorithm": self.digest_algorithm,
             "evaluator_version": self.evaluator_version,
         }
+        # Omitted when absent so that every single-source decision serialises
+        # to exactly the bytes it did before composition existed, and every
+        # recorded replay certificate digest still verifies.
+        if self.composition is not None:
+            payload["composition"] = self.composition.to_dict()
+        return payload
 
 
 def _digest_evaluation_input(
@@ -388,7 +425,98 @@ def _digest_evaluation_input(
     )
 
 
-def _qualified_claim(request: NegativeClaimRequest, assessment: CoverageAssessment) -> str:
+#: Bound comparisons are made with a tolerance far below any meaningful
+#: coverage difference, so that binary floating-point representation alone
+#: cannot manufacture a rejection.  Anything larger than this is a real
+#: overstatement and is rejected.
+_COVERAGE_BOUND_TOLERANCE = 1e-9
+
+
+def _build_contributions(
+    envelope: EvidenceEnvelope,
+    policy: NegativeClaimPolicy,
+) -> tuple[SourceContribution, ...]:
+    """Build one contribution per required source from that source's own evidence.
+
+    Nothing is inferred or borrowed from the envelope: a source contributes
+    only what it itself reported. Per-source coverage is assessed against the
+    same relying-party policy as the envelope, because one claim is being
+    decided under one policy.
+    """
+
+    horizons = {
+        requirement.source_id: requirement.finality_horizon
+        for requirement in envelope.query.source_requirements
+    }
+    required_ids = {
+        requirement.source_id
+        for requirement in envelope.query.source_requirements
+        if requirement.role is SourceRole.REQUIRED
+    }
+    contributions: list[SourceContribution] = []
+    for observation in envelope.source_observations:
+        if observation.source_id not in required_ids:
+            continue
+        # The envelope validator refuses a composed record whose required
+        # source lacks an assessment, so this is a defensive skip rather than
+        # a reachable branch; a missing assessment is already a rejection.
+        if (
+            observation.state is None
+            or observation.matched_count is None
+            or observation.coverage is None
+            or observation.observed_at is None
+        ):
+            continue
+        contributions.append(
+            SourceContribution(
+                source_id=observation.source_id,
+                state=observation.state,
+                matched_count=observation.matched_count,
+                coverage=evaluate_coverage(observation.coverage, policy.coverage),
+                observed_at=observation.observed_at,
+                index_as_of=observation.descriptor.index_as_of,
+                finality_horizon=horizons.get(observation.source_id),
+                valid_until=observation.valid_until,
+            )
+        )
+    return tuple(contributions)
+
+
+def _composed_finality_text(composition: CompositionAssessment) -> str:
+    """Describe what several corroborating sources jointly establish."""
+
+    count = len(composition.source_ids)
+    names = ", ".join(json.dumps(sid, ensure_ascii=False) for sid in composition.source_ids)
+    horizon = composition.binding_finality_horizon
+    assert horizon is not None
+    weakest_index = composition.weakest_index_as_of
+    assert weakest_index is not None
+    validity_text = ""
+    if composition.earliest_valid_until is not None:
+        validity_text = (
+            " The earliest source-declared validity boundary among them is "
+            f"{datetime_to_json(composition.earliest_valid_until)}."
+        )
+    return (
+        f" The claim was composed by corroboration across {count} required "
+        f"sources ({names}), each of which independently reported in-scope "
+        "absence and reached its own declared finality horizon; the binding "
+        f"horizon across them is {datetime_to_json(horizon)}. The weakest "
+        f"index state among them was at {datetime_to_json(weakest_index)} and "
+        "the stalest contributing observation was at "
+        f"{datetime_to_json(composition.stalest_observed_at)}."
+        f"{validity_text}"
+        " The composed coverage figure is the strongest single-source lower "
+        "bound, not a sum: overlap between the sources was not measured, so "
+        "agreement among them does not enlarge the region shown to be covered."
+    )
+
+
+def _qualified_claim(
+    request: NegativeClaimRequest,
+    assessment: CoverageAssessment,
+    composition: CompositionAssessment | None = None,
+) -> str:
     envelope = request.envelope
     lower_bound = assessment.lower_bound
     coverage_text = "declared but unquantified"
@@ -428,15 +556,18 @@ def _qualified_claim(request: NegativeClaimRequest, assessment: CoverageAssessme
         if observation.source_id == required_source.source_id
         and observation.status is SourceObservationStatus.OBSERVED
     )
-    finality_horizon = required_source.finality_horizon
-    index_as_of = source_observation.descriptor.index_as_of
-    assert finality_horizon is not None
-    assert index_as_of is not None
-    finality_text = (
-        " The source reported an index state at "
-        f"{datetime_to_json(index_as_of)}, which reached the declared finality "
-        f"horizon {datetime_to_json(finality_horizon)}."
-    )
+    if composition is not None:
+        finality_text = _composed_finality_text(composition)
+    else:
+        finality_horizon = required_source.finality_horizon
+        index_as_of = source_observation.descriptor.index_as_of
+        assert finality_horizon is not None
+        assert index_as_of is not None
+        finality_text = (
+            " The source reported an index state at "
+            f"{datetime_to_json(index_as_of)}, which reached the declared finality "
+            f"horizon {datetime_to_json(finality_horizon)}."
+        )
     return (
         f"The subject {json.dumps(request.subject, ensure_ascii=False)} had zero observed "
         "matches within the declared query scope "
@@ -496,6 +627,10 @@ def evaluate_negative_claim(
     source_assessment = evaluate_source_accounting(
         envelope.query.source_requirements,
         envelope.source_observations,
+        # Only a declared composition method raises the bound, and only to
+        # that method's own limit.  Without one the single-source contract is
+        # enforced exactly as before.
+        max_required=(MAX_REQUIRED_SOURCES if envelope.query.composition is not None else 1),
     )
     profile_assessment = evaluate_profile_governance(
         envelope,
@@ -524,10 +659,44 @@ def evaluate_negative_claim(
     for source_issue in source_assessment.issues:
         add_reason(_SOURCE_REASON_MAP[source_issue.code])
 
+    composition: CompositionAssessment | None = None
+    if envelope.query.composition is not None:
+        contributions = _build_contributions(envelope, policy)
+        if contributions:
+            composition = compose_sources(contributions, mode=envelope.query.composition)
+            for composition_issue in composition.issues:
+                add_reason(_COMPOSITION_REASON_MAP[composition_issue.code])
+            # The envelope may not claim a stronger coverage floor than the
+            # sources jointly guarantee.  Corroboration composes by maximum, so
+            # an envelope bound above that maximum is coverage the sources did
+            # not observe.
+            declared_bound = assessment.lower_bound
+            composed_bound = composition.composed_lower_bound
+            if declared_bound is not None and (
+                composed_bound is None
+                or declared_bound > composed_bound + _COVERAGE_BOUND_TOLERANCE
+            ):
+                add_reason(GateReason.COMPOSED_COVERAGE_OVERSTATED)
+            # Nor may it outlive the first source whose own result expires.
+            if (
+                envelope.valid_until is not None
+                and composition.earliest_valid_until is not None
+                and envelope.valid_until > composition.earliest_valid_until
+            ):
+                add_reason(GateReason.COMPOSED_VALIDITY_OVERSTATED)
+
+    # A composed observation is exactly as fresh as its stalest input.  Ageing
+    # from the envelope's own timestamp would let a late-sealed envelope hide a
+    # source that was read hours earlier.  With no composition this is the
+    # envelope timestamp and the behaviour is unchanged.
+    effective_observed_at = envelope.observed_at
+    if composition is not None:
+        effective_observed_at = min(envelope.observed_at, composition.stalest_observed_at)
+
     if request.evaluated_at < envelope.observed_at:
         add_reason(GateReason.EVALUATION_PRECEDES_OBSERVATION)
     else:
-        observation_age = request.evaluated_at - envelope.observed_at
+        observation_age = request.evaluated_at - effective_observed_at
         if policy.max_observation_age_seconds is not None and _timedelta_exceeds_seconds(
             observation_age, policy.max_observation_age_seconds
         ):
@@ -537,6 +706,12 @@ def evaluate_negative_claim(
         if policy.require_valid_until:
             add_reason(GateReason.VALIDITY_UNDECLARED)
     elif request.evaluated_at > envelope.valid_until:
+        add_reason(GateReason.RESULT_EXPIRED)
+    if (
+        composition is not None
+        and composition.earliest_valid_until is not None
+        and request.evaluated_at > composition.earliest_valid_until
+    ):
         add_reason(GateReason.RESULT_EXPIRED)
 
     required_requirements = tuple(
@@ -573,11 +748,25 @@ def evaluate_negative_claim(
                 add_reason(GateReason.INDEX_TOO_OLD)
 
     allowed = not reasons
+    composition_limitations: tuple[str, ...] = (
+        (
+            "Composed coverage is the strongest single-source lower bound, never a sum: "
+            "overlap between the sources was not measured, so corroboration does not "
+            "enlarge the region shown to be covered.",
+            "Corroboration establishes agreement among the declared sources; it does not "
+            "establish independence between them, and sources drawing on a common upstream "
+            "record can agree while all being wrong.",
+            "Only CORROBORATION is implemented; the evaluator cannot compose sources that "
+            "cover disjoint parts of a population, and does not accept a declared partition.",
+        )
+        if composition is not None
+        else ("The current evaluator does not establish multi-source coverage composition.",)
+    )
     limitations = (
         "The decision is conditional on source-declared evidence and a separately supplied, locally governed profile registry snapshot.",
         "ABSENT_WITHIN_SCOPE never proves global or absolute absence.",
         "The gate does not independently verify source honesty or inaccessible data.",
-        "The current evaluator does not establish multi-source coverage composition.",
+        *composition_limitations,
         "The gate compares a source-reported index time with a profile-derived finality horizon; profile governance does not attest source behavior and does not prove ingestion completeness.",
         "Profile owner, issuer, and approval identities are declarative under P0 configuration custody and are not cryptographically authenticated.",
         "The SHA-256 composite input digest is integrity metadata, not a signature; mutation detection requires a separately trusted expected digest.",
@@ -590,10 +779,11 @@ def evaluate_negative_claim(
         source_accounting=source_assessment,
         profile=profile_assessment,
         qualified_claim=(
-            _qualified_claim(request, assessment)
+            _qualified_claim(request, assessment, composition)
             if allowed
             else _insufficient_evidence_statement(request, tuple(reasons))
         ),
         limitations=limitations,
         input_digest=_digest_evaluation_input(request, context),
+        composition=composition,
     )

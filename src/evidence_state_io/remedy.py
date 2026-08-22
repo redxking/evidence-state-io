@@ -287,6 +287,57 @@ _REMEDY_TABLE: dict[GateReason, tuple[RemedyClass, str]] = {
         _C.RESOLVE_GOVERNANCE_TRUST,
         "the selected profile is revoked; an unrevoked governed profile must be selected",
     ),
+    # Composed reasons.  Each states a condition on the corroborating sources
+    # themselves, because a composed shortfall is never repaired by describing
+    # the composition differently.
+    _R.COMPOSED_COVERAGE_OVERSTATED: (
+        _C.OBTAIN_COMPLETE_ENUMERATION,
+        "the coverage asserted for the composed result must not exceed what the corroborating sources jointly guarantee; corroboration composes by the strongest single source and never by addition",
+    ),
+    _R.COMPOSED_VALIDITY_OVERSTATED: (
+        _C.OBTAIN_FRESH_OBSERVATION,
+        "the composed result must not remain valid past the earliest validity boundary any contributing source declared",
+    ),
+    _R.COMPOSED_TOO_MANY_REQUIRED_SOURCES: (
+        _C.UNSATISFIABLE,
+        "the composition surface is bounded so that a composed result stays reviewable by hand; a claim requiring more corroborating sources than that bound is outside what this evaluator assesses",
+    ),
+    _R.COMPOSED_DUPLICATE_SOURCE_ID: (
+        _C.UNSATISFIABLE,
+        "a source counted twice corroborates only itself; every contributing source must be a distinct source, and no further observation of the same source supplies that distinctness",
+    ),
+    _R.COMPOSED_SOURCE_STATES_DISAGREE: (
+        _C.UNSATISFIABLE,
+        "the contributing sources report both in-scope presence and in-scope absence; the disagreement must be resolved at the sources before any negative claim is assessable",
+    ),
+    _R.COMPOSED_SOURCE_NOT_ABSENT_WITHIN_SCOPE: (
+        _C.RESOLVE_SOURCE_AVAILABILITY,
+        "every corroborating source must itself report ABSENT_WITHIN_SCOPE rather than an indeterminate state",
+    ),
+    _R.COMPOSED_SOURCE_REPORTS_MATCHES: (
+        _C.UNSATISFIABLE,
+        "a corroborating source reports in-scope matches, which is evidence of presence rather than an evidence shortfall",
+    ),
+    _R.COMPOSED_SOURCE_COVERAGE_NOT_MET: (
+        _C.OBTAIN_COMPLETE_ENUMERATION,
+        "each corroborating source must independently reach the governed coverage floor; a source below it contributes no guarantee that another source can supply on its behalf",
+    ),
+    _R.COMPOSED_COVERAGE_UNQUANTIFIED: (
+        _C.OBTAIN_COMPLETE_ENUMERATION,
+        "at least one corroborating source must quantify its coverage against a declared denominator; with none quantified the composed floor is unknown rather than high",
+    ),
+    _R.COMPOSED_SOURCE_FINALITY_HORIZON_UNDECLARED: (
+        _C.OBTAIN_MISSING_DECLARATION,
+        "every corroborating source must have a finality horizon the governed profile derives for the queried interval",
+    ),
+    _R.COMPOSED_SOURCE_INDEX_UNDECLARED: (
+        _C.OBTAIN_MISSING_DECLARATION,
+        "every corroborating source must report the index state its observation reflects",
+    ),
+    _R.COMPOSED_SOURCE_INDEX_PRECEDES_OWN_HORIZON: (
+        _C.AWAIT_SOURCE_STATE,
+        "every corroborating source must reach its own finality horizon; a source that can still receive a late arrival for the queried interval cannot corroborate absence within it",
+    ),
 }
 
 _UNIVERSAL_LIMITATIONS = (

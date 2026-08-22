@@ -75,7 +75,9 @@ authorizes production use.
 - Proving universal or metaphysical absence.
 - Establishing that source, profile, registry, issuer, approval, or trust
   declarations are independently true or authenticated.
-- Discovering all enterprise data sources or composing multi-source coverage.
+- Discovering all enterprise data sources, or composing coverage across
+  sources that cover disjoint parts of a population. Schema `1.1` composes only
+  corroborating sources, whose coverage never accumulates.
 - Allowing an LLM to override coverage policy or verdicts.
 - Providing signatures, trusted timestamps, independent custody,
   non-repudiation, or action authorization.
@@ -145,6 +147,13 @@ interval, exclusions, and exactly one required source. The source requirement
 binds source/system/locator, exact adapter ID and immutable version, accessible
 population, nonempty detection assumptions, an exact profile reference, and a
 profile-derived finality horizon.
+
+A schema `1.1` query additionally declares `composition` and may name up to
+four required sources. Each source observation then carries its own coverage,
+state, match count, and observation time, and each source is checked against
+its own profile-derived horizon. Schema `1.0` may declare neither, and every
+`1.1` field is omitted from the canonical form when absent, so a `1.0` record
+keeps its exact meaning, fingerprint, and digest.
 
 The normalized query has a canonical SHA-256 fingerprint. Aggregate coverage
 and every source observation must carry that exact fingerprint. A free-form

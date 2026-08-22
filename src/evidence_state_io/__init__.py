@@ -19,6 +19,14 @@ from .certificates import (
     build_evidence_certificate,
     verify_evidence_certificate,
 )
+from .composition import (
+    COMPOSITION_SCHEMA,
+    CompositionAssessment,
+    CompositionIssue,
+    CompositionIssueCode,
+    SourceContribution,
+    compose_sources,
+)
 from .coverage import (
     CoverageAssessment,
     CoverageComponent,
@@ -70,8 +78,13 @@ from .models import (
     AUTHORIZATION_CONTEXT_IDENTIFIER_PROFILE,
     EVIDENCE_STATE_INTERPRETATIONS,
     EVIDENCE_STATE_TRANSITION_MODEL,
+    MAX_REQUIRED_SOURCES,
     MAX_SOURCE_ACCOUNTING_ENTRIES,
+    SCHEMA_VERSION_COMPOSED,
+    SCHEMA_VERSION_SINGLE_SOURCE,
+    SUPPORTED_SCHEMA_VERSIONS,
     ClaimMode,
+    CompositionMode,
     CoverageEvidence,
     CoverageProfileReference,
     EvidenceEnvelope,
@@ -110,6 +123,15 @@ from .profiles import (
     TrustedProfileContext,
     evaluate_profile_governance,
 )
+from .remedy import (
+    INSUFFICIENCY_REMEDY_SCHEMA,
+    DisclosureLevel,
+    InsufficiencyRemedy,
+    RemedyClass,
+    RemedyItem,
+    derive_remedy,
+    derive_remedy_from_certificate,
+)
 from .sources import (
     SourceAccountingAssessment,
     SourceIssue,
@@ -120,6 +142,7 @@ from .sources import (
 __all__ = [
     "AUTHORIZATION_CONTEXT_IDENTIFIER_PROFILE",
     "CANONICALIZATION_PROFILE",
+    "COMPOSITION_SCHEMA",
     "CERTIFICATE_FORMAT",
     "COVERAGE_FINALITY_PROFILE_SCHEMA",
     "DIGEST_ALGORITHM",
@@ -130,12 +153,26 @@ __all__ = [
     "EVIDENCE_STATE_INTERPRETATIONS",
     "EVIDENCE_STATE_TRANSITION_MODEL",
     "FINALITY_METHOD",
+    "INSUFFICIENCY_REMEDY_SCHEMA",
+    "MAX_REQUIRED_SOURCES",
+    "SCHEMA_VERSION_COMPOSED",
+    "SCHEMA_VERSION_SINGLE_SOURCE",
+    "SUPPORTED_SCHEMA_VERSIONS",
     "PROFILE_REGISTRY_SNAPSHOT_SCHEMA",
     "PROFILE_TRUST_SELECTION_SCHEMA",
     "BlindInterval",
     "ClaimMode",
     "CertificateContextBinding",
     "CertificateVerification",
+    "CompositionAssessment",
+    "CompositionIssue",
+    "CompositionIssueCode",
+    "CompositionMode",
+    "DisclosureLevel",
+    "InsufficiencyRemedy",
+    "RemedyClass",
+    "RemedyItem",
+    "SourceContribution",
     "CoverageProfileReference",
     "CoverageAssessment",
     "CoverageComponent",
@@ -198,7 +235,10 @@ __all__ = [
     "build_evidence_certificate",
     "canonical_digest",
     "canonical_json_bytes",
+    "compose_sources",
     "demo_cases",
+    "derive_remedy",
+    "derive_remedy_from_certificate",
     "evaluate_coverage",
     "evaluate_negative_claim",
     "evaluate_profile_governance",
@@ -218,4 +258,4 @@ __all__ = [
     "verify_evidence_certificate",
 ]
 
-__version__ = "0.6.1"
+__version__ = "0.7.0"

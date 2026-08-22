@@ -23,10 +23,47 @@ All notable project changes should be recorded here. Dates use ISO 8601.
 - Disagreement composes to `CONTRADICTORY` and rejects. There is no majority
   rule: voting would convert a contradiction into a permit whenever the
   fabricating side brought more sources.
-- Composition is order-independent, capped at four required sources, and
-  deliberately not yet reachable from an envelope. ADR-0015 is accepted for
-  `CORROBORATION` only; `PARTITION` and `OPTIONAL` sources are deferred with
-  reasons recorded.
+- Composition is order-independent and capped at four required sources.
+  ADR-0015 is accepted for `CORROBORATION` only; `PARTITION` and `OPTIONAL`
+  sources are deferred with reasons recorded.
+
+- **Envelope schema `1.1`, which makes composition reachable.** Semantics
+  nothing can call are a promise, not a capability. A `1.1` envelope declares
+  `query.composition` and carries a per-source assessment on every required
+  `source_observation`: its own `coverage`, `state`, `matched_count`,
+  `observed_at`, and optionally `valid_until`. Without a per-source state and
+  match count, two sources cannot be seen to disagree at all, which would gut
+  the contradiction rule.
+- Schema `1.0` is unchanged and provably so. It may not declare a composition
+  mode or carry a per-source assessment; every new field is omitted from the
+  canonical form when absent, in the envelope, the trust selection, and the
+  gate decision alike. Every recorded `1.0` fingerprint, digest, and
+  certificate still verifies.
+- A source's declared state must be compatible with its runtime status. A
+  `FAILED`, `PENDING`, or `INACCESSIBLE` source cannot be relabelled
+  `ABSENT_WITHIN_SCOPE`; without that table a composed envelope could reach a
+  permit by declaring in-scope absence for sources that returned nothing
+  because they broke.
+- `ProfileTrustSelection` gained `additional_selected_profile_references`, so
+  a relying application can select one governed profile per required source.
+  The singular `selected_profile_reference` remains the `1.0` form and stays
+  first, and its canonical form and digest are unchanged.
+- Freshness now ages a composed claim from its **stalest contributing
+  observation** rather than from the envelope timestamp, so a late-sealed
+  envelope cannot hide a source that was read hours earlier. With no
+  composition declared this is the envelope timestamp and behaviour is
+  identical.
+- Thirteen `COMPOSED_*` gate reasons, each with a remedy classification. Two
+  are conditions the composer alone could not express: an envelope may not
+  declare a coverage floor above what its sources jointly guarantee
+  (`COMPOSED_COVERAGE_OVERSTATED`), nor remain valid past the earliest
+  boundary any contributing source declared (`COMPOSED_VALIDITY_OVERSTATED`).
+- A composed permit says in the claim itself that corroboration did not
+  accumulate coverage, and the decision's limitations state that agreement
+  among sources is not independence between them.
+- `evidence_state_io.composition` and `evidence_state_io.remedy` are exported
+  from the package root. The remedy surface was reachable only by module path
+  before, which made a headline capability effectively private.
 
 - `esio-insufficiency-remedy/1.0-candidate.1` and `evidence-state explain`.
   A rejection previously returned ordered reason codes and a deterministic

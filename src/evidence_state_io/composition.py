@@ -30,27 +30,31 @@ from typing import Any, Sequence
 
 from .coverage import CoverageAssessment
 from .errors import ModelValidationError
-from .models import EvidenceState
+
+# `CompositionMode` and the source bound are defined once, in the model layer,
+# so the envelope schema and this composer cannot drift apart or compare two
+# structurally identical but distinct enum classes.
+from .models import MAX_REQUIRED_SOURCES, CompositionMode, EvidenceState
 
 COMPOSITION_SCHEMA = "esio-multi-source-composition/1.0-candidate.1"
 
-# A fail-closed bound on the composition surface, chosen so the composed
-# assessment stays reviewable by hand.  It is not a performance limit.
-MAX_REQUIRED_SOURCES = 4
-
-
-class CompositionMode(str, Enum):
-    """Declared composition intent.
-
-    `PARTITION` is deliberately absent from this candidate. It is the only mode
-    in which coverage accumulates, and it requires each source to declare a
-    disjoint accessible subpopulation whose union equals the queried
-    population. Nothing in the governed profile expresses that yet, so
-    admitting the mode before it can be checked would mean accepting an
-    undeclared partition, which is exactly an uncovered region.
-    """
-
-    CORROBORATION = "CORROBORATION"
+# Re-exported so a reader of this module sees the bound it enforces.
+# `PARTITION` is deliberately absent from `CompositionMode`: it is the only
+# mode in which coverage accumulates, and it requires each source to declare a
+# disjoint accessible subpopulation whose union equals the queried population.
+# Nothing in the governed profile expresses that yet, so admitting the mode
+# before it could be checked would mean accepting an undeclared partition,
+# which is exactly an uncovered region.
+__all__ = [
+    "COMPOSITION_SCHEMA",
+    "MAX_REQUIRED_SOURCES",
+    "CompositionAssessment",
+    "CompositionIssue",
+    "CompositionIssueCode",
+    "CompositionMode",
+    "SourceContribution",
+    "compose_sources",
+]
 
 
 class CompositionIssueCode(str, Enum):

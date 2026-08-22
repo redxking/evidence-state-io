@@ -103,7 +103,8 @@ class SchemaCompatibilityTests(unittest.TestCase):
     def test_active_parser_rejects_schema_0_1_exactly_and_fail_closed(self) -> None:
         with self.assertRaisesRegex(
             ModelValidationError,
-            r"^envelope\.schema_version must be the supported string value '1\.0'$",
+            r"^envelope\.schema_version must be one of the supported string values "
+            r"'1\.0', '1\.1'$",
         ):
             NegativeClaimRequest.from_dict(load_json(LEGACY_FIXTURE))
 
@@ -152,7 +153,8 @@ class SchemaCompatibilityTests(unittest.TestCase):
         downgraded["envelope"]["schema_version"] = "0.1"
         with self.assertRaisesRegex(
             ModelValidationError,
-            r"^envelope\.schema_version must be the supported string value '1\.0'$",
+            r"^envelope\.schema_version must be one of the supported string values "
+            r"'1\.0', '1\.1'$",
         ):
             NegativeClaimRequest.from_dict(downgraded)
 

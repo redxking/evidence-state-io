@@ -512,3 +512,50 @@ class SourceAccountingTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ComposedAccountingBoundTests(unittest.TestCase):
+    """The bound that lets accounting admit more than one required source.
+
+    These shapes are refused earlier by the envelope, so the tests pin a
+    defensive contract rather than a user-facing path: a caller that reaches
+    past the envelope must still be refused rather than silently accounted.
+    """
+
+    def test_max_required_must_be_a_positive_integer(self) -> None:
+        for value in (0, -1, True, 2.0, "2"):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(
+                    ModelValidationError, "max_required must be a positive integer"
+                ):
+                    evaluate_source_accounting(
+                        [requirement()],
+                        [observation()],
+                        max_required=value,  # type: ignore[arg-type]
+                    )
+
+    def test_more_sources_than_the_bound_are_refused(self) -> None:
+        requirements = [requirement(f"source-{index}") for index in range(1, 4)]
+        observations = [observation(f"source-{index}") for index in range(1, 4)]
+        with self.assertRaisesRegex(ModelValidationError, "at most 2 required sources"):
+            evaluate_source_accounting(requirements, observations, max_required=2)
+
+    def test_the_single_source_contract_is_unchanged_by_default(self) -> None:
+        requirements = [requirement("source-1"), requirement("source-2")]
+        observations = [observation("source-1"), observation("source-2")]
+        with self.assertRaisesRegex(ModelValidationError, "exactly one REQUIRED source"):
+            evaluate_source_accounting(requirements, observations)
+
+    def test_a_bounded_group_of_required_sources_is_accounted(self) -> None:
+        requirements = [requirement("source-1"), requirement("source-2")]
+        observations = [observation("source-1"), observation("source-2")]
+        assessment = evaluate_source_accounting(
+            requirements,
+            observations,
+            max_required=2,
+        )
+        self.assertEqual(assessment.issues, ())
+        self.assertEqual(
+            sorted(assessment.observed_source_ids),
+            ["source-1", "source-2"],
+        )

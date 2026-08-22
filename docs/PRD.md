@@ -165,8 +165,12 @@ An envelope shall identify the subject or query, population or resource universe
 **Current candidate note:** Schema `1.0` implements one required source with a
 source ID, system, locator, adapter ID/version, stable non-secret authorization
 context, accessible population, and nonempty detection assumptions. The
-requirement and observation are matched exactly. Credential-like-content
-detection and richer field/projection semantics remain open.
+requirement and observation are matched exactly. Schema `1.1` admits up to four
+required sources under a declared `CORROBORATION` mode, each with its own
+governed profile and its own evidence; a source's declared state must be
+compatible with its runtime status, so a failed or pending source cannot be
+relabelled as an in-scope absence. Credential-like-content detection and richer
+field/projection semantics remain open.
 
 #### ESIO-P0-003: Coverage and completion facts
 
@@ -178,10 +182,14 @@ An envelope shall represent a coverage lower bound and derivation, required/obse
 - Any unresolved continuation token, incomplete required partition, unknown required-source status, or disqualifying error prevents `ABSENT_WITHIN_SCOPE`.
 - A claimed coverage lower bound cannot exceed a deterministic bound computed from declared required and completed units under the P0 coverage method.
 
-**Current candidate note:** Aggregate coverage and the single source observation
-must match the canonical normalized-query fingerprint. Optional and multi-source
-declarations are rejected until coverage can be represented and composed per
-source. The requirement carries an exact profile reference and an exact finality
+**Current candidate note:** Aggregate coverage and every source observation
+must match the canonical normalized-query fingerprint. Optional-role sources
+remain rejected. Schema `1.1` represents coverage per source and composes
+corroborating sources conservatively: the composed floor is the strongest
+single-source bound, and an envelope may not declare a bound above it.
+`PARTITION`, the only mode in which coverage would accumulate, stays rejected
+because no governed profile can yet express the disjoint accessible
+subpopulation it would require. The requirement carries an exact profile reference and an exact finality
 horizon. The horizon must equal the query end plus the larger of the selected
 profile's late-arrival and reopen bounds, is query-bound, and must be reached by
 the reported source index. The local profile is application-selected but its
