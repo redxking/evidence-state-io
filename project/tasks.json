@@ -62,8 +62,10 @@
         "MVP-ACC-026"
       ],
       "priority": 1,
-      "status": "pending",
-      "title": "Verify the complete local MVP gate"
+      "status": "verified",
+      "title": "Verify the complete local MVP gate",
+      "verified_at": "2026-08-22T17:23:49Z",
+      "verified_commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59"
     },
     {
       "acceptance": [
@@ -80,10 +82,8 @@
       "id": "MVP-TASK-002",
       "next_action": "Push the coherent candidate, configure the remote, and verify CI at the exact commit.",
       "priority": 2,
-      "status": "verified",
-      "title": "Publish and verify the accepted candidate",
-      "verified_at": "2026-08-22T16:53:55Z",
-      "verified_commit": "960798cb93be0c54aa449aeadca914c7924b9527"
+      "status": "pending",
+      "title": "Publish and verify the accepted candidate"
     },
     {
       "acceptance": [
@@ -100,10 +100,8 @@
       "id": "MVP-TASK-003",
       "next_action": "Deploy Pages, exercise the live browser demo, and publish and inspect every required Wiki page.",
       "priority": 3,
-      "status": "verified",
-      "title": "Verify public Pages, demo, and Wiki",
-      "verified_at": "2026-08-22T16:53:55Z",
-      "verified_commit": "960798cb93be0c54aa449aeadca914c7924b9527"
+      "status": "pending",
+      "title": "Verify public Pages, demo, and Wiki"
     },
     {
       "acceptance": [
@@ -118,10 +116,8 @@
       "id": "MVP-TASK-004",
       "next_action": "Populate and verify repository governance, security, community, and project-management surfaces.",
       "priority": 4,
-      "status": "verified",
-      "title": "Complete professional GitHub configuration",
-      "verified_at": "2026-08-22T16:53:55Z",
-      "verified_commit": "960798cb93be0c54aa449aeadca914c7924b9527"
+      "status": "pending",
+      "title": "Complete professional GitHub configuration"
     },
     {
       "acceptance": [

@@ -2,12 +2,12 @@
   "criteria": [
     {
       "evidence": {
-        "at": "2026-08-22T16:47:30Z",
-        "commit": "3ecb1de8091a3e71bd621feb291ffe1437f29e0a",
+        "at": "2026-08-22T17:23:49Z",
+        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
         "dirty": false,
         "fingerprint": "sha256:42faa7360c196e298fed146342e575874a6d59a8e419466f0e4254b6ae96bd99",
         "output_digests": [
-          "sha256:f988f3966ea6eb60746a44cc583114474bdeebf5f985718bbf53a7bc92771e47"
+          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
         ],
         "procedure": [
           [
@@ -26,12 +26,12 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T16:47:30Z",
-        "commit": "3ecb1de8091a3e71bd621feb291ffe1437f29e0a",
+        "at": "2026-08-22T17:23:49Z",
+        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
         "dirty": false,
         "fingerprint": "sha256:1ceade17f621329f85e726c8570f372bd1b435572737b8f46174af090329c4fc",
         "output_digests": [
-          "sha256:f988f3966ea6eb60746a44cc583114474bdeebf5f985718bbf53a7bc92771e47"
+          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
         ],
         "procedure": [
           [
@@ -50,12 +50,12 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T16:47:30Z",
-        "commit": "3ecb1de8091a3e71bd621feb291ffe1437f29e0a",
+        "at": "2026-08-22T17:23:49Z",
+        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
         "dirty": false,
-        "fingerprint": "sha256:45ae604d9a4d82bdd89cbf891044cfd37dfbf148813d0531ed17ab463d72d9e3",
+        "fingerprint": "sha256:81156b7fd28f325da51b855c07ce5fef998619f3fcbd3adfd48b8d56ebec0d34",
         "output_digests": [
-          "sha256:f988f3966ea6eb60746a44cc583114474bdeebf5f985718bbf53a7bc92771e47"
+          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
         ],
         "procedure": [
           [
@@ -76,12 +76,12 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T16:47:30Z",
-        "commit": "3ecb1de8091a3e71bd621feb291ffe1437f29e0a",
+        "at": "2026-08-22T17:23:49Z",
+        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
         "dirty": false,
-        "fingerprint": "sha256:e7588a3c17b3a292fe7422739693d319521f40e594f916f92bed72de4fabbc71",
+        "fingerprint": "sha256:60b3fade76df66f818997235320b4849232c842926abe1b9f86e0680a79ec67c",
         "output_digests": [
-          "sha256:f988f3966ea6eb60746a44cc583114474bdeebf5f985718bbf53a7bc92771e47"
+          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
         ],
         "procedure": [
           [
@@ -100,12 +100,12 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T16:47:30Z",
-        "commit": "3ecb1de8091a3e71bd621feb291ffe1437f29e0a",
+        "at": "2026-08-22T17:23:49Z",
+        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
         "dirty": false,
-        "fingerprint": "sha256:479858309d39f6c058aa76f9133597f9f4ea0bb9906ffeeee8029b7b5e5f3595",
+        "fingerprint": "sha256:ed2bb73aaa89aa02e687ed5f29e96bc1ae581f808bf07863b1d55342df789499",
         "output_digests": [
-          "sha256:f988f3966ea6eb60746a44cc583114474bdeebf5f985718bbf53a7bc92771e47"
+          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
         ],
         "procedure": [
           [
@@ -126,12 +126,12 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T16:47:30Z",
-        "commit": "3ecb1de8091a3e71bd621feb291ffe1437f29e0a",
+        "at": "2026-08-22T17:23:49Z",
+        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
         "dirty": false,
-        "fingerprint": "sha256:d113bafeeac442e9e5568a5358e25dc15bfdffdd64095e7d73289cf672294306",
+        "fingerprint": "sha256:1ed993ac43ee882f33323d345a11f3085dc4fac19678942de7777ab6fb94a359",
         "output_digests": [
-          "sha256:f988f3966ea6eb60746a44cc583114474bdeebf5f985718bbf53a7bc92771e47"
+          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
         ],
         "procedure": [
           [
@@ -152,12 +152,12 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T16:47:30Z",
-        "commit": "3ecb1de8091a3e71bd621feb291ffe1437f29e0a",
+        "at": "2026-08-22T17:23:49Z",
+        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
         "dirty": false,
-        "fingerprint": "sha256:73c03e9b3b11869a8ba619d501c67185e348495b043e5c08fda3a94974732504",
+        "fingerprint": "sha256:b48a130303f3f375925ed1f62363053c1d573557e8cb6043f4a6f85157402b96",
         "output_digests": [
-          "sha256:f988f3966ea6eb60746a44cc583114474bdeebf5f985718bbf53a7bc92771e47"
+          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
         ],
         "procedure": [
           [
@@ -178,12 +178,12 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T16:47:30Z",
-        "commit": "3ecb1de8091a3e71bd621feb291ffe1437f29e0a",
+        "at": "2026-08-22T17:23:49Z",
+        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
         "dirty": false,
-        "fingerprint": "sha256:63dc3d51ad2581cf8dc8d6c28a633ab7870c3a8454c160b7f8848c3cb92cc820",
+        "fingerprint": "sha256:3d9eb372a0b22c35d5db6a44ea5b2ae5eec26768fb1b1157bd87a8577a68ff62",
         "output_digests": [
-          "sha256:f988f3966ea6eb60746a44cc583114474bdeebf5f985718bbf53a7bc92771e47"
+          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
         ],
         "procedure": [
           [
@@ -207,53 +207,23 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T17:12:30Z",
-        "commit": "01805095b08aff5fe8951340a65c5dd56c5a3981",
-        "defect": "ESIO-DEF-001",
+        "at": "2026-08-22T17:23:49Z",
+        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
         "dirty": false,
-        "evidence_class": "observed against the published v0.6.0 release artifact",
-        "fingerprint": "sha256:280db6c10f74692a2e4f46378cd482ec12c8617f4b1f5d35cd109b4d368d229e",
-        "observations": [
-          "Defect ESIO-DEF-001, found by installing the published v0.6.0 wheel into a fresh virtual environment and running the documented command from a directory that is not a checkout.",
-          "`evidence-state demo` and `evidence-state demo --all` exit 2 with `MODEL_INVALID` outside a checkout, and succeed inside one.",
-          "`emptybench._seed_artifact_directory` searches `Path(__file__).resolve().parents[2] / 'benchmarks'` and then `Path.cwd().resolve() / 'benchmarks'`. For an installed package the first candidate resolves inside the interpreter's lib directory and never exists, so the only working path is the current working directory.",
-          "The wheel ships no benchmark artifacts: `unzip -l` matched zero `emptybench-p0` entries, and `[tool.setuptools.package-data]` declares only `py.typed`. The source distribution does not carry `benchmarks/` either.",
-          "The cwd dependence was demonstrated directly: running the installed CLI in an empty directory exits 2, and running it in a directory that contains a `benchmarks/` folder holding the two JSON files exits 0.",
-          "This violates the stated invariant that the deterministic core must not depend on host paths, filesystem discovery, or the current working directory, and it means the installed CLI discovers its EmptyBench corpus and oracle from an undeclared location outside the package. The separately retained SEED_ORACLE_DIGEST still rejects a swapped oracle, so this is an undeclared discovery and packaging defect rather than a demonstrated oracle substitution.",
-          "The gates did not catch it because `scripts/acceptance.sh`, `.github/workflows/ci.yml`, and `.github/workflows/release.yml` all invoke the wheel-environment CLI with the repository root as the working directory. Each therefore exercised the source tree's `benchmarks/` directory while reporting that it had verified the installed package in isolation."
+        "fingerprint": "sha256:2a93e7fa94b471e5967658f81777fd382cad7323c7079c5ae5aeffdf304b4700",
+        "output_digests": [
+          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
         ],
         "procedure": [
           [
-            "python3.11",
-            "-m",
-            "venv",
-            "<tmp>/relvenv"
-          ],
-          [
-            "<tmp>/relvenv/bin/pip",
-            "install",
-            "evidence_state_io-0.6.0-py3-none-any.whl"
-          ],
-          [
-            "cd",
-            "<directory outside any checkout>"
-          ],
-          [
-            "<tmp>/relvenv/bin/evidence-state",
-            "demo",
-            "--all"
-          ],
-          [
-            "unzip",
-            "-l",
-            "evidence_state_io-0.6.0-py3-none-any.whl"
+            "./scripts/acceptance.sh"
           ]
         ],
-        "result": "FAIL"
+        "result": "PASS"
       },
       "failure_reason": "The fresh isolated installation was not isolated from the source tree: the installed CLI resolved its benchmark artifacts from the repository working directory.",
       "id": "MVP-ACC-009",
-      "status": "FAIL",
+      "status": "PASS",
       "title": "Fresh isolated installation and end-to-end API and CLI",
       "watched_paths": [
         "src/**",
@@ -265,12 +235,12 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T16:47:30Z",
-        "commit": "3ecb1de8091a3e71bd621feb291ffe1437f29e0a",
+        "at": "2026-08-22T17:23:49Z",
+        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
         "dirty": false,
-        "fingerprint": "sha256:d6e588a724977fc45cd3a587e28c49013bb942a5d4ea63bca29387d311bf1ad0",
+        "fingerprint": "sha256:62204157bb0272a40482a1426db9e467a26f54d0ff7c691ca8578c962dd9986c",
         "output_digests": [
-          "sha256:f988f3966ea6eb60746a44cc583114474bdeebf5f985718bbf53a7bc92771e47"
+          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
         ],
         "procedure": [
           [
@@ -291,12 +261,12 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T16:47:30Z",
-        "commit": "3ecb1de8091a3e71bd621feb291ffe1437f29e0a",
+        "at": "2026-08-22T17:23:49Z",
+        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
         "dirty": false,
-        "fingerprint": "sha256:4d137a664799354a8166ba981baca438b3ae3aae7ab29ab6ff90ae2dc9567a83",
+        "fingerprint": "sha256:91a42744d5a3e8556a2ddc2bc0748706d3e11e50df2b05f5a1c641ba6f2185aa",
         "output_digests": [
-          "sha256:f988f3966ea6eb60746a44cc583114474bdeebf5f985718bbf53a7bc92771e47"
+          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
         ],
         "procedure": [
           [
@@ -316,12 +286,12 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T16:47:30Z",
-        "commit": "3ecb1de8091a3e71bd621feb291ffe1437f29e0a",
+        "at": "2026-08-22T17:23:49Z",
+        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
         "dirty": false,
-        "fingerprint": "sha256:7457e3056f8b05d1e9f6553ecaaefd3556e066aea64cba2566238cd2ce5f5a9d",
+        "fingerprint": "sha256:da879c99d64551b24d39c2c56ee812fcfe974e0d4a90adc6810ef44e43ed17be",
         "output_digests": [
-          "sha256:f988f3966ea6eb60746a44cc583114474bdeebf5f985718bbf53a7bc92771e47"
+          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
         ],
         "procedure": [
           [
@@ -342,53 +312,23 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T17:12:30Z",
-        "commit": "01805095b08aff5fe8951340a65c5dd56c5a3981",
-        "defect": "ESIO-DEF-001",
+        "at": "2026-08-22T17:23:49Z",
+        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
         "dirty": false,
-        "evidence_class": "observed against the published v0.6.0 release artifact",
-        "fingerprint": "sha256:1fcd142ae6d3b5134dd6e1d3f6b5c689542eb3309807d8498c1c2e357eb06bf3",
-        "observations": [
-          "Defect ESIO-DEF-001, found by installing the published v0.6.0 wheel into a fresh virtual environment and running the documented command from a directory that is not a checkout.",
-          "`evidence-state demo` and `evidence-state demo --all` exit 2 with `MODEL_INVALID` outside a checkout, and succeed inside one.",
-          "`emptybench._seed_artifact_directory` searches `Path(__file__).resolve().parents[2] / 'benchmarks'` and then `Path.cwd().resolve() / 'benchmarks'`. For an installed package the first candidate resolves inside the interpreter's lib directory and never exists, so the only working path is the current working directory.",
-          "The wheel ships no benchmark artifacts: `unzip -l` matched zero `emptybench-p0` entries, and `[tool.setuptools.package-data]` declares only `py.typed`. The source distribution does not carry `benchmarks/` either.",
-          "The cwd dependence was demonstrated directly: running the installed CLI in an empty directory exits 2, and running it in a directory that contains a `benchmarks/` folder holding the two JSON files exits 0.",
-          "This violates the stated invariant that the deterministic core must not depend on host paths, filesystem discovery, or the current working directory, and it means the installed CLI discovers its EmptyBench corpus and oracle from an undeclared location outside the package. The separately retained SEED_ORACLE_DIGEST still rejects a swapped oracle, so this is an undeclared discovery and packaging defect rather than a demonstrated oracle substitution.",
-          "The gates did not catch it because `scripts/acceptance.sh`, `.github/workflows/ci.yml`, and `.github/workflows/release.yml` all invoke the wheel-environment CLI with the repository root as the working directory. Each therefore exercised the source tree's `benchmarks/` directory while reporting that it had verified the installed package in isolation."
+        "fingerprint": "sha256:ccb22e0aa4e06cbf2ef270b6e0b946edeb51de3782dfd6de5655e3f612222930",
+        "output_digests": [
+          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
         ],
         "procedure": [
           [
-            "python3.11",
-            "-m",
-            "venv",
-            "<tmp>/relvenv"
-          ],
-          [
-            "<tmp>/relvenv/bin/pip",
-            "install",
-            "evidence_state_io-0.6.0-py3-none-any.whl"
-          ],
-          [
-            "cd",
-            "<directory outside any checkout>"
-          ],
-          [
-            "<tmp>/relvenv/bin/evidence-state",
-            "demo",
-            "--all"
-          ],
-          [
-            "unzip",
-            "-l",
-            "evidence_state_io-0.6.0-py3-none-any.whl"
+            "./scripts/acceptance.sh"
           ]
         ],
-        "result": "FAIL"
+        "result": "PASS"
       },
       "failure_reason": "The offline benchmark does not run from an installed package alone; its corpus and oracle are not packaged.",
       "id": "MVP-ACC-013",
-      "status": "FAIL",
+      "status": "PASS",
       "title": "Offline benchmark emits human and machine readable correctness-first results",
       "watched_paths": [
         "src/evidence_state_io/emptybench.py",
@@ -399,53 +339,23 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T17:12:30Z",
-        "commit": "01805095b08aff5fe8951340a65c5dd56c5a3981",
-        "defect": "ESIO-DEF-001",
+        "at": "2026-08-22T17:23:49Z",
+        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
         "dirty": false,
-        "evidence_class": "observed against the published v0.6.0 release artifact",
-        "fingerprint": "sha256:24593886adfe4794e45b90c909ba7918084939c3b3db057377143051b921e4f1",
-        "observations": [
-          "Defect ESIO-DEF-001, found by installing the published v0.6.0 wheel into a fresh virtual environment and running the documented command from a directory that is not a checkout.",
-          "`evidence-state demo` and `evidence-state demo --all` exit 2 with `MODEL_INVALID` outside a checkout, and succeed inside one.",
-          "`emptybench._seed_artifact_directory` searches `Path(__file__).resolve().parents[2] / 'benchmarks'` and then `Path.cwd().resolve() / 'benchmarks'`. For an installed package the first candidate resolves inside the interpreter's lib directory and never exists, so the only working path is the current working directory.",
-          "The wheel ships no benchmark artifacts: `unzip -l` matched zero `emptybench-p0` entries, and `[tool.setuptools.package-data]` declares only `py.typed`. The source distribution does not carry `benchmarks/` either.",
-          "The cwd dependence was demonstrated directly: running the installed CLI in an empty directory exits 2, and running it in a directory that contains a `benchmarks/` folder holding the two JSON files exits 0.",
-          "This violates the stated invariant that the deterministic core must not depend on host paths, filesystem discovery, or the current working directory, and it means the installed CLI discovers its EmptyBench corpus and oracle from an undeclared location outside the package. The separately retained SEED_ORACLE_DIGEST still rejects a swapped oracle, so this is an undeclared discovery and packaging defect rather than a demonstrated oracle substitution.",
-          "The gates did not catch it because `scripts/acceptance.sh`, `.github/workflows/ci.yml`, and `.github/workflows/release.yml` all invoke the wheel-environment CLI with the repository root as the working directory. Each therefore exercised the source tree's `benchmarks/` directory while reporting that it had verified the installed package in isolation."
+        "fingerprint": "sha256:ba67ffff0e4d5f924f56740fe3dd3a4ab39aeb4fbe005ee0b1c12c4be076abd2",
+        "output_digests": [
+          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
         ],
         "procedure": [
           [
-            "python3.11",
-            "-m",
-            "venv",
-            "<tmp>/relvenv"
-          ],
-          [
-            "<tmp>/relvenv/bin/pip",
-            "install",
-            "evidence_state_io-0.6.0-py3-none-any.whl"
-          ],
-          [
-            "cd",
-            "<directory outside any checkout>"
-          ],
-          [
-            "<tmp>/relvenv/bin/evidence-state",
-            "demo",
-            "--all"
-          ],
-          [
-            "unzip",
-            "-l",
-            "evidence_state_io-0.6.0-py3-none-any.whl"
+            "./scripts/acceptance.sh"
           ]
         ],
-        "result": "FAIL"
+        "result": "PASS"
       },
       "failure_reason": "The packaging and clean-start gates passed only because they ran with the repository root as the working directory.",
       "id": "MVP-ACC-014",
-      "status": "FAIL",
+      "status": "PASS",
       "title": "Unit schema contract integration property adversarial packaging and clean-start gates pass",
       "watched_paths": [
         "src/**",
@@ -457,12 +367,12 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T16:47:30Z",
-        "commit": "3ecb1de8091a3e71bd621feb291ffe1437f29e0a",
+        "at": "2026-08-22T17:23:49Z",
+        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
         "dirty": false,
-        "fingerprint": "sha256:74398aa42d6cf4ef6d9f13371598c761620e57a31c9e6e6014ad9bb3485a6fe2",
+        "fingerprint": "sha256:b25e8bdb3c49a0f50c20884b2d5abd8273de5b903b6510e36267c3dca98fee4b",
         "output_digests": [
-          "sha256:f988f3966ea6eb60746a44cc583114474bdeebf5f985718bbf53a7bc92771e47"
+          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
         ],
         "procedure": [
           [
@@ -484,12 +394,12 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T16:47:30Z",
-        "commit": "3ecb1de8091a3e71bd621feb291ffe1437f29e0a",
+        "at": "2026-08-22T17:23:49Z",
+        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
         "dirty": false,
-        "fingerprint": "sha256:75ff5b4f633776a2163c1eacc4e701ea887b3fc4aeafce936c26de912df1eddb",
+        "fingerprint": "sha256:39b786ab19b02540acbd84144494ab5299a7fe75d0c3f6a3147f5ab2f164c267",
         "output_digests": [
-          "sha256:f988f3966ea6eb60746a44cc583114474bdeebf5f985718bbf53a7bc92771e47"
+          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
         ],
         "procedure": [
           [
@@ -512,12 +422,12 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T16:47:30Z",
-        "commit": "3ecb1de8091a3e71bd621feb291ffe1437f29e0a",
+        "at": "2026-08-22T17:23:49Z",
+        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
         "dirty": false,
         "fingerprint": "sha256:e3149b716119df98184d3617b0bf29848f7d0a1caa1a6d90db96acc0b813cdc4",
         "output_digests": [
-          "sha256:f988f3966ea6eb60746a44cc583114474bdeebf5f985718bbf53a7bc92771e47"
+          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
         ],
         "procedure": [
           [
@@ -570,7 +480,9 @@
         "result": "PASS"
       },
       "id": "MVP-ACC-018",
-      "status": "PASS",
+      "stale_at": "2026-08-22T17:19:15Z",
+      "stale_reason": "watched project inputs changed",
+      "status": "STALE",
       "title": "Professional public GitHub repository contains all required tracked source",
       "watched_paths": [
         "**"
@@ -609,7 +521,9 @@
         "result": "PASS"
       },
       "id": "MVP-ACC-019",
-      "status": "PASS",
+      "stale_at": "2026-08-22T17:19:15Z",
+      "stale_reason": "watched project inputs changed",
+      "status": "STALE",
       "title": "Local accepted commit equals remote default branch",
       "watched_paths": [
         "**"
@@ -649,7 +563,9 @@
         "result": "PASS"
       },
       "id": "MVP-ACC-020",
-      "status": "PASS",
+      "stale_at": "2026-08-22T17:19:15Z",
+      "stale_reason": "watched project inputs changed",
+      "status": "STALE",
       "title": "Required CI and security checks pass at exact accepted commit",
       "watched_paths": [
         ".github/workflows/**",
@@ -747,7 +663,9 @@
         "result": "PASS"
       },
       "id": "MVP-ACC-022",
-      "status": "PASS",
+      "stale_at": "2026-08-22T17:19:15Z",
+      "stale_reason": "watched project inputs changed",
+      "status": "STALE",
       "title": "Repository site and demonstration are publicly accessible",
       "watched_paths": [
         "site/**",
@@ -793,7 +711,9 @@
         "result": "PASS"
       },
       "id": "MVP-ACC-023",
-      "status": "PASS",
+      "stale_at": "2026-08-22T17:19:15Z",
+      "stale_reason": "watched project inputs changed",
+      "status": "STALE",
       "title": "Remote Wiki contains and renders every required page",
       "watched_paths": [
         "wiki/**",
@@ -851,7 +771,9 @@
         "result": "PASS"
       },
       "id": "MVP-ACC-024",
-      "status": "PASS",
+      "stale_at": "2026-08-22T17:19:15Z",
+      "stale_reason": "watched project inputs changed",
+      "status": "STALE",
       "title": "Issues Project milestones workflows security Discussions metadata and rules are populated",
       "watched_paths": [
         ".github/**",
@@ -911,7 +833,9 @@
         "result": "PASS"
       },
       "id": "MVP-ACC-025",
-      "status": "PASS",
+      "stale_at": "2026-08-22T17:19:15Z",
+      "stale_reason": "watched project inputs changed",
+      "status": "STALE",
       "title": "Tagged MVP release binds notes checksums manifest SBOM limitations and accepted commit",
       "watched_paths": [
         "CHANGELOG.md",
@@ -922,12 +846,12 @@
     },
     {
       "evidence": {
-        "at": "2026-08-22T16:47:30Z",
-        "commit": "3ecb1de8091a3e71bd621feb291ffe1437f29e0a",
+        "at": "2026-08-22T17:23:49Z",
+        "commit": "ab19f0422b9e9b9facb3248302fe86c1359caf59",
         "dirty": false,
         "fingerprint": "sha256:5d35bccc196c9f49514a671ae4af5cd555b0b8a6348f086f2c9d696ba15e4dcd",
         "output_digests": [
-          "sha256:f988f3966ea6eb60746a44cc583114474bdeebf5f985718bbf53a7bc92771e47"
+          "sha256:e0480311e1a48b7480fbe01d43540171c6df0eed8f5abfa7d3d6c71c17878d5f"
         ],
         "procedure": [
           [
@@ -993,7 +917,9 @@
         "result": "PASS"
       },
       "id": "MVP-ACC-027",
-      "status": "PASS",
+      "stale_at": "2026-08-22T17:19:15Z",
+      "stale_reason": "watched project inputs changed",
+      "status": "STALE",
       "title": "Independent clean clone reproduces setup tests benchmark and local demo",
       "watched_paths": [
         "**"
