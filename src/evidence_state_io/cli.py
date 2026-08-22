@@ -378,7 +378,7 @@ def build_parser() -> argparse.ArgumentParser:
     demo.add_argument("--pretty", action="store_true", help="Pretty-print JSON")
 
     benchmark = subparsers.add_parser(
-        "emptybench", help="Run a versioned EmptyBench corpus and independent oracle."
+        "emptybench", help="Run a versioned EmptyBench corpus and separate oracle."
     )
     benchmark.add_argument(
         "--input", required=True, help="Versioned corpus JSON file, or - for stdin"
