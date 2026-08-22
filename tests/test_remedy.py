@@ -14,6 +14,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from evidence_state_io.canonical import canonical_digest
+from evidence_state_io.certificates import EvidenceCertificate, verify_evidence_certificate
 from evidence_state_io.errors import ModelValidationError
 from evidence_state_io.gate import GateReason, NegativeClaimRequest, evaluate_negative_claim
 from evidence_state_io.profiles import TrustedProfileContext
@@ -25,6 +27,7 @@ from evidence_state_io.remedy import (
     _governed_value,
     _selected_profile,
     derive_remedy,
+    derive_remedy_from_certificate,
 )
 from tests.helpers import refresh_query_fingerprints
 
@@ -413,6 +416,74 @@ class RemedyEdgeTests(unittest.TestCase):
         empty = dataclasses.replace(self.decision, reasons=())
         with self.assertRaises(ModelValidationError):
             derive_remedy(empty, self.request, self.context)
+
+
+class CertificateRemedyTests(unittest.TestCase):
+    """A certificate is what a relying party holds, so it is the path that matters."""
+
+    def setUp(self) -> None:
+        self.data = _load("rejected_certificate.json")
+        self.certificate = EvidenceCertificate.from_dict(self.data)
+
+    def test_a_certificate_explains_the_same_rejection_as_its_request(self) -> None:
+        from_certificate = derive_remedy_from_certificate(self.certificate)
+
+        payload = self.certificate.certificate
+        decision = evaluate_negative_claim(payload.request, payload.trusted_profile_context)
+        from_request = derive_remedy(decision, payload.request, payload.trusted_profile_context)
+
+        self.assertEqual(
+            [item.to_dict() for item in from_certificate.items],
+            [item.to_dict() for item in from_request.items],
+        )
+        self.assertEqual(from_certificate.input_digest, from_request.input_digest)
+        self.assertEqual(from_certificate.satisfiable, from_request.satisfiable)
+
+    def test_a_certificate_remedy_names_the_record_it_explains(self) -> None:
+        remedy = derive_remedy_from_certificate(self.certificate)
+        self.assertEqual(remedy.certificate_digest, self.certificate.certificate_digest)
+        self.assertTrue(
+            any("replayed certificate" in text for text in remedy.limitations),
+            "the replay boundary must be stated in the record",
+        )
+
+    def test_a_certificate_with_a_broken_outer_digest_is_refused(self) -> None:
+        data = copy.deepcopy(self.data)
+        data["certificate_digest"] = "sha256:" + "0" * 64
+        with self.assertRaises(ModelValidationError):
+            derive_remedy_from_certificate(EvidenceCertificate.from_dict(data))
+
+    def test_a_rehashed_decision_tamper_is_refused_rather_than_explained(self) -> None:
+        """The dangerous case: a record that looks intact but no longer replays."""
+
+        data = copy.deepcopy(self.data)
+        data["certificate"]["decision"]["reasons"] = ["NONZERO_MATCHES"]
+        data["certificate_digest"] = canonical_digest(data["certificate"])
+        certificate = EvidenceCertificate.from_dict(data)
+        self.assertFalse(verify_evidence_certificate(certificate).deterministic_replay)
+        with self.assertRaises(ModelValidationError):
+            derive_remedy_from_certificate(certificate)
+
+    def test_a_permit_certificate_has_no_remedy(self) -> None:
+        permitted = EvidenceCertificate.from_dict(_load("covered_certificate.json"))
+        with self.assertRaises(ModelValidationError):
+            derive_remedy_from_certificate(permitted)
+
+    def test_certificate_derivation_rejects_wrong_types(self) -> None:
+        with self.assertRaises(ModelValidationError):
+            derive_remedy_from_certificate(self.data)  # type: ignore[arg-type]
+        with self.assertRaises(ModelValidationError):
+            derive_remedy_from_certificate(
+                self.certificate,
+                disclosure="CONSTRAINT_ONLY",  # type: ignore[arg-type]
+            )
+
+    def test_certificate_derivation_is_deterministic(self) -> None:
+        rendered = {
+            json.dumps(derive_remedy_from_certificate(self.certificate).to_dict(), sort_keys=True)
+            for _ in range(100)
+        }
+        self.assertEqual(len(rendered), 1)
 
 
 if __name__ == "__main__":

@@ -109,6 +109,25 @@ and disclosure level. Item order follows the decision's reason order, which is
 already deterministic. Identical inputs produce byte-identical output under
 `esio-canonical-json-0.1`.
 
+### 6. A certificate may be explained, once its bindings hold
+
+The artifact a relying party actually holds is a certificate, not a request, so
+a remedy may be derived from one directly. The certificate already binds the
+complete request and trusted context, so no registry or trust selection needs
+to be supplied again.
+
+Before anything is derived, the record's own bindings are verified: structural
+support, outer digest integrity, embedded binding integrity, and deterministic
+replay must all hold. A certificate that fails any of them is refused rather
+than explained, because conditions derived from a record that is not what it
+claims would be attributed to a claim nobody made. The resulting remedy names
+the certificate digest it explains and states that replay is not issuer
+authentication, source truth, or current reliance eligibility.
+
+This addition moved the contract to `esio-insufficiency-remedy/1.0-candidate.2`,
+which adds the optional `certificate_digest` field. The candidate.1 shape is
+otherwise unchanged.
+
 ## Consequences
 
 Rejections become actionable without changing what a permit means. The

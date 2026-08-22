@@ -25,6 +25,14 @@ All notable project changes should be recorded here. Dates use ISO 8601.
   what a self-consistent fabrication would need. No remedy is produced for a
   permit, and a remedy is bound to the decision it explains by that decision's
   evaluation-input digest while staying out of the decision payload.
+- `evidence-state explain` also accepts a rejection certificate directly, which
+  is the artifact a relying party actually holds. The certificate already binds
+  the request and trusted context, so no registry or trust selection is needed.
+  Structural support, outer digest integrity, embedded binding integrity, and
+  deterministic replay must all hold first: a record whose bindings do not hold
+  is refused rather than explained, because conditions derived from it would be
+  attributed to a claim nobody made. This moved the contract to
+  `1.0-candidate.2`, adding the optional `certificate_digest` field.
 - ADR-0014 records the contract and the disclosure boundary.
 
 ### Fixed

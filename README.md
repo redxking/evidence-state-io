@@ -195,6 +195,18 @@ use the governed scope, governance trust must be resolved, or the reason is
 `UNSATISFIABLE` because no further evidence of the same kind can remove it. A
 remedy carries `satisfiable: false` when any item is unsatisfiable.
 
+`explain` also accepts a rejection certificate directly, which is what a
+relying party usually holds:
+
+```bash
+evidence-state explain --input examples/rejected_certificate.json --pretty
+```
+
+The certificate already binds the request and trusted context, so no registry
+or trust selection is needed. Its structural support, outer digest integrity,
+embedded binding integrity, and deterministic replay must all hold first; a
+record whose bindings do not hold is refused rather than explained.
+
 Conditions describe what must become true. They never instruct a caller to edit
 a request field, and by default they carry no governed threshold values.
 `--disclosure WITH_GOVERNED_VALUES` adds those values and is only appropriate

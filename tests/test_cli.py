@@ -10,6 +10,7 @@ from pathlib import Path
 
 from evidence_state_io.cli import MAX_INPUT_BYTES, main
 from evidence_state_io.emptybench import SEED_ORACLE_DIGEST
+from evidence_state_io.remedy import INSUFFICIENCY_REMEDY_SCHEMA
 from tests.helpers import refresh_query_fingerprints
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -574,7 +575,7 @@ class CliTests(unittest.TestCase):
         )
         payload = json.loads(stdout)
         self.assertEqual(code, 0, "explaining a rejection is not a program failure")
-        self.assertEqual(payload["remedy_schema"], "esio-insufficiency-remedy/1.0-candidate.1")
+        self.assertEqual(payload["remedy_schema"], INSUFFICIENCY_REMEDY_SCHEMA)
         self.assertEqual(payload["decision"], "REJECT_NEGATIVE")
         self.assertEqual(payload["disclosure"], "CONSTRAINT_ONLY")
         self.assertTrue(payload["items"])
@@ -620,6 +621,32 @@ class CliTests(unittest.TestCase):
             )
             outputs.add(stdout)
         self.assertEqual(len(outputs), 1)
+
+    def test_explain_accepts_a_rejection_certificate_without_a_registry(self) -> None:
+        code, stdout, _ = self.invoke(
+            ["explain", "--input", str(EXAMPLES / "rejected_certificate.json")]
+        )
+        payload = json.loads(stdout)
+        self.assertEqual(code, 0)
+        self.assertEqual(payload["decision"], "REJECT_NEGATIVE")
+        self.assertTrue(payload["certificate_digest"])
+        self.assertTrue(payload["items"])
+        self.assertTrue(any("replayed certificate" in t for t in payload["limitations"]))
+
+    def test_explain_refuses_a_certificate_whose_digest_does_not_hold(self) -> None:
+        data = json.loads((EXAMPLES / "rejected_certificate.json").read_text(encoding="utf-8"))
+        data["certificate_digest"] = "sha256:" + "0" * 64
+        code, stdout, stderr = self.invoke(["explain", "--input", "-"], stdin_text=json.dumps(data))
+        self.assertEqual(code, 2)
+        self.assertEqual(stdout, "")
+        self.assertEqual(json.loads(stderr)["error"]["code"], "MODEL_INVALID")
+
+    def test_explain_refuses_a_permit_certificate(self) -> None:
+        code, _, stderr = self.invoke(
+            ["explain", "--input", str(EXAMPLES / "covered_certificate.json")]
+        )
+        self.assertEqual(code, 2)
+        self.assertEqual(json.loads(stderr)["error"]["code"], "MODEL_INVALID")
 
 
 if __name__ == "__main__":

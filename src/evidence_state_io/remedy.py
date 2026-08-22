@@ -27,12 +27,19 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
+from .certificates import EvidenceCertificate, verify_evidence_certificate
 from .errors import ModelValidationError
-from .gate import EVALUATOR_VERSION, GateDecision, GateReason, NegativeClaimRequest
+from .gate import (
+    EVALUATOR_VERSION,
+    GateDecision,
+    GateReason,
+    NegativeClaimRequest,
+    evaluate_negative_claim,
+)
 from .models import EvidenceState, SourceRole
 from .profiles import CoverageFinalityProfile, TrustedProfileContext
 
-INSUFFICIENCY_REMEDY_SCHEMA = "esio-insufficiency-remedy/1.0-candidate.1"
+INSUFFICIENCY_REMEDY_SCHEMA = "esio-insufficiency-remedy/1.0-candidate.2"
 
 
 class DisclosureLevel(str, Enum):
@@ -333,6 +340,7 @@ class InsufficiencyRemedy:
     evaluated_at: datetime
     items: tuple[RemedyItem, ...]
     limitations: tuple[str, ...]
+    certificate_digest: str | None = None
     remedy_schema: str = INSUFFICIENCY_REMEDY_SCHEMA
     decision: str = "REJECT_NEGATIVE"
     evaluator_version: str = EVALUATOR_VERSION
@@ -351,6 +359,7 @@ class InsufficiencyRemedy:
             "evaluator_version": self.evaluator_version,
             "evaluated_at": _isoformat(self.evaluated_at),
             "input_digest": self.input_digest,
+            "certificate_digest": self.certificate_digest,
             "satisfiable": self.satisfiable,
             "items": [item.to_dict() for item in self.items],
             "limitations": list(self.limitations),
@@ -514,4 +523,65 @@ def derive_remedy(
         evaluated_at=request.evaluated_at,
         items=tuple(items),
         limitations=limitations,
+    )
+
+
+# Dimensions that must hold before a certificate may be explained.  Explaining a
+# record whose bindings do not hold would attribute conditions to a claim that
+# is not what the record says it is.
+_REQUIRED_CERTIFICATE_DIMENSIONS = (
+    "structural_support",
+    "certificate_digest_integrity",
+    "embedded_digest_integrity",
+    "deterministic_replay",
+)
+
+
+def derive_remedy_from_certificate(
+    certificate: EvidenceCertificate,
+    *,
+    disclosure: DisclosureLevel = DisclosureLevel.CONSTRAINT_ONLY,
+) -> InsufficiencyRemedy:
+    """Explain the rejection a certificate records.
+
+    A certificate is the artifact a relying party actually holds, so this is
+    the path that matters in practice.  The record's own bindings are verified
+    first: a certificate whose digest, embedded bindings, or deterministic
+    replay do not hold is refused rather than explained, because conditions
+    derived from a record that is not what it claims would be attributed to a
+    claim nobody made.
+    """
+
+    if type(certificate) is not EvidenceCertificate:
+        raise ModelValidationError("certificate must be an EvidenceCertificate")
+    if type(disclosure) is not DisclosureLevel:
+        raise ModelValidationError("disclosure must be a DisclosureLevel")
+
+    verification = verify_evidence_certificate(certificate)
+    failed = [
+        name for name in _REQUIRED_CERTIFICATE_DIMENSIONS if getattr(verification, name) is not True
+    ]
+    if failed:
+        raise ModelValidationError(
+            "a certificate whose bindings do not hold cannot be explained; failed dimensions: "
+            + ", ".join(failed)
+        )
+
+    payload = certificate.certificate
+    request = payload.request
+    context = payload.trusted_profile_context
+    decision = evaluate_negative_claim(request, context)
+    remedy = derive_remedy(decision, request, context, disclosure=disclosure)
+    return InsufficiencyRemedy(
+        disclosure=remedy.disclosure,
+        input_digest=remedy.input_digest,
+        evaluated_at=remedy.evaluated_at,
+        items=remedy.items,
+        limitations=remedy.limitations
+        + (
+            "This remedy explains a replayed certificate. Replay establishes that the record "
+            "reproduces its own decision; it does not authenticate the issuer, prove source "
+            "truth, or establish current reliance eligibility.",
+        ),
+        certificate_digest=certificate.certificate_digest,
     )

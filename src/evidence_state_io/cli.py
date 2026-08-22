@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, NoReturn, Sequence, TextIO
 
 from .certificates import (
+    EvidenceCertificate,
     EvidenceOrigin,
     ImplementationIdentity,
     WorkingTreeState,
@@ -36,7 +37,7 @@ from .profiles import (
     ProfileTrustSelection,
     TrustedProfileContext,
 )
-from .remedy import DisclosureLevel, derive_remedy
+from .remedy import DisclosureLevel, derive_remedy, derive_remedy_from_certificate
 
 MAX_INPUT_BYTES = 1_048_576
 MAX_JSON_DEPTH = 128
@@ -397,13 +398,11 @@ def build_parser() -> argparse.ArgumentParser:
     explain.add_argument("--input", required=True, help="JSON file, or - for stdin")
     explain.add_argument(
         "--registry",
-        required=True,
-        help="Operator-controlled profile registry snapshot JSON file",
+        help="Operator-controlled profile registry snapshot JSON file; not needed for a certificate, which carries its own trusted context",
     )
     explain.add_argument(
         "--trust",
-        required=True,
-        help="Operator-controlled profile trust-selection JSON file",
+        help="Operator-controlled profile trust-selection JSON file; not needed for a certificate",
     )
     explain.add_argument(
         "--disclosure",
@@ -517,8 +516,19 @@ def main(
             _write_json(emptybench_report.to_dict(), output_stream, args.pretty)
             return 0 if emptybench_report.all_passed else 1
         if args.command == "explain":
+            payload = _read_json(args.input, input_stream)
+            disclosure = DisclosureLevel(args.disclosure)
+            # A certificate is what a relying party actually holds, so accept it
+            # directly rather than making the caller reconstruct the request.
+            if isinstance(payload, dict) and "certificate" in payload:
+                certificate_remedy = derive_remedy_from_certificate(
+                    EvidenceCertificate.from_dict(payload),
+                    disclosure=disclosure,
+                )
+                _write_json(certificate_remedy.to_dict(), output_stream, args.pretty)
+                return 0
             context = _trusted_profile_context(args, input_stream)
-            request = _request_input(_read_json(args.input, input_stream), args)
+            request = _request_input(payload, args)
             decision = evaluate_negative_claim(request, context)
             if decision.allowed:
                 raise ModelValidationError(
@@ -526,12 +536,7 @@ def main(
                     "none. Use evaluate to issue its certificate.",
                     code=ValidationErrorCode.CLI_ARGUMENT_INVALID,
                 )
-            remedy = derive_remedy(
-                decision,
-                request,
-                context,
-                disclosure=DisclosureLevel(args.disclosure),
-            )
+            remedy = derive_remedy(decision, request, context, disclosure=disclosure)
             _write_json(remedy.to_dict(), output_stream, args.pretty)
             return 0
         if args.command == "coverage":
