@@ -1,3 +1,9 @@
+> The versioned corpus and oracle now ship inside the package at
+> `src/evidence_state_io/benchmarks/`. They were moved there so an
+> installed distribution resolves them from the package itself rather
+> than from the caller's working directory. This directory keeps the
+> custody notes.
+
 # EmptyBench P0 seed artifacts
 
 The seed benchmark separates inputs from expected decisions:

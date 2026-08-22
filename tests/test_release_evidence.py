@@ -4,6 +4,7 @@ import json
 import shutil
 import subprocess
 import tempfile
+import tomllib
 import unittest
 from pathlib import Path
 
@@ -28,8 +29,12 @@ class ReleaseEvidenceTests(unittest.TestCase):
             subprocess.run(
                 ["git", "commit", "-m", "fixture"], cwd=repo, check=True, capture_output=True
             )
-            subprocess.run(["git", "tag", "v0.6.0"], cwd=repo, check=True)
-            artifact = artifacts / "evidence_state_io-0.6.0-py3-none-any.whl"
+            version = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))[
+                "project"
+            ]["version"]
+            tag = f"v{version}"
+            subprocess.run(["git", "tag", tag], cwd=repo, check=True)
+            artifact = artifacts / f"evidence_state_io-{version}-py3-none-any.whl"
             artifact.write_bytes(b"synthetic-wheel")
             commit = subprocess.run(
                 ["git", "rev-parse", "HEAD"],
@@ -50,7 +55,7 @@ class ReleaseEvidenceTests(unittest.TestCase):
                     "--output",
                     str(output),
                     "--tag",
-                    "v0.6.0",
+                    tag,
                     "--commit",
                     commit,
                 ],

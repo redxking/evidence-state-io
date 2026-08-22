@@ -32,7 +32,7 @@ evidence status.
 
 | Boundary | Active identifier |
 |---|---|
-| Package | `0.6.0` |
+| Package | `0.6.1` |
 | Wire schema | `1.0` candidate, unfrozen |
 | Policy | `esio-p0-safety-floor/1.0-candidate.4` |
 | Evaluator | `esio-evaluator-1.0-candidate.5` |
@@ -197,6 +197,27 @@ evidence, was found by mutating a watched input and is fixed with a regression.
 None of this establishes source truth, authenticated evidence, independent
 custody or adjudication, benchmark freezing, external reproduction, market
 demand, operational effectiveness, or production readiness.
+
+### ESIO-DEF-001, found in the published release
+
+`v0.6.0` was published, and the released wheel was then installed into a fresh
+virtual environment and run from a directory that is not a checkout.
+`evidence-state demo` exited 2. The installed distribution shipped no
+EmptyBench artifacts and resolved its corpus and oracle from
+`Path.cwd() / "benchmarks"`, so the documented command worked only inside a
+checkout and, inside one, read the artifacts from the caller's directory.
+
+`MVP-ACC-009`, `MVP-ACC-013`, and `MVP-ACC-014` were set to `FAIL` with the
+reproduction recorded before any fix was written, because every gate that
+claimed to verify the installed package in isolation had run with the
+repository root as its working directory. `docs/REVIEW_LOG.md` carries the full
+finding and remediation.
+
+The artifacts now ship inside the package, resolution is bound to the imported
+module with no working-directory search, and all three gates run the installed
+CLI from outside the checkout with a decoy artifact directory beside the
+caller. `v0.6.0` is immutable and still carries the defect; `v0.6.1` supersedes
+it.
 
 ## Next evidence gates
 

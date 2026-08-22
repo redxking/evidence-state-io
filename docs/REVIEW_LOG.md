@@ -787,3 +787,73 @@ Every other row is still required to be `PASS` at the tagged commit, and the
 workflow still verifies that the tag is stable SemVer, that it matches the
 package version, and that the tagged commit is an ancestor of the default
 branch.
+
+### ESIO-DEF-001 - the installed package read its oracle from the caller's directory (2026-08-22)
+
+Found immediately after publishing `v0.6.0`, by installing the released wheel
+into a fresh virtual environment and running the documented command from a
+directory that is not a checkout.
+
+```
+$ evidence-state demo --all
+{"error":{"code":"MODEL_INVALID", ...}}   rc=2
+```
+
+`_seed_artifact_directory` searched `Path(__file__).resolve().parents[2] /
+"benchmarks"` and then `Path.cwd().resolve() / "benchmarks"`. For an installed
+package the first candidate resolves inside the interpreter's library
+directory and never exists, so the only working path was the current working
+directory. The wheel shipped no benchmark artifacts at all: `unzip -l` matched
+zero `emptybench-p0` entries, and `[tool.setuptools.package-data]` declared
+only `py.typed`. The dependence was demonstrated directly: the installed CLI
+exits 2 in an empty directory and exits 0 in a directory that contains a
+`benchmarks/` folder holding the two JSON files.
+
+Two things make this worse than a packaging slip. First, it contradicts the
+project's own invariant that the deterministic core must not depend on host
+paths, filesystem discovery, or the working directory. Second, this project's
+whole argument is that an oracle must be separately stored, digest-bound, and
+outside producer control; reading it from an undeclared `./benchmarks/` is the
+wrong custody story even though the separately retained `SEED_ORACLE_DIGEST`
+would still reject a swapped oracle.
+
+The gates could not have caught it. `scripts/acceptance.sh`,
+`.github/workflows/ci.yml`, and `.github/workflows/release.yml` each invoked
+the wheel-environment CLI with the repository root as the working directory, so
+every one of them exercised the source tree's `benchmarks/` while reporting
+that it had verified the installed package in isolation. This is precisely the
+failure the product exists to detect: a green result that does not establish
+what it appears to.
+
+### Remediation
+
+- The corpus and oracle ship inside the package at
+  `src/evidence_state_io/benchmarks/`, declared as package data, and are
+  present in both the wheel and the source distribution.
+- `_seed_artifact_directory` resolves from the imported module alone. The
+  working-directory candidate is gone; a missing packaged artifact fails closed
+  with an explicit message rather than falling back to a search.
+- All three gates now run the installed CLI from a directory outside the
+  checkout with a decoy `benchmarks/` planted beside the caller, and the
+  acceptance gate additionally requires byte-identical output from inside and
+  outside the repository.
+- `tests/test_seed_artifact_resolution.py` asserts that resolution lands inside
+  the package, that a decoy artifact directory is ignored, and that the report
+  is identical whatever the working directory is.
+
+### Verification
+
+A freshly built wheel and source distribution each contain both artifacts. The
+installed CLI, run from an isolated directory containing a decoy `benchmarks/`,
+exits 0 and reports 24/24 cases, 12/12 matched pairs discriminated, zero unsafe
+permits, and zero false rejections, byte-identical to the output produced from
+the repository root.
+
+### Boundaries
+
+`v0.6.0` is immutable and still carries this defect; it is superseded by
+`v0.6.1`. `MVP-ACC-009`, `MVP-ACC-013`, and `MVP-ACC-014` were set to `FAIL`
+with this reproduction recorded before any fix was written. This remediation
+establishes that the installed distribution now behaves identically wherever it
+is run. It does not establish source truth, independent custody, or that any
+other gate is stronger than it was.

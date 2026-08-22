@@ -2,12 +2,45 @@
 
 All notable project changes should be recorded here. Dates use ISO 8601.
 
-## Unreleased
+## 0.6.1 - 2026-08-22
 
-The current working target is package `0.6.0` with unfrozen schema `1.0`.
-Implementation and moving-tree review have advanced; final stable-revision
-acceptance, installed-package parity, supported-runtime replay, and custody
-binding remain open.
+### Fixed
+
+- **ESIO-DEF-001.** The installed distribution resolved its EmptyBench corpus
+  and oracle from `Path.cwd() / "benchmarks"`, and shipped neither artifact.
+  `evidence-state demo` therefore exited 2 with `MODEL_INVALID` anywhere
+  outside a checkout, and inside one it read the corpus and oracle from
+  whatever directory the caller happened to be in. That contradicts the
+  invariant that the deterministic core must not depend on host paths,
+  filesystem discovery, or the working directory, and it is the wrong custody
+  story for artifacts the project says must be separately governed.
+  The corpus and oracle now ship inside the package at
+  `src/evidence_state_io/benchmarks/` and are resolved from the imported module
+  alone. The working-directory candidate is removed, so resolution fails closed
+  with an explicit message when the packaged artifacts are absent.
+- The gates could not have caught ESIO-DEF-001, because
+  `scripts/acceptance.sh`, `.github/workflows/ci.yml`, and
+  `.github/workflows/release.yml` all ran the wheel-environment CLI from the
+  repository root. Each now runs it from a directory outside the checkout with
+  a decoy `benchmarks/` planted beside the caller, and the acceptance gate also
+  requires byte-identical output from inside and outside the repository.
+- `tests/test_seed_artifact_resolution.py` pins the behaviour directly:
+  resolution lands inside the package, a decoy artifact directory in the
+  caller's location is ignored, and the report is identical whatever the
+  working directory is.
+- `tests/test_release_evidence.py` derives its fixture tag and artifact name
+  from the project version instead of a hard-coded `v0.6.0`.
+
+### Boundaries
+
+- `v0.6.0` is published and immutable and still carries ESIO-DEF-001. It is
+  superseded by this version; its release notes say so. Nothing about this fix
+  changes what a passing gate establishes.
+
+## 0.6.0 - 2026-08-22
+
+Package `0.6.0` with unfrozen schema `1.0`, published as the first MVP
+research candidate.
 
 ### Added
 

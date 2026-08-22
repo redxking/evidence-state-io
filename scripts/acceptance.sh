@@ -65,8 +65,25 @@ wheels=("${DIST_DIR}"/*.whl)
 "${PYTHON_BIN}" -m venv "${WHEEL_VENV}"
 "${WHEEL_VENV}/bin/python" -m pip install "${wheels[0]}"
 env -u PYTHONPATH "${WHEEL_VENV}/bin/python" -m unittest discover -s tests -q
+
+# The installed distribution must behave identically outside a checkout.  Run
+# it from a directory that is not the repository, and plant a decoy artifact
+# directory beside the caller so a working-directory search cannot satisfy it.
+ISOLATED="${ACCEPTANCE_TEMP}/isolated"
+mkdir -p "${ISOLATED}/benchmarks"
+printf '{"not": "a corpus"}\n' > "${ISOLATED}/benchmarks/emptybench-p0-corpus.json"
+printf '{"not": "an oracle"}\n' > "${ISOLATED}/benchmarks/emptybench-p0-oracle.json"
+(
+  cd "${ISOLATED}"
+  env -u PYTHONPATH "${WHEEL_VENV}/bin/evidence-state" --help >/dev/null
+  env -u PYTHONPATH "${WHEEL_VENV}/bin/evidence-state" demo >/dev/null
+  env -u PYTHONPATH "${WHEEL_VENV}/bin/evidence-state" demo --all --pretty
+) > "${ACCEPTANCE_TEMP}/emptybench.json"
+
 env -u PYTHONPATH "${WHEEL_VENV}/bin/evidence-state" demo --all --pretty \
-  > "${ACCEPTANCE_TEMP}/emptybench.json"
+  > "${ACCEPTANCE_TEMP}/emptybench-from-repo.json"
+cmp -s "${ACCEPTANCE_TEMP}/emptybench.json" "${ACCEPTANCE_TEMP}/emptybench-from-repo.json" \
+  || fail "installed benchmark output depends on the working directory"
 
 "${FRESH_VENV}/bin/python" - "${ACCEPTANCE_TEMP}/emptybench.json" <<'PY'
 import json

@@ -14,7 +14,7 @@ from tests.helpers import refresh_query_fingerprints
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 EXAMPLES = PROJECT_ROOT / "examples"
-BENCHMARKS = PROJECT_ROOT / "benchmarks"
+BENCHMARKS = PROJECT_ROOT / "src" / "evidence_state_io" / "benchmarks"
 
 
 class CliTests(unittest.TestCase):

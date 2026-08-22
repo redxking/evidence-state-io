@@ -251,7 +251,8 @@ Failing those thresholds is a reason to narrow or stop the project, not to reint
 ```text
 src/evidence_state_io/  Reference schema, evaluator, gate, and CLI
 tests/                  Unit, integration, contract, and benchmark tests
-benchmarks/             Versioned EmptyBench corpus, oracle, and custody notes
+benchmarks/             EmptyBench custody notes; the corpus and oracle ship
+                        inside the package at src/evidence_state_io/benchmarks/
 examples/               Reproducible evidence-envelope and paired-case examples
 examples/legacy/        Hash-bound schema 0.1 historical replay evidence
 docs/PRD.md             Product requirements and acceptance criteria

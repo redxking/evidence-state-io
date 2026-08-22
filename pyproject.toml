@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "evidence-state-io"
-version = "0.6.0"
+version = "0.6.1"
 description = "Typed evidence-state envelopes and deterministic negative-claim gating"
 requires-python = ">=3.11,<3.14"
 license = { file = "LICENSE" }
@@ -40,7 +40,7 @@ package-dir = { "" = "src" }
 where = ["src"]
 
 [tool.setuptools.package-data]
-evidence_state_io = ["py.typed"]
+evidence_state_io = ["py.typed", "benchmarks/*.json"]
 
 [tool.coverage.run]
 branch = true

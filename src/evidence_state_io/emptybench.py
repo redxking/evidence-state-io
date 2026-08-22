@@ -882,15 +882,23 @@ def run_emptybench(
 
 
 def _seed_artifact_directory() -> Path:
-    candidates = (
-        Path(__file__).resolve().parents[2] / "benchmarks",
-        Path.cwd().resolve() / "benchmarks",
-    )
-    for candidate in candidates:
-        if (candidate / _SEED_CORPUS_FILE).is_file() and (candidate / _SEED_ORACLE_FILE).is_file():
-            return candidate
+    """Return the packaged seed corpus and oracle directory.
+
+    The artifacts ship inside the package and are resolved from the imported
+    module alone.  This never consults the current working directory, an
+    environment variable, a parent directory, or any other search path: an
+    installed copy must behave identically wherever it is run from, and a
+    directory that merely happens to sit beside the caller must never supply
+    the corpus or the oracle.
+    """
+
+    directory = Path(__file__).resolve().parent / "benchmarks"
+    if (directory / _SEED_CORPUS_FILE).is_file() and (directory / _SEED_ORACLE_FILE).is_file():
+        return directory
     raise ModelValidationError(
-        "seed EmptyBench artifacts were not found; run from the repository or supply explicit corpus and oracle files"
+        "packaged seed EmptyBench artifacts are missing from the installed "
+        "evidence_state_io package; reinstall the package or supply explicit "
+        "corpus and oracle files"
     )
 
 

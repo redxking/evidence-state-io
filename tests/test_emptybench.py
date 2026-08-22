@@ -26,8 +26,9 @@ from evidence_state_io.emptybench import (
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-CORPUS_PATH = PROJECT_ROOT / "benchmarks" / "emptybench-p0-corpus.json"
-ORACLE_PATH = PROJECT_ROOT / "benchmarks" / "emptybench-p0-oracle.json"
+PACKAGED_BENCHMARKS = PROJECT_ROOT / "src" / "evidence_state_io" / "benchmarks"
+CORPUS_PATH = PACKAGED_BENCHMARKS / "emptybench-p0-corpus.json"
+ORACLE_PATH = PACKAGED_BENCHMARKS / "emptybench-p0-oracle.json"
 
 
 def load_corpus_dict() -> dict:

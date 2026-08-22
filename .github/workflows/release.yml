@@ -105,8 +105,15 @@ jobs:
         run: |
           python -m venv "${RUNNER_TEMP}/wheel-check"
           "${RUNNER_TEMP}/wheel-check/bin/python" -m pip install dist/*.whl
-          env -u PYTHONPATH "${RUNNER_TEMP}/wheel-check/bin/evidence-state" --help
-          env -u PYTHONPATH "${RUNNER_TEMP}/wheel-check/bin/evidence-state" demo --all > "${RUNNER_TEMP}/wheel-demo-all.json"
+          # Verify the released distribution outside the checkout, with a decoy
+          # artifact directory beside the caller.
+          mkdir -p "${RUNNER_TEMP}/isolated/benchmarks"
+          printf '{"not": "a corpus"}\n' > "${RUNNER_TEMP}/isolated/benchmarks/emptybench-p0-corpus.json"
+          printf '{"not": "an oracle"}\n' > "${RUNNER_TEMP}/isolated/benchmarks/emptybench-p0-oracle.json"
+          ( cd "${RUNNER_TEMP}/isolated"
+            env -u PYTHONPATH "${RUNNER_TEMP}/wheel-check/bin/evidence-state" --help
+            env -u PYTHONPATH "${RUNNER_TEMP}/wheel-check/bin/evidence-state" demo --all
+          ) > "${RUNNER_TEMP}/wheel-demo-all.json"
 
       - name: Generate checksums
         run: |

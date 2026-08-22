@@ -116,19 +116,19 @@ class ContractMutationMatrixTests(unittest.TestCase):
 
     def test_emptybench_corpus_contract_mutation_matrix(self) -> None:
         self.exercise(
-            load("benchmarks/emptybench-p0-corpus.json"),
+            load("src/evidence_state_io/benchmarks/emptybench-p0-corpus.json"),
             parse_corpus,
             lambda corpus: corpus.to_dict(),
         )
 
     def test_emptybench_oracle_contract_mutation_matrix(self) -> None:
-        corpus = parse_corpus(load("benchmarks/emptybench-p0-corpus.json"))
+        corpus = parse_corpus(load("src/evidence_state_io/benchmarks/emptybench-p0-corpus.json"))
 
         def parser(value: Any) -> Any:
             return parse_oracle(value, corpus, expected_digest=SEED_ORACLE_DIGEST)
 
         self.exercise(
-            load("benchmarks/emptybench-p0-oracle.json"),
+            load("src/evidence_state_io/benchmarks/emptybench-p0-oracle.json"),
             parser,
             lambda oracle: oracle.to_dict(),
         )

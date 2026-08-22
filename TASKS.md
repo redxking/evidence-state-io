@@ -35,6 +35,19 @@
 
 ## Done
 
+- [x] ~~Fix ESIO-DEF-001 and ship `0.6.1`~~ (2026-08-22)
+  - The installed distribution shipped no EmptyBench artifacts and resolved its
+    corpus and oracle from the caller's working directory, so
+    `evidence-state demo` failed outside a checkout and, inside one, read the
+    artifacts from wherever the caller happened to be.
+  - The artifacts now ship inside the package and resolve from the imported
+    module alone. All three gates run the installed CLI from outside the
+    checkout with a decoy artifact directory beside it, and the acceptance gate
+    requires byte-identical output from both locations.
+  - `MVP-ACC-009`, `MVP-ACC-013`, and `MVP-ACC-014` were recorded as `FAIL`
+    with the reproduction before the fix was written, and re-earned afterwards.
+  - `v0.6.0` remains published and immutable and still carries the defect.
+
 - [x] ~~Publish and verify the MVP research candidate on GitHub~~ (2026-08-22)
   - Remote `main` equals the accepted local commit; the remote tree carries the
     same 165 tracked blobs. CI, CodeQL, and Pages all completed `success` at the
