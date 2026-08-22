@@ -142,6 +142,19 @@ binding remain open.
   495px. Measured in a real browser against the deployed bytes, the document
   scroll width now equals the client width.
 
+### Published
+
+- The repository, its Pages demonstration, its wiki mirror, and a linked public
+  roadmap Project are published at `github.com/redxking/evidence-state-io`.
+  Repository governance, security, and ruleset surfaces are populated, and a
+  clean clone of the published remote reproduces setup, tests, demo, benchmark,
+  and static checks. Exact evidence is recorded in `project/acceptance.json`.
+  Publication establishes availability, not validation.
+- The owner authorized exactly one versioned artifact on 2026-08-22: the
+  `v0.6.0` tag and its MVP research-candidate release, to be created only once
+  every acceptance row is `PASS`. `AGENTS.md` and `HANDOFF.md` record that
+  boundary.
+
 ### Boundaries
 
 - Initial results are local and synthetic unless explicitly recorded otherwise.

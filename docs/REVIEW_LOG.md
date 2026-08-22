@@ -706,3 +706,38 @@ again.
 This establishes that invalidated evidence is re-queued rather than silently
 retained. It does not establish that any re-run will pass, nor does it change
 what a passing gate means.
+
+### Publication review (2026-08-22)
+
+The wiki and the GitHub Project were both reported earlier in this cycle as
+external blockers. Both were cleared and then verified against GitHub rather
+than against configuration.
+
+The wiki Git repository did not exist: `git ls-remote` on
+`evidence-state-io.wiki.git` returned `Repository not found` over SSH and over
+authenticated HTTPS, and no REST or GraphQL endpoint creates a wiki's first
+page. After that page was created, the canonical `wiki/` directory was pushed
+over it as a mirror. All 24 required pages and the 5 additional canonical pages
+return HTTP 200 with rendered content to unauthenticated requests; `Home`
+returns 301 to `/wiki`, which returns 200 with content and the custom sidebar;
+29 internal wiki links resolve.
+
+The maintainer's CLI token lacks the `project` scope, so `gh project` and the
+GraphQL `projectItems` fields are unavailable. A public Project linked to this
+repository was created instead and carries the six open MVP issues. It is
+reachable unauthenticated and appears under **Repository projects** on the
+repository's Projects tab. Its README states that item state is work state and
+not validated evidence.
+
+The tag ruleset blocks deletion, update, and non-fast-forward on `refs/tags/v*`
+with no bypass actor, so an authorised release tag is immutable once created.
+The branch ruleset grants the repository-admin role an `always` bypass; this is
+deliberate, because the bounded continuation controller pushes reconciled
+ledgers directly to the default branch. The required status checks therefore
+gate contributors and pull requests, not the maintainer's own pushes, and that
+limit is recorded in the MVP-ACC-024 evidence rather than described as stronger
+than it is.
+
+This establishes the state of the published surfaces at a known commit. It does
+not establish that any published claim is correct, that anyone has read the
+wiki, or that the roadmap reflects validated work.

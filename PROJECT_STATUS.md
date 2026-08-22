@@ -2,7 +2,7 @@
 
 **Status date:** 2026-08-22
 
-**Lifecycle stage:** public Apache-2.0 pre-alpha; package `0.6.0` locally accepted at a hash-bound implementation checkpoint
+**Lifecycle stage:** public Apache-2.0 pre-alpha, published to GitHub with a deployed demonstration; package `0.6.0` locally accepted at a hash-bound implementation checkpoint
 
 **Claim level:** local research prototype only; schema `1.0` is unfrozen
 
@@ -154,6 +154,49 @@ This records a local gate result only. It does not establish remote
 publication, CI success, Pages availability, Wiki completeness, benchmark
 custody, independent adjudication, external reproduction, or production
 readiness.
+
+### Publication observed on 2026-08-22
+
+`project/acceptance.json` holds the exact evidence, including procedures,
+watched-input fingerprints, and the observations behind each row. Summarised:
+
+- The remote default branch equals the accepted local commit, and the remote
+  tree lists the same 165 blobs as `git ls-files`.
+- At the exact accepted commit, CI (quality, contracts and packaging; Python
+  3.11, 3.12 and 3.13; Compose configuration), CodeQL for Python and
+  JavaScript/TypeScript, and the Pages build and deployment all completed with
+  conclusion `success`. Dependency review and DCO signoff run only on pull
+  requests and were observed `success` there.
+- The Pages site is deployed and publicly reachable. Every deployed asset
+  digest matches a site built from an independent clean clone of the remote,
+  and those exact bytes were exercised in a browser: seven scenarios behaved as
+  published, with no console error, page error, failed request, or broken
+  internal anchor, keyboard-only operation of the run control, and no
+  horizontal overflow at a 375px viewport.
+- The wiki mirrors the tracked canonical `wiki/` source; all required pages
+  render publicly.
+- Repository governance surfaces are populated: labels, milestone, bounded
+  issues, issue forms, pull-request template, CODEOWNERS, Dependabot,
+  Discussions, description, homepage, topics, secret scanning with push
+  protection, private vulnerability reporting, a branch ruleset, and a tag
+  ruleset that blocks deletion, update, and non-fast-forward on `refs/tags/v*`.
+- A public GitHub Project linked to this repository carries the open MVP
+  issues.
+- A clean clone of the published remote reproduced setup, the test suite, the
+  local demo, the benchmark, and the static checks.
+
+Three defects were found by running the documented entry points rather than
+reading them, and all three are recorded with their reproduction and
+remediation in `docs/REVIEW_LOG.md`: the continuation controller invalidated
+the clean-worktree precondition of its own verification command; the CI
+repository-check step could not pass on a hosted runner; and a decorative hero
+element scrolled the published page horizontally on a narrow viewport. A fourth
+gap in the same mechanism, a task left `verified` behind newly `STALE`
+evidence, was found by mutating a watched input and is fixed with a regression.
+
+None of this establishes source truth, authenticated evidence, independent
+custody or adjudication, benchmark freezing, external reproduction, market
+demand, operational effectiveness, or production readiness.
 
 ## Next evidence gates
 

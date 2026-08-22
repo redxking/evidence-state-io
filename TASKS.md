@@ -3,6 +3,8 @@
 ## Active
 
 - [ ] **Draft the first implementation-owned campaign preregistration**
+  - Tracked publicly as
+    [issue #4](https://github.com/redxking/evidence-state-io/issues/4).
   - Prepare the exact corpus, declarative oracle, separately retained digests,
     baseline configurations, scoring, exclusions, environment matrix, stop
     conditions, and custody procedure for owner review.
@@ -32,6 +34,23 @@
 - [ ] **Evaluate an MCP interoperability profile** — Begin only after the contract survives a real read-only adapter and the frozen benchmark.
 
 ## Done
+
+- [x] ~~Publish and verify the MVP research candidate on GitHub~~ (2026-08-22)
+  - Remote `main` equals the accepted local commit; the remote tree carries the
+    same 165 tracked blobs. CI, CodeQL, and Pages all completed `success` at the
+    exact commit.
+  - The Pages site is deployed and publicly reachable; every deployed asset
+    digest matches a site built from an independent clean clone, and those bytes
+    were exercised in a browser across all seven scenarios.
+  - The wiki mirrors the canonical `wiki/` source and every required page
+    renders publicly. Labels, a milestone, bounded issues, rulesets, security
+    settings, Discussions, and a linked public Project are populated.
+  - A clean clone of the published remote reproduced setup, tests, demo,
+    benchmark, and static checks.
+  - Exact evidence, procedures, and fingerprints are in
+    `project/acceptance.json`. This is repository and deployment evidence only.
+    It is not independent reproduction, benchmark custody, or production
+    readiness.
 
 - [x] ~~Complete the `0.6.0` local acceptance and custody record~~ (2026-08-22)
   - Implementation checkpoint
