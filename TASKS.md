@@ -30,7 +30,18 @@
 ## Someday
 
 - [ ] **Specify authenticated registry and adapter evidence** — Define signing roots, source-owner and approval delegation, key rotation/revocation, monotonic registry heads, trusted time, and adapter artifact/attestation identity in a separate versioned design.
-- [ ] **Define multi-source composition** — Specify overlapping populations, per-source coverage, temporal alignment, finality, conflicts, and degraded-source behavior before accepting more than one required source.
+- [ ] **Define multi-source composition** — Specify overlapping populations,
+  per-source coverage, temporal alignment, finality, conflicts, and
+  degraded-source behavior before accepting more than one required source.
+  - [ADR-0015](docs/adr/0015-multi-source-composition.md) is drafted and
+    **Proposed**. It composes corroborated coverage by maximum rather than sum,
+    binds finality to the slowest required source and freshness to the stalest,
+    rejects disagreement instead of counting votes, and lets an optional source
+    veto but never authorize.
+  - The ADR authorizes no implementation. It closes with three questions the
+    owner has to answer first: whether `PARTITION` ships before
+    `CORROBORATION`, whether optional sources exist in the first candidate, and
+    whether the required-source count is capped.
 - [ ] **Evaluate an MCP interoperability profile** — Begin only after the contract survives a real read-only adapter and the frozen benchmark.
 
 ## Done
