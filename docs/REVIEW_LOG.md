@@ -1090,3 +1090,40 @@ that fabricates several agreeing sources is not detected by anything here.
 Corroboration establishes agreement among the declared sources and never
 independence between them: sources drawing on a common upstream record can
 agree while all being wrong, and the decision's limitations now say so.
+
+### Two defects found by running the mechanism rather than reading it
+
+Both were in this change, and both were found by writing a test that built a
+certificate for a composed rejection rather than by reviewing the diff.
+
+A composed claim could be decided but not certified. `wire_schema_version`
+carries the embedded envelope's version, not the certificate format's, but it
+was checked against the single constant `1.0`, so `build_evidence_certificate`
+raised for every schema `1.1` request. The gate would happily decide a composed
+claim that the relying party could not then hold a record of, which is the half
+of the capability that matters in practice.
+
+With that fixed, the certificate's decision validator refused the composed
+record as an unknown field. Both layers now accept it: the field is optional,
+and its shape is validated rather than trusted, so a certificate carrying a
+malformed composed record is refused instead of replayed around.
+
+The certificate format identifier was deliberately not bumped. Bumping it to
+`1.0-candidate.3` was tried first and immediately invalidated both recorded
+example certificates and seven tests, which is the correct signal: every
+certificate ever issued would have stopped verifying. The extension is additive
+and widening, `wire_schema_version` already distinguishes a composed record,
+and an older verifier still fails closed on one because it rejects both the
+unknown field and the newer wire version. A test now pins that the recorded
+single-source certificates still verify and carry no composition record.
+
+### Source attribution for composed rejections
+
+A composed rejection can name up to four sources, and "every corroborating
+source must reach its own finality horizon" is not actionable across four
+sources unless the caller can tell which one fell short. The composer records
+which source each issue belongs to and the gate reduces it to a reason code, so
+the information existed and was being discarded. `RemedyItem` now carries
+`source_ids`, recovered from the composed assessment. This discloses nothing
+new: a source identifier is a declaration the request itself carries, not a
+governed threshold.

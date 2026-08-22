@@ -30,6 +30,7 @@ from typing import Any
 from .certificates import EvidenceCertificate, verify_evidence_certificate
 from .errors import ModelValidationError
 from .gate import (
+    COMPOSITION_REASON_MAP,
     EVALUATOR_VERSION,
     GateDecision,
     GateReason,
@@ -39,7 +40,7 @@ from .gate import (
 from .models import EvidenceState, SourceRole
 from .profiles import CoverageFinalityProfile, TrustedProfileContext
 
-INSUFFICIENCY_REMEDY_SCHEMA = "esio-insufficiency-remedy/1.0-candidate.2"
+INSUFFICIENCY_REMEDY_SCHEMA = "esio-insufficiency-remedy/1.0-candidate.3"
 
 
 class DisclosureLevel(str, Enum):
@@ -360,10 +361,21 @@ def _isoformat(value: datetime) -> str:
 
 @dataclass(frozen=True)
 class RemedyItem:
+    """One material reason and the condition that would have to become true.
+
+    `source_ids` names the required sources a composed reason is attributed to.
+    A condition such as "every corroborating source must reach its own finality
+    horizon" is not actionable across four sources unless the caller can tell
+    which one fell short, and the composer already knows. It is empty for any
+    reason that is a property of the request as a whole rather than of a
+    particular source.
+    """
+
     reason: GateReason
     remedy_class: RemedyClass
     condition: str
     governed_value: str | None = None
+    source_ids: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.reason, GateReason):
@@ -374,6 +386,13 @@ class RemedyItem:
             raise ModelValidationError("remedy_item.condition must be a non-empty string")
         if self.governed_value is not None and not isinstance(self.governed_value, str):
             raise ModelValidationError("remedy_item.governed_value must be a string or null")
+        if isinstance(self.source_ids, (str, bytes)) or not isinstance(self.source_ids, tuple):
+            raise ModelValidationError("remedy_item.source_ids must be a tuple of strings")
+        if any(not isinstance(item, str) or not item.strip() for item in self.source_ids):
+            raise ModelValidationError("remedy_item.source_ids must contain non-empty strings")
+        # Sorted so the record is a property of the failing set, not of the
+        # order the composer happened to report issues in.
+        object.__setattr__(self, "source_ids", tuple(sorted(set(self.source_ids))))
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -381,6 +400,7 @@ class RemedyItem:
             "remedy_class": self.remedy_class.value,
             "condition": self.condition,
             "governed_value": self.governed_value,
+            "source_ids": list(self.source_ids),
         }
 
 
@@ -515,6 +535,32 @@ def _classify(reason: GateReason, request: NegativeClaimRequest) -> tuple[Remedy
     return entry
 
 
+def _composed_attribution(decision: GateDecision) -> dict[GateReason, tuple[str, ...]]:
+    """Map each composed reason to the required sources it was raised for.
+
+    The composer already records which source each issue belongs to; the gate
+    reduces that to a reason code for the decision, which is the right shape
+    for a decision and the wrong shape for a remedy. This recovers it rather
+    than asking the caller to re-derive it.
+
+    A source identifier is a declaration the request itself carries, not a
+    governed threshold, so reporting it discloses nothing that the requester
+    did not supply.
+    """
+
+    if decision.composition is None:
+        return {}
+    grouped: dict[GateReason, set[str]] = {}
+    for issue in decision.composition.issues:
+        if issue.source_id is None:
+            continue
+        reason = COMPOSITION_REASON_MAP.get(issue.code)
+        if reason is None:  # pragma: no cover - the map covers every emittable code
+            continue
+        grouped.setdefault(reason, set()).add(issue.source_id)
+    return {reason: tuple(sorted(ids)) for reason, ids in grouped.items()}
+
+
 def derive_remedy(
     decision: GateDecision,
     request: NegativeClaimRequest,
@@ -547,6 +593,7 @@ def derive_remedy(
     profile = (
         _selected_profile(context) if disclosure is DisclosureLevel.WITH_GOVERNED_VALUES else None
     )
+    attribution = _composed_attribution(decision)
     items: list[RemedyItem] = []
     for reason in decision.reasons:
         remedy_class, condition = _classify(reason, request)
@@ -561,6 +608,7 @@ def derive_remedy(
                 remedy_class=remedy_class,
                 condition=condition,
                 governed_value=value,
+                source_ids=attribution.get(reason, ()),
             )
         )
 

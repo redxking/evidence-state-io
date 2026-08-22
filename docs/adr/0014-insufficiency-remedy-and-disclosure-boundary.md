@@ -128,6 +128,27 @@ This addition moved the contract to `esio-insufficiency-remedy/1.0-candidate.2`,
 which adds the optional `certificate_digest` field. The candidate.1 shape is
 otherwise unchanged.
 
+## Source attribution for composed rejections, 2026-08-22
+
+A composed rejection can name up to four required sources, and a condition such
+as "every corroborating source must reach its own finality horizon" is not
+actionable across four sources unless the caller can tell which one fell short.
+The composer already records which source each issue belongs to; the gate
+reduces that to a reason code, which is the right shape for a decision and the
+wrong shape for a remedy. `RemedyItem` now carries `source_ids`, recovered from
+the composed assessment rather than re-derived by the caller.
+
+This discloses nothing new. A source identifier is a declaration the request
+itself carries, not a governed threshold, so it is reported at
+`CONSTRAINT_ONLY` like the rest of the condition. It is empty for every reason
+that is a property of the request as a whole rather than of a particular
+source, including a composition whose coverage is unquantified across all of
+its sources.
+
+This moved the contract to `esio-insufficiency-remedy/1.0-candidate.3`, adding
+the `source_ids` field. Conditions themselves are unchanged and still never
+name a field to edit.
+
 ## Consequences
 
 Rejections become actionable without changing what a permit means. The

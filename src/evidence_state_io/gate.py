@@ -150,7 +150,7 @@ _PROFILE_REASON_MAP = {code: GateReason(code.value) for code in ProfileIssueCode
 # empty contribution list rather than issuing it, so it can never reach a
 # decision; `test_every_emittable_composition_issue_maps_to_a_reason` keeps
 # that exclusion honest.
-_COMPOSITION_REASON_MAP: dict[CompositionIssueCode, GateReason] = {
+COMPOSITION_REASON_MAP: dict[CompositionIssueCode, GateReason] = {
     code: GateReason("COMPOSED_" + code.value.removeprefix("COMPOSED_"))
     for code in CompositionIssueCode
     if code is not CompositionIssueCode.NO_REQUIRED_SOURCES
@@ -665,7 +665,7 @@ def evaluate_negative_claim(
         if contributions:
             composition = compose_sources(contributions, mode=envelope.query.composition)
             for composition_issue in composition.issues:
-                add_reason(_COMPOSITION_REASON_MAP[composition_issue.code])
+                add_reason(COMPOSITION_REASON_MAP[composition_issue.code])
             # The envelope may not claim a stronger coverage floor than the
             # sources jointly guarantee.  Corroboration composes by maximum, so
             # an envelope bound above that maximum is coverage the sources did

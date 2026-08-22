@@ -24,7 +24,13 @@ from evidence_state_io.gate import (
 )
 from evidence_state_io.models import EvidenceState
 from evidence_state_io.profiles import TrustedProfileContext
-from tests.helpers import composed_fixture, mirror_observation, request, trusted_context
+from tests.helpers import (
+    composed_fixture,
+    mirror_observation,
+    request,
+    request_dict,
+    trusted_context,
+)
 
 
 def _decide(data: dict[str, Any], context: TrustedProfileContext) -> GateDecision:
@@ -254,11 +260,11 @@ class CompositionReasonMapTests(unittest.TestCase):
         """A missing mapping would raise inside the gate rather than reject."""
 
         from evidence_state_io.composition import CompositionIssueCode
-        from evidence_state_io.gate import _COMPOSITION_REASON_MAP
+        from evidence_state_io.gate import COMPOSITION_REASON_MAP
 
         emittable = set(CompositionIssueCode) - {CompositionIssueCode.NO_REQUIRED_SOURCES}
-        self.assertEqual(emittable, set(_COMPOSITION_REASON_MAP))
-        for reason in _COMPOSITION_REASON_MAP.values():
+        self.assertEqual(emittable, set(COMPOSITION_REASON_MAP))
+        for reason in COMPOSITION_REASON_MAP.values():
             self.assertIsInstance(reason, GateReason)
 
     def test_the_excluded_issue_is_unreachable_because_the_composer_raises(self) -> None:
@@ -283,6 +289,182 @@ class SingleSourceUnchangedTests(unittest.TestCase):
         self.assertTrue(
             any("does not establish multi-source" in item for item in decision.limitations)
         )
+
+
+class ComposedRemedyTests(unittest.TestCase):
+    """A composed rejection must say which source fell short.
+
+    "Every corroborating source must reach the governed coverage floor" is not
+    an actionable condition across four sources unless the caller can tell
+    which one did not.  The composer already knows; the remedy recovers it.
+    """
+
+    def test_a_composed_rejection_names_the_source_it_is_raised_for(self) -> None:
+        from evidence_state_io.remedy import derive_remedy
+
+        data, context = composed_fixture(mirrors=2)
+        weakened = mirror_observation(data, index=2)
+        weakened["coverage"]["examined_units"] = 60
+        weakened["coverage"]["pages_examined"] = 3
+        weakened["coverage"]["pagination_complete"] = False
+
+        request_object = NegativeClaimRequest.from_dict(data)
+        decision = evaluate_negative_claim(request_object, context)
+        self.assertFalse(decision.allowed)
+
+        remedy = derive_remedy(decision, request_object, context)
+        attributed = {item.reason: item.source_ids for item in remedy.items if item.source_ids}
+        self.assertEqual(
+            attributed.get(GateReason.COMPOSED_SOURCE_COVERAGE_NOT_MET),
+            ("mirror-2-public-repositories",),
+            "the remedy must name only the source that fell short",
+        )
+
+    def test_reasons_that_are_not_about_one_source_name_none(self) -> None:
+        from evidence_state_io.remedy import derive_remedy
+
+        data, context = composed_fixture()
+        for observation in data["envelope"]["source_observations"]:
+            observation["coverage"]["population_basis"] = "UNKNOWN"
+            observation["coverage"]["population_units"] = None
+
+        request_object = NegativeClaimRequest.from_dict(data)
+        decision = evaluate_negative_claim(request_object, context)
+        remedy = derive_remedy(decision, request_object, context)
+
+        for item in remedy.items:
+            if item.reason is GateReason.COMPOSED_COVERAGE_UNQUANTIFIED:
+                self.assertEqual(
+                    item.source_ids,
+                    (),
+                    "an unquantified composition is a property of the set, not of one source",
+                )
+
+    def test_a_single_source_rejection_attributes_nothing(self) -> None:
+        """Attribution is a composed concept and must not leak into schema 1.0."""
+
+        from evidence_state_io.remedy import derive_remedy
+
+        data = request_dict()
+        data["envelope"]["state"] = EvidenceState.PARTIAL.value
+        request_object = NegativeClaimRequest.from_dict(data)
+        decision = evaluate_negative_claim(request_object, trusted_context())
+
+        self.assertFalse(decision.allowed)
+        self.assertIsNone(decision.composition)
+        remedy = derive_remedy(decision, request_object, trusted_context())
+        self.assertTrue(remedy.items)
+        self.assertTrue(all(item.source_ids == () for item in remedy.items))
+
+
+class ComposedCertificateTests(unittest.TestCase):
+    """The relying-party path, end to end, for a composed rejection.
+
+    A certificate is the artifact a relying party actually holds. Schema 1.1
+    adds fields inside the embedded envelope, so this checks that a composed
+    request survives canonicalisation, digest binding, and deterministic
+    replay, and that the remedy derived from the certificate alone still names
+    the source that fell short.
+    """
+
+    def _rejected_certificate(self):
+        from datetime import datetime, timezone
+
+        from evidence_state_io.certificates import (
+            EvidenceOrigin,
+            ImplementationIdentity,
+            WorkingTreeState,
+            build_evidence_certificate,
+        )
+
+        data, context = composed_fixture(mirrors=2)
+        weakened = mirror_observation(data, index=2)
+        weakened["coverage"]["examined_units"] = 60
+        weakened["coverage"]["pages_examined"] = 3
+        weakened["coverage"]["pagination_complete"] = False
+
+        request_object = NegativeClaimRequest.from_dict(data)
+        return build_evidence_certificate(
+            request_object,
+            context,
+            issued_at=datetime(2026, 8, 21, 12, 8, tzinfo=timezone.utc),
+            origin=EvidenceOrigin.SYNTHETIC,
+            implementation=ImplementationIdentity(
+                package_name="evidence-state-io",
+                package_version="0.7.0",
+                repository_revision=None,
+                working_tree_state=WorkingTreeState.UNBOUND,
+            ),
+        )
+
+    def test_a_composed_rejection_certificate_replays_deterministically(self) -> None:
+        from evidence_state_io.certificates import verify_evidence_certificate
+
+        verification = verify_evidence_certificate(self._rejected_certificate())
+        self.assertTrue(verification.structural_support)
+        self.assertTrue(verification.certificate_digest_integrity)
+        self.assertTrue(verification.embedded_digest_integrity)
+        self.assertTrue(verification.deterministic_replay)
+
+    def test_a_certificate_alone_still_names_the_failing_source(self) -> None:
+        from evidence_state_io.remedy import derive_remedy_from_certificate
+
+        remedy = derive_remedy_from_certificate(self._rejected_certificate())
+        attributed = {item.reason: item.source_ids for item in remedy.items if item.source_ids}
+        self.assertEqual(
+            attributed.get(GateReason.COMPOSED_SOURCE_COVERAGE_NOT_MET),
+            ("mirror-2-public-repositories",),
+        )
+
+    def test_a_malformed_composition_record_is_refused(self) -> None:
+        """A record that cannot be read is refused, never replayed around."""
+
+        from evidence_state_io.certificates import EvidenceCertificate
+
+        payload = self._rejected_certificate().to_dict()
+        composition = payload["certificate"]["decision"]["composition"]
+
+        mutations = {
+            "unknown field": {"unexpected": True},
+            "unsupported mode": {"mode": "PARTITION"},
+            "unknown state": {"composed_state": "MOSTLY_ABSENT"},
+            "unknown issue code": {"issues": [{"code": "NOT_A_CODE", "source_id": None}]},
+            "duplicate source ids": {"source_ids": ["a", "a"]},
+            "non-numeric bound": {"composed_lower_bound": "1.0"},
+            "wrong schema": {"composition_schema": "esio-multi-source-composition/9.9"},
+        }
+        for label, mutation in mutations.items():
+            with self.subTest(mutation=label):
+                broken = deepcopy(payload)
+                broken["certificate"]["decision"]["composition"] = {
+                    **composition,
+                    **mutation,
+                }
+                with self.assertRaises(ModelValidationError):
+                    EvidenceCertificate.from_dict(broken)
+
+    def test_a_single_source_certificate_is_unaffected(self) -> None:
+        """The recorded certificates predate composition and must still verify."""
+
+        import json
+        from pathlib import Path as _Path
+
+        from evidence_state_io.certificates import (
+            CERTIFICATE_FORMAT,
+            EvidenceCertificate,
+            verify_evidence_certificate,
+        )
+
+        root = _Path(__file__).resolve().parents[1] / "examples"
+        for name in ("rejected_certificate.json", "covered_certificate.json"):
+            with self.subTest(certificate=name):
+                data = json.loads((root / name).read_text(encoding="utf-8"))
+                self.assertEqual(data["certificate"]["certificate_format"], CERTIFICATE_FORMAT)
+                self.assertNotIn("composition", data["certificate"]["decision"])
+                verification = verify_evidence_certificate(EvidenceCertificate.from_dict(data))
+                self.assertTrue(verification.certificate_digest_integrity)
+                self.assertTrue(verification.embedded_digest_integrity)
+                self.assertTrue(verification.deterministic_replay)
 
 
 if __name__ == "__main__":  # pragma: no cover

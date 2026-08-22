@@ -25,6 +25,7 @@ from .canonical import (
     canonical_digest,
     canonical_json_bytes,
 )
+from .composition import COMPOSITION_SCHEMA, CompositionIssueCode
 from .coverage import CoverageIssue
 from .gate import (
     DEFAULT_POLICY_ID,
@@ -37,7 +38,10 @@ from .gate import (
     evaluate_negative_claim,
 )
 from .models import (
+    SUPPORTED_SCHEMA_VERSIONS,
+    CompositionMode,
     CoverageProfileReference,
+    EvidenceState,
     ModelValidationError,
     SourceObservationStatus,
     _mapping,
@@ -53,7 +57,18 @@ from .models import (
 from .profiles import ProfileIssueCode, TrustedProfileContext
 from .sources import SourceIssueCode
 
+# Deliberately not bumped for the composed extension.  The change is strictly
+# additive and widening: `decision.composition` is absent from every
+# single-source certificate, so their canonical form and digests are unchanged,
+# and `wire_schema_version` already distinguishes a composed record.  Bumping
+# the identifier would invalidate every certificate previously issued and would
+# add no information the record does not already carry.  A verifier built
+# against this identifier before the extension still fails closed on a composed
+# record, because it rejects both the unknown field and the newer wire version.
 CERTIFICATE_FORMAT = "esio-evidence-certificate/1.0-candidate.2"
+#: The single-source envelope version.  A certificate carries the version of
+#: the envelope it embeds, so this is the default rather than the only value;
+#: `SUPPORTED_SCHEMA_VERSIONS` is what a certificate is checked against.
 WIRE_SCHEMA_VERSION = "1.0"
 IMPLEMENTATION_PACKAGE_NAME = "evidence-state-io"
 
@@ -472,6 +487,72 @@ def _validate_profile_assessment(value: Any) -> None:
             _sha256_digest(data[name], f"decision.profile.{name}")
 
 
+def _validate_composition_record(value: Any) -> None:
+    """Check the shape of an embedded composed assessment.
+
+    The record is what makes a composed rejection reviewable without re-running
+    the gate, so a certificate that carries a malformed one is refused rather
+    than replayed. Nothing here recomputes the composition; replay does that.
+    """
+
+    if value is None:
+        return
+    data = _mapping(value, "decision.composition")
+    allowed = {
+        "composition_schema",
+        "mode",
+        "composed_state",
+        "composed_lower_bound",
+        "binding_finality_horizon",
+        "weakest_index_as_of",
+        "stalest_observed_at",
+        "earliest_valid_until",
+        "source_ids",
+        "issues",
+        "meets_policy",
+    }
+    _reject_unknown(data, allowed, "decision.composition")
+    _require_fields(data, allowed, "decision.composition")
+    if data["composition_schema"] != COMPOSITION_SCHEMA:
+        raise ModelValidationError("decision.composition.composition_schema is not supported")
+    if data["mode"] not in {mode.value for mode in CompositionMode}:
+        raise ModelValidationError("decision.composition.mode is not a supported composition mode")
+    if data["composed_state"] not in {state.value for state in EvidenceState}:
+        raise ModelValidationError("decision.composition.composed_state is not an evidence state")
+    if not isinstance(data["meets_policy"], bool):
+        raise ModelValidationError("decision.composition.meets_policy must be boolean")
+    bound = data["composed_lower_bound"]
+    if bound is not None and (isinstance(bound, bool) or not isinstance(bound, (int, float))):
+        raise ModelValidationError("decision.composition.composed_lower_bound must be a number")
+    source_ids = _string_array(data["source_ids"], "decision.composition.source_ids")
+    if len(set(source_ids)) != len(source_ids):
+        raise ModelValidationError("decision.composition.source_ids must not contain duplicates")
+    for name in (
+        "binding_finality_horizon",
+        "weakest_index_as_of",
+        "earliest_valid_until",
+    ):
+        if data[name] is not None:
+            parse_datetime(data[name], f"decision.composition.{name}")
+    parse_datetime(data["stalest_observed_at"], "decision.composition.stalest_observed_at")
+    issues = data["issues"]
+    if isinstance(issues, (str, bytes)) or not isinstance(issues, Sequence):
+        raise ModelValidationError("decision.composition.issues must be an array")
+    known_codes = {code.value for code in CompositionIssueCode}
+    for index, item in enumerate(issues):
+        entry = _mapping(item, f"decision.composition.issues[{index}]")
+        _reject_unknown(entry, {"code", "source_id"}, f"decision.composition.issues[{index}]")
+        _require_fields(entry, {"code", "source_id"}, f"decision.composition.issues[{index}]")
+        if entry["code"] not in known_codes:
+            raise ModelValidationError(
+                f"decision.composition.issues[{index}].code is not a known composition issue"
+            )
+        if entry["source_id"] is not None and not isinstance(entry["source_id"], str):
+            raise ModelValidationError(
+                f"decision.composition.issues[{index}].source_id must be a string or null"
+            )
+
+
 def _validated_decision_dict(value: Any) -> dict[str, Any]:
     data = _mapping(value, "decision")
     allowed = {
@@ -488,7 +569,10 @@ def _validated_decision_dict(value: Any) -> dict[str, Any]:
         "digest_algorithm",
         "evaluator_version",
     }
-    _reject_unknown(data, allowed, "decision")
+    # A composed decision carries an extra record.  It is accepted but not
+    # required: a single-source decision never carries one, so a schema 1.0
+    # certificate keeps its exact canonical form and every recorded digest.
+    _reject_unknown(data, allowed | {"composition"}, "decision")
     _require_fields(data, allowed, "decision")
     if not isinstance(data["allowed"], bool):
         raise ModelValidationError("decision.allowed must be boolean")
@@ -519,6 +603,7 @@ def _validated_decision_dict(value: Any) -> dict[str, Any]:
         data["evaluator_version"], EVALUATOR_VERSION
     ):
         raise ModelValidationError("decision.evaluator_version is not supported")
+    _validate_composition_record(data.get("composition"))
     normalized = _normalized_json_copy(data)
     canonical_json_bytes(normalized)
     return normalized
@@ -553,7 +638,6 @@ class EvidenceCertificatePayload:
             "certificate_format": CERTIFICATE_FORMAT,
             "canonicalization_profile": CANONICALIZATION_PROFILE,
             "digest_algorithm": DIGEST_ALGORITHM,
-            "wire_schema_version": WIRE_SCHEMA_VERSION,
             "evaluation_input_schema": EVALUATION_INPUT_SCHEMA,
             "policy_id": DEFAULT_POLICY_ID,
             "policy_version": DEFAULT_POLICY_VERSION,
@@ -565,6 +649,18 @@ class EvidenceCertificatePayload:
                 raise ModelValidationError(
                     f"certificate.{name} must be the supported value {expected}"
                 )
+        # `wire_schema_version` is the embedded envelope's version, not the
+        # certificate format's, so it is checked against the supported set.
+        # Pinning it to one value made a composed claim uncertifiable: the gate
+        # could decide it and the relying party could not hold the record.
+        if (
+            type(self.wire_schema_version) is not str
+            or self.wire_schema_version not in SUPPORTED_SCHEMA_VERSIONS
+        ):
+            raise ModelValidationError(
+                "certificate.wire_schema_version must be one of the supported string values "
+                + ", ".join(f"'{version}'" for version in sorted(SUPPORTED_SCHEMA_VERSIONS))
+            )
         object.__setattr__(
             self,
             "policy_digest",

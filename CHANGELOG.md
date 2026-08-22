@@ -65,6 +65,15 @@ All notable project changes should be recorded here. Dates use ISO 8601.
   from the package root. The remedy surface was reachable only by module path
   before, which made a headline capability effectively private.
 
+- **Source attribution on composed remedies**, moving the remedy contract to
+  `esio-insufficiency-remedy/1.0-candidate.3`. `RemedyItem` carries
+  `source_ids`. "Every corroborating source must reach its own finality
+  horizon" is not an actionable condition across four sources unless the caller
+  can tell which one fell short, and the composer already knew. It is empty for
+  reasons that are properties of the request as a whole. A source identifier is
+  a declaration the request itself carries, not a governed threshold, so it is
+  reported at `CONSTRAINT_ONLY`.
+
 - `esio-insufficiency-remedy/1.0-candidate.1` and `evidence-state explain`.
   A rejection previously returned ordered reason codes and a deterministic
   insufficiency statement, both correct and neither actionable. A remedy states,
@@ -96,6 +105,28 @@ All notable project changes should be recorded here. Dates use ISO 8601.
 
 ### Fixed
 
+- **A composed claim could be decided but not certified.** The certificate
+  pinned `wire_schema_version` to the single value `1.0`, so building a
+  certificate for a schema `1.1` request raised rather than producing a record.
+  A certificate is the artifact a relying party actually holds, so a capability
+  that cannot be certified is half a capability. The field carries the embedded
+  envelope's version, not the certificate format's, and is now checked against
+  the supported set. Found by building a certificate for a composed rejection,
+  not by reading the code.
+- **The embedded decision rejected its own composed record.** With the version
+  check fixed, the certificate's decision validator refused the `composition`
+  key as an unknown field. It is now accepted but not required, and its shape
+  is validated: schema, mode, composed state, bounds, timestamps, source
+  identifiers, and issue codes. A certificate carrying a malformed composed
+  record is refused rather than replayed around.
+- The certificate format identifier stays `1.0-candidate.2` deliberately. Both
+  changes are additive and widening; `decision.composition` is absent from
+  every single-source certificate, so their canonical form and digests are
+  unchanged, and `wire_schema_version` already distinguishes a composed record.
+  Bumping the identifier would have invalidated every certificate previously
+  issued while adding no information the record does not already carry. A
+  verifier built before the extension still fails closed on a composed record,
+  because it rejects both the unknown field and the newer wire version.
 - **CodeQL `js/bad-tag-filter`, high severity.** The dashboard safe-render
   regression extracted the document's inline scripts with a case-sensitive
   pattern, so a `<SCRIPT>` region would have been silently skipped while the

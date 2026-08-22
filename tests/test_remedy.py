@@ -363,8 +363,31 @@ class RemedyItemTests(unittest.TestCase):
                 "remedy_class": "UNSATISFIABLE",
                 "condition": "condition",
                 "governed_value": "value",
+                "source_ids": [],
             },
         )
+
+    def test_source_ids_are_deduplicated_and_ordered(self) -> None:
+        """The record is a property of the failing set, not of report order."""
+
+        item = RemedyItem(
+            GateReason.COMPOSED_SOURCE_COVERAGE_NOT_MET,
+            RemedyClass.OBTAIN_COMPLETE_ENUMERATION,
+            "condition",
+            source_ids=("beta", "alpha", "beta"),
+        )
+        self.assertEqual(item.source_ids, ("alpha", "beta"))
+
+    def test_source_ids_must_be_a_tuple_of_non_empty_strings(self) -> None:
+        for value in ("alpha", ["alpha"], ("",), (7,)):
+            with self.subTest(value=value):
+                with self.assertRaises(ModelValidationError):
+                    RemedyItem(
+                        GateReason.COMPOSED_SOURCE_COVERAGE_NOT_MET,
+                        RemedyClass.OBTAIN_COMPLETE_ENUMERATION,
+                        "condition",
+                        source_ids=value,  # type: ignore[arg-type]
+                    )
 
 
 class RemedyEdgeTests(unittest.TestCase):
