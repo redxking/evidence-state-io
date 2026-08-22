@@ -103,15 +103,23 @@ this repository and does not authorize announcements, outreach, package-registry
 publication, real-data collection, paid services, or production designation.
 Preserve the claim and evidence gates below.
 
-On 2026-08-22 the owner additionally authorized exactly one versioned artifact:
-the `v0.6.0` tag and its MVP research-candidate GitHub Release, to be created
-only after every row in `project/acceptance.json` is `PASS`. That authorization
-is specific to `v0.6.0` in this repository. It does not extend to a later tag,
-to package-registry publication, to any announcement outside the repository, or
-to any claim beyond the boundaries recorded in `release/LIMITATIONS.md`.
+On 2026-08-22 the owner authorized exactly two versioned artifacts in this
+repository, each to be created only after every row in
+`project/acceptance.json` is `PASS`:
+
+1. the `v0.6.0` tag and its MVP research-candidate GitHub Release; and
+2. the `v0.6.1` tag and release, authorized after `v0.6.0` was published and
+   found to carry ESIO-DEF-001, on the owner's instruction to fix the defect
+   and supersede rather than withdraw. `v0.6.0` is immutable and remains
+   published with a notice naming the defect.
+
+Both authorizations are specific to those exact tags. Neither extends to a
+later tag, to package-registry publication, to any announcement outside the
+repository, or to any claim beyond the boundaries recorded in
+`release/LIMITATIONS.md`. A further release requires a further owner decision.
 
 - publishing any versioned release/tag other than the owner-authorized `v0.6.0`
-  above, or any package or announcement outside the authorized
+  and `v0.6.1` above, or any package or announcement outside the authorized
   repository-maintenance boundary;
 - changing or replacing the Apache-2.0 license;
 - contacting a design partner or standards body;

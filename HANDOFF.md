@@ -177,10 +177,11 @@ No state implies the next one.
 
 Continue autonomously through local, reversible, non-sensitive development and testing. Stop and obtain explicit owner approval before:
 
-- creating a version tag or GitHub release other than the `v0.6.0` MVP
-  research candidate the owner authorized on 2026-08-22, which may be created
-  only once every row in `project/acceptance.json` is `PASS`; and any
-  package-registry publication;
+- creating a version tag or GitHub release other than the `v0.6.0` and
+  `v0.6.1` MVP research candidates the owner authorized on 2026-08-22, each of
+  which required every row in `project/acceptance.json` to be `PASS` first; a
+  further release needs a further owner decision. Any package-registry
+  publication also remains out of scope;
 - changing the Apache-2.0 license or project governance;
 - creating unrelated external accounts, repositories, pull requests, or messages outside the approved Evidence-State I/O public-maintenance scope;
 - deploying into a production or third-party environment;
