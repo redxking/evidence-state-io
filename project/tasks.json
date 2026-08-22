@@ -82,8 +82,10 @@
       "id": "MVP-TASK-002",
       "next_action": "Push the coherent candidate, configure the remote, and verify CI at the exact commit.",
       "priority": 2,
-      "status": "pending",
-      "title": "Publish and verify the accepted candidate"
+      "status": "verified",
+      "title": "Publish and verify the accepted candidate",
+      "verified_at": "2026-08-22T17:31:30Z",
+      "verified_commit": "3041105545c1c6a48959e0550678dc1e481835df"
     },
     {
       "acceptance": [
@@ -100,8 +102,10 @@
       "id": "MVP-TASK-003",
       "next_action": "Deploy Pages, exercise the live browser demo, and publish and inspect every required Wiki page.",
       "priority": 3,
-      "status": "pending",
-      "title": "Verify public Pages, demo, and Wiki"
+      "status": "verified",
+      "title": "Verify public Pages, demo, and Wiki",
+      "verified_at": "2026-08-22T17:31:30Z",
+      "verified_commit": "3041105545c1c6a48959e0550678dc1e481835df"
     },
     {
       "acceptance": [
@@ -116,8 +120,10 @@
       "id": "MVP-TASK-004",
       "next_action": "Populate and verify repository governance, security, community, and project-management surfaces.",
       "priority": 4,
-      "status": "pending",
-      "title": "Complete professional GitHub configuration"
+      "status": "verified",
+      "title": "Complete professional GitHub configuration",
+      "verified_at": "2026-08-22T17:31:30Z",
+      "verified_commit": "3041105545c1c6a48959e0550678dc1e481835df"
     },
     {
       "acceptance": [
