@@ -46,8 +46,8 @@ evidence_state_io = ["py.typed"]
 branch = true
 source = ["evidence_state_io"]
 omit = [
-  "src/evidence_state_io/__main__.py",
-  "src/evidence_state_io/advance.py",
+  "*/evidence_state_io/__main__.py",
+  "*/evidence_state_io/advance.py",
 ]
 
 [tool.coverage.report]
