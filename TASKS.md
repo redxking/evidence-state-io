@@ -11,7 +11,14 @@
 
 ## Next
 
-- [ ] **Run the first preregistered implementation-owned baseline** — Begin only after the corpus/oracle freeze and stable revision acceptance. Apply thresholds without reinterpretation and do not call it independent reproduction.
+- [ ] **Preregister and owner-approve the first implementation-owned campaign
+  freeze** — Freeze the exact corpus, declarative oracle, separately retained
+  digests, baseline configurations, scoring, exclusions, environment matrix,
+  and stop conditions after stable revision acceptance. This is not independent
+  adjudication or external custody.
+- [ ] **Run the first preregistered implementation-owned baseline** — Begin only
+  after the campaign freeze above. Apply thresholds without reinterpretation
+  and do not call it independent reproduction.
 - [ ] **Package one read-only adapter design** — Define authority, data, identity, redaction, and verification gates before implementing any real-system access.
 
 ## Waiting On
@@ -30,7 +37,8 @@
 - [x] ~~Separate the minimum EmptyBench seed corpus and scoring oracle~~
   (2026-08-22)
   - Corpus `esio-emptybench-corpus/1.0-candidate.1` contains 12 matched
-    control/fault pairs and no expected decisions. Oracle
+    control/fault pairs and no machine-scored expectation fields. Experimental
+    role does not determine expected verdict. Oracle
     `esio-emptybench-oracle/1.0-candidate.1` is stored separately, binds the
     exact corpus digest, and is checked against a separately retained expected
     digest.

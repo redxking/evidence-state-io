@@ -52,6 +52,16 @@ structured reasons were present.
    certificate-format, schema, canonicalization, and digest contracts do not
    change. Permit and rejection certificate vectors and their expected digests
    are regenerated under the new evaluator identifier.
+6. EmptyBench scoring treats typed Python corpus, oracle, and trusted-context
+   objects as untrusted boundary inputs. The runner requires the separately
+   retained expected oracle digest at the point of scoring, requires exact
+   public model types, serializes and strictly reparses all three objects, and
+   then evaluates only the reparsed values. Earlier parse success is not a
+   durable trust grant.
+7. EmptyBench `all_passed` requires every selected complete pair to be
+   discriminated as well as every outcome to match. Corpus `control`/`fault`
+   roles do not determine oracle verdict polarity; polarity and reason
+   expectations remain in the separately stored oracle.
 
 ## Consequences
 
@@ -70,6 +80,12 @@ structured reasons were present.
   general. Public boundary models remain validated types, JSON remains the
   portable interchange boundary, and future reviews should continue testing
   subclassing, mutation, and overloaded-protocol behavior.
+- A caller cannot convert a parsed EmptyBench fault into another permit, swap
+  oracle assignments, downgrade the oracle contract, or alter the retained
+  digest after parsing and still receive a successful report. A caller who
+  deliberately changes both artifacts and supplies a new expected oracle
+  digest has selected a different implementation-owned benchmark; the system
+  does not call that authenticated or independently governed custody.
 
 ## Verification obligations
 
@@ -82,6 +98,11 @@ structured reasons were present.
   reason codes and cannot be read as proof of the positive opposite.
 - Reproduce permit and rejection vectors byte-for-byte on Python 3.11, 3.12,
   and 3.13 and through the installed command before recording local custody.
+- Reproduce post-parse corpus/request mutation, oracle assignment mutation,
+  contract downgrade, and expected-digest mismatch attacks at the typed
+  EmptyBench runner; every attack must fail before a successful report exists.
+- Demonstrate that a report with two otherwise passing but non-discriminating
+  outcomes has `all_passed == false`.
 
 ## Claim boundary
 

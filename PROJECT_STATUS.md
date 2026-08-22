@@ -81,7 +81,9 @@ The following results were observed during the moving-tree hardening and adversa
   2026-08-22; all 24 seed cases and all 12 pairs passed with zero unsafe
   permits and zero false rejections.
 - `./scripts/test.sh -q tests/test_profiles.py` — `40 passed`, including exact selected-profile trust, unsupported contracts, direct applicability mutations, and microsecond boundary cases.
-- Independent read-only attack attempts did not reproduce the weak/strong dual-profile downgrade once the trust selection pinned the exact profile reference.
+- Separate in-project read-only attack attempts did not reproduce the
+  weak/strong dual-profile downgrade once the trust selection pinned the exact
+  profile reference.
 - Rehashed replacement profile/snapshot content rejected against the original fixed trust context. Replacing and rehashing both configuration files remained possible, correctly exposing the configuration-custody boundary rather than claiming cryptographic trust.
 - Untrusted snapshot or profile content with extreme finality values returned the trust failure without using the untrusted content for applicability or horizon calculations.
 - `git diff --check` was clean at the interim review point.
@@ -100,7 +102,8 @@ The `0.6.0` handoff must remain open until one stable revision completes and rec
 5. rerun the seed, operator, and custom paired demonstrations and compare cross-runtime output byte-for-byte where specified;
 6. issue and verify the checked-in synthetic certificate using issue time `2026-08-21T12:06:00Z`, relying-party time `2026-08-21T12:30:00Z`, and expected digest `sha256:5683e522aa22f08145658d49452a4c044d7cf562a6a3987da364b3322d4aab17`;
 7. record the exact revision, commands, runtime versions, counts, generated-vector equality, and any environment limitations; and
-8. obtain a final independent read-only review of the frozen state before calling the local handoff accepted.
+8. obtain a final in-project read-only review of the stable state before calling
+   the local handoff accepted.
 
 Completion of this list may establish a locally tested, hash-bound candidate. It does not freeze schema `1.0`, freeze EmptyBench, authenticate configuration or evidence, demonstrate market demand, authorize deployment, or establish production readiness.
 

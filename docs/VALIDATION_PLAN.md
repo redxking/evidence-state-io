@@ -20,7 +20,9 @@ This plan defines the evidence required to decide whether Evidence-State I/O beh
 
 A green local test suite answers the first question only within the tested configuration. Synthetic, replayed, VM, or lab evidence is not independent external validation, operational effectiveness, production readiness, or proof of real-world absence.
 
-The repository is pre-alpha and has no selected public license. Validation activity does not authorize distribution, external reuse, deployment, or a licensing claim.
+The repository is public under Apache License 2.0. Open-source rights do not
+turn validation activity into an official project release, deployment approval,
+production designation, or stronger evidence claim.
 
 ## Current candidate and custody boundary
 
@@ -36,9 +38,15 @@ The validation target is the following exact, unfrozen 0.6.0 contract set:
 | Registry snapshot | `esio-profile-registry-snapshot/1.0-candidate.2` |
 | Trust selection | `esio-profile-trust-selection/1.0-candidate.2` |
 | Evidence certificate | `esio-evidence-certificate/1.0-candidate.2` |
+| Evidence-state transitions | `esio-evidence-state-transition-model/1.0-candidate.1` |
+| Authorization-context identifier | `esio-authorization-context-identifier/1.0-candidate.1` |
+| Validation error | `esio-validation-error/1.0-candidate.1` |
+| EmptyBench corpus | `esio-emptybench-corpus/1.0-candidate.1` |
+| EmptyBench oracle | `esio-emptybench-oracle/1.0-candidate.1` |
+| EmptyBench report | `esio-emptybench-report/1.0-candidate.1` |
 | Canonicalization / digest | `esio-canonical-json-0.1` / `sha256` |
 
-The local implementation evidence is bound to
+The following historical pre-integration evidence is bound to
 `be0774680aa83052eeecab29e1a0ab38824f2860`:
 
 - source suite: `325/325` on Python 3.11.16, 3.12.14, and 3.13.15;
@@ -50,10 +58,14 @@ The local implementation evidence is bound to
   `sha256:5f28ba99baf2c45828ffa04bff60c480aa9ccf131e97ad1bb4ed9347b85aff6f`;
 - rejection certificate digest: `sha256:3224...c059` (abbreviated).
 
-Documentation revision remains `PENDING FINAL CUSTODY`; it must not be named
-until the later documentation commit exists. The evidence above is a local
-implementation checkpoint, not a schema or benchmark freeze, external
-validation, or production approval.
+That record is retained for remediation history; it is not current `0.6.0`
+custody. The current candidate implementation and documentation revisions are
+`PENDING POST-REMEDIATION CUSTODY` after a later read-only review rejected
+checkpoint `8231d783bf5f61b69b2df556d8934863b2fe3861` for trusting post-parse
+mutable EmptyBench objects at the scoring boundary. A successor record must
+bind the reparse/digest remediation and rerun every claimed environment. None
+of these checkpoints freezes a schema or benchmark, establishes external
+validation, or approves production use.
 
 ## Validation principles
 
@@ -300,8 +312,10 @@ The oracle must be simpler than and independent of the implementation under test
 
 The current P0 seed implements only the structural first step toward this
 design: its corpus and declarative oracle are separate versioned artifacts, the
-corpus contains no expected decisions, the oracle binds the exact corpus
-digest, and the runner requires a separately retained expected oracle digest.
+corpus contains no machine-scored expected verdict or reason fields,
+experimental role does not determine oracle polarity, the oracle binds the
+exact corpus digest, and the runner requires a separately retained expected
+oracle digest again at the point of scoring.
 The same project authors still control the implementation, corpus, rule table,
 and retained digest. Therefore the 24-case seed is a deterministic regression
 set—not an independently adjudicated oracle, held-out split, preregistered
@@ -532,18 +546,18 @@ Each campaign directory must include:
 
 Never overwrite a frozen campaign. Corrections create a successor package with a documented relationship to the prior package.
 
-For the current candidate, the implementation revision, exact local totals,
-output-parity result, and abbreviated certificate digests are recorded above.
-Only the later documentation revision remains `PENDING FINAL CUSTODY`; it must
-not be named before that commit exists.
+For the current candidate, the successor implementation revision, exact local
+totals, output-parity result, and full certificate digests remain
+`PENDING POST-REMEDIATION CUSTODY`. The historical record above must not be
+presented as the current acceptance run.
 
 ## Exit criteria by delivery state
 
 - **Tested:** all P0 verification checks pass from one unchanged clean,
   commit-bound snapshot in each claimed local runtime, with installed/source
-  parity and canonical certificate vectors recorded. The named implementation
-  checkpoint has this local test evidence; the documentation package remains
-  custody-incomplete until its later commit is recorded.
+  parity and canonical certificate vectors recorded. Current post-remediation
+  custody remains open until that successor implementation and documentation
+  record is committed and rerun.
 - **Benchmarked:** the frozen synthetic campaign completes with preregistered scoring and immutable evidence package.
 - **Adapter-validated:** declared replay matrices pass for named versions and fixtures.
 - **Externally reproduced:** an independent party reruns the frozen package and resolves discrepancies.

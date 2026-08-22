@@ -12,11 +12,15 @@ schema/gate hardening baseline and the single-source schema `1.0` candidate are
 implemented and locally tested. Package `0.6.0` now contains the candidate.4
 policy, candidate.5 evaluator, candidate.2 profile, registry, trust,
 evaluation-input, and unsigned-certificate implementations, plus candidate.1
-transition, authorization-identifier, and validation-error contracts. The active queue is acceptance and freeze
-closure: P0-01/P0-07A/P0-08 final contract vectors and documentation, EB-07
-independent oracle custody, EB-08/EB-09 frozen baselines/campaign, Q-02/Q-03
-mutation and final cross-runtime installed-package evidence, plus remaining
-credential/resource/semantic validation in P0-02/P0-03 and ESIO-P0-011.
+transition, authorization-identifier, validation-error, and separated
+EmptyBench seed contracts. The active queue is local `0.6.0` acceptance and
+custody closure. Seed separation (EB-07) is implemented; independent oracle
+adjudication/custody is not. EB-08/EB-09 still require preregistration and an
+owner-approved campaign freeze before measurement. Schema freeze is a separate
+decision and is not implied by local acceptance. Q-02/Q-03 mutation and final
+cross-runtime installed-package evidence, plus remaining
+credential/resource/semantic validation in P0-02/P0-03 and ESIO-P0-011, remain
+ongoing quality work.
 Its explicit prohibition on real adapters keeps Stage 3 blocked until
 the P0 falsification gate is frozen and approved.
 
@@ -72,8 +76,8 @@ Every engineering item must satisfy all applicable conditions:
 | EB-04 | Add freshness and finality cases | EB-01 | Stale and pending-window pairs include exact boundary cases and supplied evaluation times. | None |
 | EB-05 | Add access and failure cases | EB-01 | Permission boundary, inaccessible source, timeout, interruption, parsing/query error, and matched controls are covered. | None |
 | EB-06 | Add contradiction cases | EB-01 | Mutually inconsistent required observations cannot be collapsed into absence; reason codes identify the sources. | None |
-| EB-07 | Build separated scoring oracle | EB-02–EB-06 | Expected results are stored separately from generated output; tests detect if the implementation is substituted as ground truth. Separation does not imply independent custody or adjudication. | Evidence review |
-| EB-08 | Add naive and conservative baselines | EB-07 | Empty-result and always-abstain baselines run on identical cases; configurations are frozen. | Freeze before measurement |
+| EB-07 | Build separated scoring oracle | EB-02–EB-06 | Expected results are stored separately from generated output; tests detect if the implementation is substituted as ground truth. Separation does not imply independent custody or adjudication. | Implemented seed; evidence review remains |
+| EB-08 | Preregister and freeze baseline campaign | EB-07 | Empty-result and always-abstain baselines, exact corpus/oracle/digests, scoring, exclusions, environments, and stop conditions are frozen before measurement. | Owner approves freeze |
 | EB-09 | Run frozen P0 campaign | EB-08 | Runtime versions, inputs, outputs, exclusions, and metrics are captured reproducibly; no threshold or oracle changes occur after results without a new campaign version. | Owner approves freeze |
 | GATE-01 | Decide continue, narrow, or stop | EB-09 | Compare results with every README/PRD threshold and record the decision without reinterpretation. | Owner decision |
 

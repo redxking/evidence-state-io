@@ -8,7 +8,9 @@
 
 This is a working evidence register, not an exhaustive systematic review, patent search, freedom-to-operate opinion, market census, or proof of novelty. A source being absent from this register does not mean it does not exist. Public search cannot reveal private/internal work, unpublished research, differently named systems, or material outside the search boundary.
 
-The project itself has no selected public license. Listing public sources here neither imports their licenses nor authorizes distribution or reuse of this repository.
+The project is public under Apache License 2.0. Listing a source here does not
+import that source's license, establish compatibility, or authorize reuse of
+third-party material beyond its own terms.
 
 Source observations below are deliberately narrow:
 

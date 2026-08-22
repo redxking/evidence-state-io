@@ -274,8 +274,16 @@ Update this ledger only when a traceable evidence package exists. Preserve rejec
 - [ ] If a certificate is shared, has every embedded request, registry/trust, decision, limitation, and implementation field been approved for that destination?
 - [ ] Does it avoid calling synthetic/replay/lab results external validation?
 - [ ] Has the whitespace scan been refreshed for a novelty or competition statement?
-- [ ] Has the project owner approved publication, external contact, licensing, and use of any non-public evidence?
+- [ ] Has the project owner approved any official release/announcement,
+  external contact, license change, and use of non-public evidence?
 
 ## Approval boundary
 
-Only the project owner may authorize public release, licensing, external outreach, partner commitments, deployment, use of non-public data, or claims beyond the current verified posture. P0 use remains synthetic/public-safe or owner-approved nonsensitive. Researchers and agents may propose stronger claims but may not publish or adopt them until the required evidence and approval are recorded.
+Only the project owner may authorize an official project tag/release,
+announcement, license change, external outreach, partner commitment, deployment,
+use of non-public data, or claim beyond the current verified posture. P0 use
+remains synthetic/public-safe or owner-approved nonsensitive. Nothing in this
+project-governance boundary limits third-party rights to use, modify, or
+redistribute the work under Apache License 2.0. Researchers and agents may
+propose stronger project claims but may not publish them on the project's
+behalf until the required evidence and approval are recorded.

@@ -37,6 +37,9 @@ identified as candidates below remain unfrozen research contracts.
 | Evidence-state transitions | `esio-evidence-state-transition-model/1.0-candidate.1` |
 | Authorization-context identifier | `esio-authorization-context-identifier/1.0-candidate.1` |
 | Validation error | `esio-validation-error/1.0-candidate.1` |
+| EmptyBench corpus | `esio-emptybench-corpus/1.0-candidate.1` |
+| EmptyBench oracle | `esio-emptybench-oracle/1.0-candidate.1` |
+| EmptyBench report | `esio-emptybench-report/1.0-candidate.1` |
 | Canonical JSON profile | `esio-canonical-json-0.1` |
 | Digest algorithm | `sha256` |
 
@@ -45,13 +48,13 @@ aliases, ranges, unknown revisions, and silent downgrade/fallback behavior are
 not supported. The historical schema `0.1` fixture remains hash-bound for
 replay at its historical checkpoint; it is not an active 0.6.0 input contract.
 
-The implementation contract is locally custody-bound to
-`be0774680aa83052eeecab29e1a0ab38824f2860`. Its source and installed-package
-verification and cross-runtime output parity are recorded in
-`TRACEABILITY.md`. Documentation custody remains pending until the later
-documentation commit exists. This implementation checkpoint does not freeze
-schema `1.0`, freeze EmptyBench, establish external validation, or authorize
-production use.
+Historical pre-integration implementation evidence is bound to
+`be0774680aa83052eeecab29e1a0ab38824f2860` and retained in
+`TRACEABILITY.md`. It is not current custody. The successor implementation and
+documentation revisions remain `PENDING POST-REMEDIATION CUSTODY` after the
+typed EmptyBench scoring boundary was hardened. No implementation checkpoint
+freezes schema `1.0` or EmptyBench, establishes external validation, or
+authorizes production use.
 
 ## Goals
 
@@ -350,8 +353,9 @@ The full threat model is in [../SECURITY.md](../SECURITY.md).
 
 ## Evolution rules
 
-- Schema `1.0` and candidate contracts remain unfrozen until final custody and
-  acceptance evidence are recorded.
+- Schema `1.0` and candidate contracts remain unfrozen unless a separate,
+  owner-approved, versioned freeze decision is recorded. Local acceptance and
+  custody evidence alone do not freeze them.
 - New required fields, changed state meanings, comparison boundaries, numeric
   semantics, trust ordering, or canonicalization require governed version
   evolution.

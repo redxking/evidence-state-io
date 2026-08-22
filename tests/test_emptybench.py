@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from dataclasses import replace
 import json
 from pathlib import Path
 import unittest
@@ -132,6 +133,7 @@ class EmptyBenchTests(unittest.TestCase):
             corpus,
             oracle,
             seed_profile_context(),
+            expected_oracle_digest=SEED_ORACLE_DIGEST,
             case_ids=[case.case_id for case in cases],
         )
         self.assertEqual(
@@ -210,16 +212,16 @@ class EmptyBenchTests(unittest.TestCase):
         with self.assertRaisesRegex(ModelValidationError, "duplicate case_id"):
             parse_oracle(raw, corpus, expected_digest=expected)
 
-    def test_swapped_control_fault_oracle_assignments_are_rejected(self) -> None:
+    def test_swapped_control_fault_oracle_assignments_fail_retained_digest(self) -> None:
         corpus = parse_corpus(load_corpus_dict())
         raw = load_oracle_dict()
         raw["assignments"][0]["rule_id"], raw["assignments"][1]["rule_id"] = (
             raw["assignments"][1]["rule_id"],
             raw["assignments"][0]["rule_id"],
         )
-        expected = refresh_digest(raw, "oracle_digest")
-        with self.assertRaisesRegex(ModelValidationError, "contradicts its case variant"):
-            parse_oracle(raw, corpus, expected_digest=expected)
+        refresh_digest(raw, "oracle_digest")
+        with self.assertRaisesRegex(ModelValidationError, "retained expected digest"):
+            parse_oracle(raw, corpus, expected_digest=SEED_ORACLE_DIGEST)
 
     def test_duplicate_oracle_rule_is_rejected(self) -> None:
         corpus = parse_corpus(load_corpus_dict())
@@ -282,12 +284,102 @@ class EmptyBenchTests(unittest.TestCase):
                 corpus,
                 oracle,
                 context,
+                expected_oracle_digest=SEED_ORACLE_DIGEST,
                 case_ids=["pagination-covered", "pagination-covered"],
             )
         with self.assertRaisesRegex(ModelValidationError, "unknown cases"):
-            run_emptybench(corpus, oracle, context, case_ids=["does-not-exist"])
+            run_emptybench(
+                corpus,
+                oracle,
+                context,
+                expected_oracle_digest=SEED_ORACLE_DIGEST,
+                case_ids=["does-not-exist"],
+            )
         with self.assertRaisesRegex(ModelValidationError, "complete pairs"):
-            run_emptybench(corpus, oracle, context, case_ids=["pagination-covered"])
+            run_emptybench(
+                corpus,
+                oracle,
+                context,
+                expected_oracle_digest=SEED_ORACLE_DIGEST,
+                case_ids=["pagination-covered"],
+            )
+
+    def test_scoring_reparses_typed_oracle_and_requires_retained_digest(self) -> None:
+        corpus, oracle = seed_benchmark()
+        downgraded = replace(
+            oracle,
+            oracle_schema="esio-emptybench-oracle/1.0-candidate.0",
+            oracle_digest="sha256:" + "0" * 64,
+        )
+        with self.assertRaisesRegex(ModelValidationError, "oracle_schema"):
+            run_emptybench(
+                corpus,
+                downgraded,
+                seed_profile_context(),
+                expected_oracle_digest=SEED_ORACLE_DIGEST,
+            )
+        with self.assertRaisesRegex(ModelValidationError, "retained expected digest"):
+            run_emptybench(
+                corpus,
+                oracle,
+                seed_profile_context(),
+                expected_oracle_digest="sha256:" + "0" * 64,
+            )
+
+    def test_scoring_reparses_mutated_cases_and_oracle_assignments(self) -> None:
+        corpus, oracle = seed_benchmark()
+        cases = list(corpus.cases)
+        object.__setattr__(cases[1], "request", cases[0].request)
+        object.__setattr__(oracle.assignments[1], "rule_id", oracle.assignments[0].rule_id)
+        object.__setattr__(oracle, "oracle_digest", "sha256:" + "0" * 64)
+
+        with self.assertRaisesRegex(ModelValidationError, "expanded cases"):
+            run_emptybench(
+                corpus,
+                oracle,
+                seed_profile_context(),
+                expected_oracle_digest=SEED_ORACLE_DIGEST,
+            )
+
+    def test_scoring_rejects_mutated_corpus_payload(self) -> None:
+        corpus, oracle = seed_benchmark()
+        corpus.base_request["subject"] = "mutated after parsing"
+        with self.assertRaisesRegex(ModelValidationError, "corpus digest"):
+            run_emptybench(
+                corpus,
+                oracle,
+                seed_profile_context(),
+                expected_oracle_digest=SEED_ORACLE_DIGEST,
+            )
+
+    def test_scoring_rejects_post_parse_expanded_request_mutation(self) -> None:
+        corpus, oracle = seed_benchmark()
+        object.__setattr__(corpus.cases[1], "request", corpus.cases[0].request)
+        with self.assertRaisesRegex(ModelValidationError, "expanded cases"):
+            run_emptybench(
+                corpus,
+                oracle,
+                seed_profile_context(),
+                expected_oracle_digest=SEED_ORACLE_DIGEST,
+            )
+
+    def test_report_cannot_pass_without_pair_discrimination(self) -> None:
+        report = run_seed_emptybench()
+        outcomes = tuple(
+            replace(
+                outcome,
+                expected_allowed=True,
+                actual_allowed=True,
+                expected_reasons=(),
+                actual_reasons=(),
+                passed=True,
+            )
+            for outcome in report.outcomes
+        )
+        non_discriminating = replace(report, outcomes=outcomes)
+        self.assertEqual(non_discriminating.passed, 2)
+        self.assertEqual(non_discriminating.pairs_discriminated, 0)
+        self.assertFalse(non_discriminating.all_passed)
 
 
 if __name__ == "__main__":

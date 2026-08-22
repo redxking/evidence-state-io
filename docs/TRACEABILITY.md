@@ -6,9 +6,9 @@
 
 **Development package:** `evidence-state-io 0.6.0`
 
-**Candidate implementation custody:** `PENDING FINAL CUSTODY`
+**Candidate implementation custody:** `PENDING POST-REMEDIATION CUSTODY`
 
-**Documentation custody:** `PENDING FINAL CUSTODY`
+**Documentation custody:** `PENDING POST-REMEDIATION CUSTODY`
 
 **Permit certificate digest:**
 `sha256:5683e522aa22f08145658d49452a4c044d7cf562a6a3987da364b3322d4aab17`
@@ -36,6 +36,9 @@ Schema `1.0` remains unfrozen, and documentation custody is still pending.
 | Evidence-state transitions | `esio-evidence-state-transition-model/1.0-candidate.1` |
 | Authorization-context identifier | `esio-authorization-context-identifier/1.0-candidate.1` |
 | Validation error | `esio-validation-error/1.0-candidate.1` |
+| EmptyBench corpus | `esio-emptybench-corpus/1.0-candidate.1` |
+| EmptyBench oracle | `esio-emptybench-oracle/1.0-candidate.1` |
+| EmptyBench report | `esio-emptybench-report/1.0-candidate.1` |
 | Canonicalization / digest | `esio-canonical-json-0.1` / `sha256` |
 
 | Requirement | Current state | Local candidate evidence | Remaining gap before closure |
@@ -49,13 +52,14 @@ Schema `1.0` remains unfrozen, and documentation custody is still pending.
 | ESIO-P0-007 Qualification-preserving output | TESTED (PARTIAL) | The deterministic decision retains bounded subject/scope, source/profile references, time, coverage, reasons, qualifications, limitations, and non-attestation language. Every rejection renders a deterministic insufficiency statement without asserting the positive opposite. Permit and rejection decisions are first-class certificate payloads. | No governed downstream handoff-retention campaign or general language-policy proof; self-contained records currently require synthetic/non-sensitive inputs. |
 | ESIO-P0-008 Deterministic evidence certificate | TESTED (PARTIAL) | Candidate.2 builder owns evaluation and binds the complete request, policy/evaluator/input contracts, trusted context, origin, times, decision, implementation identity, and outer digest. Verification separately reports structural support, outer/embedded integrity, canonical-byte replay, historical reproducibility, expected-context match, expected-digest match, and current-local-reliance eligibility. The effective boundary includes evidence validity, snapshot next update, resolved profile expiry/revocation, and policy/profile observation/index freshness deadlines. Permit and rejection vectors reproduced byte-identically across the recorded source and installed paths. | Unsigned self-digests do not authenticate issuers, authorize action, prove source truth, or provide independent custody. Local vector reproduction is not external verifier interoperability. |
 | ESIO-P0-009 JSON CLI and library interface | TESTED (PARTIAL) | `evaluate` requires application registry/trust inputs plus explicit issuance time and evidence origin and emits a certificate. `verify-certificate` distinguishes malformed input (`2`) from failed verification dimensions (`1`), requires registry/trust as a pair, and keeps absent optional reliance evidence unestablished rather than successful. Source and installed permit/rejection outputs matched byte-for-byte at the implementation checkpoint. | No migration command or multi-schema active runtime is intended for this candidate; broader platform and packaging matrices remain open. |
-| ESIO-P0-010 Seed EmptyBench corpus and oracle | TESTED (PARTIAL) | Corpus `candidate.1` contains 12 matched control/fault families and no embedded expectations. Separately stored oracle `candidate.1` binds the exact corpus and requires a separately retained expected digest. The integrated local run passed 24/24 cases and discriminated 12/12 pairs with zero unsafe permits and zero false rejections; tamper, swap, missing/duplicate, downgrade, and invalid-mutation regressions fail closed. | Both artifacts remain implementation-owned; this is not a preregistered or frozen held-out campaign, independent adjudication, or external reproduction. |
+| ESIO-P0-010 Seed EmptyBench corpus and oracle | TESTED (PARTIAL) | Corpus `candidate.1` contains 12 matched control/fault families and no machine-scored expectation fields; experimental role does not determine oracle polarity. Separately stored oracle `candidate.1` binds the exact corpus and requires a separately retained expected digest again at scoring. Typed corpus, oracle, and context are strictly reparsed. The integrated local run passed 24/24 cases and discriminated 12/12 pairs with zero unsafe permits and zero false rejections; tamper, swap, missing/duplicate, downgrade, post-parse mutation, and invalid-mutation regressions fail closed. | Both artifacts remain implementation-owned; this is not a preregistered or frozen held-out campaign, independent adjudication, or external reproduction. |
 | ESIO-P0-011 Reproducibility and security baseline | TESTED (PARTIAL) | The integrated moving-tree source and installed suites passed `367/367`; Python 3.11.16, 3.12.14, and 3.13.0 source suites each passed `367/367`; source/runtime/installed 24-case demo outputs were byte-identical. Focused adversarial regressions cover application profile selection, staged trust, freshness-bound current reliance, caller-decision exclusion, typed-object reparsing, primitive-subclass rejection, lossless numeric support, canonical-byte replay, range checks, context/digest separation, contract downgrades, error redaction, and I/O failures. | Final revision and documentation custody, hosted CI/platform execution, broader fuzzing, independent oracle/custody, external security review, and operational validation remain pending. |
 
-## Custody-bound implementation adversarial evidence
+## Historical pre-integration adversarial evidence
 
-The 0.6.0 hardening review reproduced and regression-bound defects at rejected
-checkpoints `f7d8bca` and `e8c3bea`. At implementation checkpoint
+The following record is historical and is not the current `0.6.0` custody
+claim. The earlier hardening review reproduced and regression-bound defects at
+rejected checkpoints `f7d8bca` and `e8c3bea`. At implementation checkpoint
 `be0774680aa83052eeecab29e1a0ab38824f2860`:
 
 - the application, not the producer, selects the one exact permitted profile;
@@ -76,13 +80,14 @@ checkpoints `f7d8bca` and `e8c3bea`. At implementation checkpoint
   certificate-format, schema, canonicalization, and digest downgrade/fallback
   attempts reject.
 
-These observations establish the tested behavior of the named local
-implementation checkpoint. They are not a release, schema or benchmark freeze,
-external reproduction, operational validation, or production readiness.
+These observations establish only the tested behavior of that named historical
+local checkpoint. They are not current acceptance, a release, schema or
+benchmark freeze, external reproduction, operational validation, or production
+readiness.
 
-## Custody-bound verification record
+## Historical pre-integration verification record
 
-Recorded results for the named implementation checkpoint:
+Recorded results for the named historical implementation checkpoint:
 
 - source suite: `325/325` on Python 3.11.16, 3.12.14, and 3.13.15;
 - installed-package suite: `325/325` on virtual-environment Python 3.13.0;
@@ -118,10 +123,11 @@ env -u PYTHONPATH ./.venv/bin/evidence-state verify-certificate \
 git diff --check
 ```
 
-The later documentation commit must replace `PENDING FINAL CUSTODY` only after
-that commit exists. The implementation evidence above supports a local 0.6.0
-candidate checkpoint; it does not freeze schema `1.0` or EmptyBench and does not
-establish external validation or production readiness.
+The historical evidence above does not satisfy current post-remediation
+custody. The successor implementation and documentation hashes, full local
+totals, and exact output comparisons must be recorded only after their stable
+commits and reruns exist. No local record freezes schema `1.0` or EmptyBench or
+establishes external validation or production readiness.
 
 ## Historical boundary
 

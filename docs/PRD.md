@@ -6,7 +6,8 @@
 **Decision owner:** project owner
 **First vertical:** cyber investigation and threat hunting
 **Reference implementation:** dependency-light Python 3.11-3.13
-**Distribution/licensing:** no public license has been selected; all rights remain with the project owner
+**Distribution/licensing:** public under Apache License 2.0; pre-alpha status is
+not a production authorization or stable protocol release
 
 ## Executive decision
 

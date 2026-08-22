@@ -481,7 +481,12 @@ def main(
                 corpus,
                 expected_digest=args.expected_oracle_digest,
             )
-            report = run_emptybench(corpus, oracle, context)
+            report = run_emptybench(
+                corpus,
+                oracle,
+                context,
+                expected_oracle_digest=args.expected_oracle_digest,
+            )
             _write_json(report.to_dict(), output_stream, args.pretty)
             return 0 if report.all_passed else 1
         if args.command == "coverage":

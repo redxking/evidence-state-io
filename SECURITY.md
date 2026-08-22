@@ -64,7 +64,8 @@ multi-source composition are not complete. Schema `1.0` is not frozen.
 4. Language-model output cannot alter a verdict.
 5. Adapters cannot grant `ABSENT_WITHIN_SCOPE` directly.
 6. The evaluator does not consult network, filesystem, environment, wall clock, or mutable global state.
-7. Secrets and raw credentials are not accepted as authorization-context identifiers.
+7. Recognized credential-like authorization-context identifier shapes reject;
+   this narrow guardrail is not exhaustive secret detection.
 8. A certificate digest is never described as authentication, signature, independent custody, or proof that a source declaration is true.
 9. The core demo works without network access.
 10. Optional lab services bind to loopback and contain synthetic data only.

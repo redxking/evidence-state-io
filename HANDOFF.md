@@ -41,7 +41,7 @@ The active parser intentionally rejects schema `0.1`. Historical replay is prese
 - an application-supplied materialized registry snapshot and separate trust selection;
 - exact selected-profile trust, validity, revocation, applicability, coverage, retention, blind-interval, freshness, and derived-finality enforcement;
 - a deterministic negative-claim gate that never reads ambient time;
-- an unsigned deterministic certificate builder and independent replay verifier;
+- an unsigned deterministic certificate builder and separate replay verifier;
 - source, installed-command, benchmark, and laboratory scripts;
 - a separately versioned and digest-bound EmptyBench corpus and declarative
   oracle containing 12 matched control/fault families and 24 cases;
@@ -125,7 +125,10 @@ If setup, checks, tests, demonstrations, installed-command parity, generated cer
 4. Run static, local-link, source-versus-installed file, deterministic-demo, source-suite, installed-suite, and supported-runtime checks.
 5. Run the seed, operator, and custom paired cases; retain exact counts and byte-comparison results.
 6. Regenerate the covered certificate and compare it byte-for-byte with the checked-in vector and expected digest above.
-7. Run a final read-only adversarial review of the stable revision, including exact profile selection, config rehash boundaries, trust short-circuiting, versions, freshness, retention, blind intervals, derived finality, certificate mutation, and relying-party-time boundaries.
+7. Run a final in-project read-only adversarial review of the stable revision,
+   including exact profile selection, config rehash boundaries, trust
+   short-circuiting, versions, freshness, retention, blind intervals, derived
+   finality, certificate mutation, and relying-party-time boundaries.
 8. Update the status, traceability, review, and custody record with the exact revision, commands, runtimes, results, and residual risks.
 
 Only then may the project record a locally accepted `0.6.0` candidate. The repository is publicly available under Apache-2.0, but that state still does not freeze schema `1.0` or EmptyBench, authorize a versioned/package release, or approve production use.
@@ -150,7 +153,8 @@ For each continuation cycle:
 - **Specified:** requirement and acceptance criteria exist.
 - **Implemented:** code exists and was locally inspected.
 - **Tested:** named automated tests passed in a recorded environment.
-- **Accepted locally:** one stable, hash-bound state passed its declared local acceptance matrix and independent review.
+- **Accepted locally:** one stable, hash-bound state passed its declared local
+  acceptance matrix and a separate in-project read-only review.
 - **Benchmarked:** a frozen corpus and separately governed oracle produced reproducible measurements.
 - **Externally reproduced:** an independent party reran the frozen campaign.
 - **Operationally evaluated:** authorized real workflows were tested with bounded claims.

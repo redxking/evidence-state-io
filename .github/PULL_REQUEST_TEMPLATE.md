@@ -52,6 +52,8 @@ List the exact commands run and observed outcomes. Identify anything not run and
 - [ ] User-facing behavior and interfaces are documented in the same change.
 - [ ] Tasks, backlog, milestone, or project status is updated when scope changed.
 - [ ] Release notes are needed, or the reason they are not needed is stated below.
+- [ ] Every commit includes my `Signed-off-by` trailer under the Developer
+      Certificate of Origin 1.1 (`git commit -s`).
 
 ## Reviewer focus
 

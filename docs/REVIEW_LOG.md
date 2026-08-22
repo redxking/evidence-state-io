@@ -8,7 +8,7 @@ evidence that the fail-closed contract is complete.
 
 **Review disposition:** changes required
 **Evidence class:** local, synthetic, self-authored implementation with an
-independent read-only code and adversarial-input review
+separate in-project read-only code and adversarial-input review
 **Pre-review verification:** 79/79 tests and 2/2 operator demonstration cases
 passed
 
@@ -60,7 +60,7 @@ the hardened demo, covered request, partial request, and custom benchmark.
 ## 2026-08-21 — Second proposed baseline rejected
 
 **Review disposition:** rejected after expanded numeric and parser-bound review
-**Evidence class:** local, synthetic, self-authored; independent read-only
+**Evidence class:** local, synthetic, self-authored; separate in-project read-only
 review within the project team, not external reproduction
 
 Verification before rejection:
@@ -163,7 +163,7 @@ and operational validation remain open. `index_as_of` currently records source
 currentness; it is not a completeness watermark, so `index_as_of` earlier than
 the query interval end remains part of the explicit finality gap.
 
-The internal independent review is not an external security assessment,
+The separate in-project review is not an external security assessment,
 independent evidence custody, or production-readiness determination. The local
 commit makes the snapshot recoverable; it does not authenticate its claims.
 
@@ -261,7 +261,7 @@ establish their truth.
 
 **Review disposition:** initial semantic and compatibility proposals rejected;
 repaired increment accepted as a local candidate checkpoint only
-**Evidence class:** local synthetic implementation; independent read-only
+**Evidence class:** local synthetic implementation; separate in-project read-only
 adversarial and contract review within the project team
 
 ### Rejected finality designs and candidate state
@@ -306,7 +306,7 @@ state was rejected.
   visible zero remain fixed while the reported source index moves one
   microsecond below versus exactly to the horizon.
 
-### Verification and independent review
+### Verification and in-project read-only review
 
 - Reviewed implementation checkpoint:
   `7deaea1dd79eacd2c4f3ebbef87a314e5293f1f6`.
@@ -321,7 +321,7 @@ state was rejected.
   `EmptyBench-custom` provenance.
 - `scripts/check.sh`, package/source snapshot parity, local links, shell syntax,
   Compose validation, version equality, and no-ambient-clock scan passed.
-- Final independent adversarial review passed 164/164 focused Python 3.13
+- Final in-project adversarial review passed 164/164 focused Python 3.13
   checks and 37/37 Python 3.11 finality/benchmark checks. It directly probed
   missing/null/malformed horizons, horizon-before-query, pre-horizon and missing
   indexes, optimistic state, wait-only evaluation advancement, stale
@@ -340,18 +340,18 @@ profiles, multi-source composition, the complete certificate, independent
 oracle custody, external validation, operational evaluation, and production
 readiness remain open.
 
-## 2026-08-21 to 2026-08-22 — Governed-profile and certificate review
+## 2026-08-21 to 2026-08-22 — Governed-profile and certificate review (historical)
 
 **Review disposition:** checkpoints `f7d8bca` and `e8c3bea` rejected; 0.6.0
 remediation accepted as a local implementation checkpoint
 
-**Evidence class:** local, synthetic, self-authored implementation; independent
-read-only adversarial and contract review within the project team
+**Evidence class:** local, synthetic, self-authored implementation; separate
+in-project read-only adversarial and contract review
 
 **Implementation custody:**
 `be0774680aa83052eeecab29e1a0ab38824f2860`
 
-**Documentation custody:** `PENDING FINAL CUSTODY`
+**Documentation custody at that historical checkpoint:** `PENDING`
 
 **Permit certificate digest:**
 `sha256:5f28ba99baf2c45828ffa04bff60c480aa9ccf131e97ad1bb4ed9347b85aff6f`
@@ -401,9 +401,11 @@ application-controlled profile semantics were not actually enforced.
   freshness rules are applied.
 - Floating/ranged versions reject, and a snapshot cannot contain a profile
   issued after the snapshot `as_of` time.
-- Profile, registry-snapshot, and trust-selection contracts advanced to
-  `1.0-candidate.2`. Policy/evaluator advanced to `1.0-candidate.4`; evaluation
-  input advanced to `1.0-candidate.2`. Wire schema `1.0` remains unfrozen.
+- At this historical checkpoint, profile, registry-snapshot, and trust-selection
+  contracts advanced to `1.0-candidate.2`; policy and evaluator were
+  `1.0-candidate.4`; and evaluation input advanced to `1.0-candidate.2`.
+  The evaluator later advanced separately to `esio-evaluator-1.0-candidate.5`.
+  Wire schema `1.0` remains unfrozen.
 
 Focused regressions cover an alternate weaker profile in the same snapshot,
 untrusted snapshot content attempting to drive finality diagnostics, untrusted
@@ -517,3 +519,64 @@ deterministic replay detect inconsistency relative to retained expectations;
 they do not authenticate declarative issuers, prove source truth, monitor a
 newer registry head or revocation state, supply independent custody, or
 authorize an action.
+
+## 2026-08-22 — Public-handoff and EmptyBench typed-boundary review
+
+**Review disposition:** public-handoff checkpoint
+`8231d783bf5f61b69b2df556d8934863b2fe3861` rejected before push; remediation
+implemented; successor custody pending
+
+**Evidence class:** local, synthetic, self-authored implementation; separate
+in-project read-only security and documentation/claims review
+
+**External delivery state:** not pushed at the time of rejection
+
+### Reproduced blocker
+
+The committed checkpoint reparsed corpus and oracle files at the CLI boundary,
+but its public typed `run_emptybench` API trusted already constructed Python
+objects. Frozen dataclasses did not provide deep immutability or durable parse
+custody. Two attacks were reproduced:
+
+1. Replacing the parsed oracle schema with an unsupported predecessor and its
+   digest with an all-zero value still produced `all_passed=true` and reported
+   the attacker-controlled schema/digest.
+2. Mutating the pagination fault request into the control request, assigning it
+   to the permit rule, and replacing the oracle digest produced two passing
+   permits with `pairs_discriminated=0` while `all_passed` remained true.
+
+This was a P0 custody and scoring-boundary defect. File-level parsing tests did
+not compensate for a bypass in the typed public API.
+
+### Remediation
+
+- `run_emptybench` now requires the separately retained expected oracle digest
+  again at the point of scoring.
+- Exact corpus, oracle, and trusted-context types are serialized and strictly
+  reparsed before use; non-plain JSON containers reject.
+- `parse_oracle` reparses its supplied corpus rather than trusting prior parse
+  state.
+- Experimental `control`/`fault` roles no longer determine oracle polarity.
+  Machine-scored verdict and reason expectations remain in the separately
+  stored oracle.
+- `all_passed` now also requires every selected complete pair to discriminate.
+- Regression tests preserve schema/digest downgrade, post-parse
+  request/assignment mutation, corpus mutation, swapped-oracle retained-digest,
+  and non-discriminating report failures.
+
+### Read-only retest
+
+- Original downgrade and post-parse substitution probes rejected before a
+  report was produced.
+- Rehashed swapped assignments rejected against the retained seed oracle
+  digest.
+- Focused trust/certificate/CLI/EmptyBench review passed `217/217`.
+- Full Python 3.11 source review passed `371/371`.
+- Certificate tampering, missing reliance prerequisites, and CLI error-redaction
+  probes remained fail closed.
+
+No surviving P0 bypass was found in the remediated moving tree. This is not
+final custody: the successor implementation must be committed, installed, and
+rerun across every supported runtime before local acceptance is recorded. The
+seed remains implementation-owned synthetic evidence, not independent
+adjudication, a frozen campaign, or external reproduction.

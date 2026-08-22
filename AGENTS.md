@@ -105,7 +105,7 @@ versioned GitHub Release/tag. Preserve the claim and evidence gates below.
 
 - publishing a versioned release/tag, package, or announcement outside the
   authorized repository-maintenance boundary above;
-- selecting or changing the Apache-2.0 license;
+- changing or replacing the Apache-2.0 license;
 - contacting a design partner or standards body;
 - incurring cloud/API cost or requiring network access;
 - using real or sensitive data;

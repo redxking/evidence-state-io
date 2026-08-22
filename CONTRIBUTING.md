@@ -11,6 +11,12 @@ By contributing, you agree that your contribution is licensed under the
 project's [Apache License 2.0](LICENSE). Follow the
 [Code of Conduct](CODE_OF_CONDUCT.md) and [governance model](GOVERNANCE.md).
 
+Contributions use the [Developer Certificate of Origin 1.1](https://developercertificate.org/).
+Sign off every commit with `git commit -s` to certify that you have the right to
+submit the contribution under the project's license. The resulting commit must
+contain a `Signed-off-by: Name <address>` trailer that matches the contributor's
+identity; do not sign for another person.
+
 ## Before you begin
 
 Read:
@@ -177,6 +183,13 @@ Keep changes reviewable and scoped. A useful commit message names the behavior, 
 
 ```text
 gate: reject unresolved continuation tokens
+```
+
+Create signed-off commits so the repository's DCO check can verify contribution
+provenance:
+
+```bash
+git commit -s -m "gate: reject unresolved continuation tokens"
 ```
 
 An owner-authorized review should answer:

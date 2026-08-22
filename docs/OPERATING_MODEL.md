@@ -4,7 +4,10 @@
 
 The repository is operated as a falsifiable research and engineering program. Every work cycle should either close a named acceptance criterion, expose a failure mode, improve reproducibility, or test a project-killing assumption. Activity, code volume, and green tests are not substitutes for evidence.
 
-The owner retains authority over external release, licensing, real-data use, deployment, partnerships, thresholds, and claims.
+The owner retains authority over official project tags/releases and
+announcements, license changes, real-data use, deployment, partnerships,
+thresholds, and project claims. This governance does not restrict third-party
+rights granted by Apache License 2.0.
 
 ## Roles and decision rights
 
@@ -12,12 +15,12 @@ One person may hold several roles, but the decision rights remain distinct.
 
 | Role | May decide | Must escalate |
 |---|---|---|
-| Project owner | Product direction, claims, thresholds, license, external release, design-partner scope | None within the project charter |
+| Project owner | Product direction, claims, thresholds, license changes, official releases, design-partner scope | None within the project charter |
 | Architecture maintainer | Internal interfaces, accepted ADR implementation, dependency-light design | New trust claims, incompatible schema changes, distributed deployment |
 | Work-item agent | Bounded local implementation and tests inside assigned files | Scope expansion, destructive changes, external actions, threshold changes |
 | Evidence reviewer | Verify fixtures, oracle independence, commands, outputs, and claim language | Conflicts that would change a published conclusion |
 | Security reviewer | Threat model, dependency and input risks, release security gates | Acceptance of residual production risk |
-| Release custodian | Assemble an owner-authorized release from verified artifacts | License selection, publication, signing identity, production designation |
+| Release custodian | Assemble an owner-authorized release from verified artifacts | License changes, official publication, signing identity, production designation |
 
 No agent or maintainer may infer an owner decision from a proposed ADR, passing test, local benchmark, or packaged artifact.
 
@@ -126,10 +129,14 @@ Stop when the bounded item is done, an approval boundary is reached, or the same
 
 ## Approval boundaries
 
-Explicit owner approval is required before any of the following:
+Routine maintenance of the authorized public `redxking/evidence-state-io`
+repository—including verified commits, issues, Discussions, Wiki, Pages,
+project/roadmap state, metadata, and protections—is within the current owner
+authorization. Explicit owner approval is required before any of the following:
 
-- publishing, distributing, or creating an external repository, issue, pull request, release, package, or announcement;
-- selecting or changing a license;
+- creating an unrelated external repository, message, package publication,
+  official version tag/release, or project announcement;
+- changing or replacing the Apache-2.0 license;
 - contacting a person, vendor, design partner, or standards body;
 - creating an external account or incurring cloud/API cost;
 - introducing a required network, hosted-model, or external-service dependency into the core demo;

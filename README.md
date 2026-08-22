@@ -213,9 +213,11 @@ source whose governed profile, current coverage, and pagination facts pass with
 the same empty result from an incompletely paginated execution. The complete
 seed contains 12 matched control/fault families and 24 cases, stored in a
 versioned corpus separately from its versioned declarative oracle. The corpus
-contains no expected verdicts; the oracle is bound to the corpus digest and
-must match a separately retained expected oracle digest. This separation is an
-integrity boundary, not independent adjudication or benchmark freeze. The
+contains no machine-scored expected verdict or reason fields; `control` and
+`fault` are experimental roles and do not determine oracle polarity. The oracle
+is bound to the corpus digest and must match a separately retained expected
+oracle digest. This separation is an integrity boundary, not independent
+adjudication or benchmark freeze. The
 candidate rejects missing,
 inaccessible, pending, stale, failed, contradictory, unknown,
 identity-mismatched, adapter-mismatched, authorization-mismatched,

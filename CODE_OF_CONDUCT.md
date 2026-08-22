@@ -33,9 +33,13 @@ pages, community events, and other spaces where a person represents the project.
 
 ## Reporting and enforcement
 
-Report ordinary conduct concerns to the maintainer through a private coordination channel.
-If the report includes a vulnerability, sensitive data, or exploit detail, follow
-[SECURITY.md](SECURITY.md). Do not ask the subject of a report to investigate it.
+Submit a confidential conduct report through the repository's
+[private reporting form](https://github.com/redxking/evidence-state-io/security/advisories/new)
+and begin the report with `Code of Conduct report`. The project uses this
+private GitHub channel for conduct reports until a separate confidential route
+is published. If the report includes a vulnerability, sensitive data, or
+exploit detail, also follow [SECURITY.md](SECURITY.md). Do not ask the subject of
+a report to investigate it.
 
 The maintainer will review reports as privately and impartially as practical, may request
 additional evidence, and may remove content, limit participation, reject contributions, or

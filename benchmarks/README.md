@@ -4,7 +4,9 @@ The seed benchmark separates inputs from expected decisions:
 
 - `emptybench-p0-corpus.json` contains one canonical covered request and 12
   matched control/fault pairs expressed as deterministic JSON Pointer
-  replacements. It contains no expected verdicts or reason codes.
+  replacements. It contains no machine-scored expected verdict or reason
+  fields; `control` and `fault` name experimental roles but do not determine
+  the oracle's expected decision.
 - `emptybench-p0-oracle.json` contains the declarative decision rules and case
   assignments. It binds the exact corpus schema, version, and digest.
 
@@ -12,6 +14,13 @@ Both artifacts use `esio-canonical-json-0.1` and carry SHA-256 integrity
 digests. The oracle digest must also be retained outside the oracle artifact;
 the candidate implementation pins the seed value for its built-in demo, and
 the custom CLI requires `--expected-oracle-digest`.
+
+The typed Python scoring API enforces the same boundary: callers must provide
+the separately retained `expected_oracle_digest`. Before expansion or scoring,
+the runner serializes and strictly reparses the corpus, oracle, and evaluation
+context, then compares every expanded case with the corpus-bound definition.
+Previously parsed or directly constructed mutable objects are therefore not a
+trusted bypass around canonical validation.
 
 Current seed custody values:
 

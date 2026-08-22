@@ -4,11 +4,14 @@ The project advances through evidence gates, not feature volume.
 
 ## P0 — deterministic contract and falsification
 
-- close state-transition and validation contracts;
-- separate and freeze the minimum EmptyBench corpus and oracle;
+- retain the implemented transition, validation, and separated EmptyBench seed
+  contracts without overstating their evidence;
+- preregister, review, and freeze the first implementation-owned campaign;
 - complete the supported-runtime and installed-package matrix;
 - retain exact vectors, digests, contract identifiers, and limitations; and
-- run an independent adversarial review against one stable revision.
+- run a separate in-project read-only adversarial review against one stable
+  revision. Independent adjudication and external reproduction remain later
+  evidence states.
 
 ## P1 — governed adapter evidence
 

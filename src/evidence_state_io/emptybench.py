@@ -18,6 +18,7 @@ from typing import Any, Iterable, Mapping, Sequence
 from .canonical import (
     CANONICALIZATION_PROFILE,
     DIGEST_ALGORITHM,
+    canonical_json_bytes,
     verify_canonical_digest,
 )
 from .gate import GateDecision, GateReason, NegativeClaimRequest, evaluate_negative_claim
@@ -63,7 +64,7 @@ _SEED_ORACLE_FILE = "emptybench-p0-oracle.json"
 
 
 def _mapping(value: Any, path: str) -> Mapping[str, Any]:
-    if not isinstance(value, Mapping):
+    if type(value) is not dict or any(type(key) is not str for key in value):
         raise ModelValidationError(f"{path} must be a JSON object")
     return value
 
@@ -82,7 +83,7 @@ def _exact_fields(value: Any, *, path: str, fields: set[str]) -> Mapping[str, An
 
 
 def _array(value: Any, path: str) -> Sequence[Any]:
-    if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
+    if type(value) is not list:
         raise ModelValidationError(f"{path} must be an array")
     return value
 
@@ -479,7 +480,11 @@ class EmptyBenchReport:
 
     @property
     def all_passed(self) -> bool:
-        return self.total > 0 and self.passed == self.total
+        return (
+            self.total > 0
+            and self.passed == self.total
+            and self.pairs_discriminated == self.pairs_total
+        )
 
     @property
     def pairs_total(self) -> int:
@@ -656,8 +661,14 @@ def parse_oracle(
     *,
     expected_digest: str,
 ) -> EmptyBenchOracle:
-    if not isinstance(corpus, EmptyBenchCorpus):
+    if type(corpus) is not EmptyBenchCorpus:
         raise ModelValidationError("oracle requires a parsed EmptyBenchCorpus")
+    try:
+        corpus = parse_corpus(EmptyBenchCorpus.to_dict(corpus))
+    except (AttributeError, KeyError, TypeError, ValueError) as exc:
+        raise ModelValidationError(
+            "oracle requires an intact parsed EmptyBenchCorpus"
+        ) from exc
     fields = {
         "oracle_schema",
         "oracle_id",
@@ -745,13 +756,6 @@ def parse_oracle(
             raise ModelValidationError(
                 f"oracle pair {pair_id!r} must assign one permit and one rejection"
             )
-        for case in pair:
-            expectation = rules_by_id[assignments_by_case[case.case_id].rule_id]
-            if (case.variant == "control") is not expectation.expected_allowed:
-                raise ModelValidationError(
-                    f"oracle assignment for {case.case_id!r} contradicts its case variant"
-                )
-
     return EmptyBenchOracle(
         oracle_schema=EMPTYBENCH_ORACLE_SCHEMA,
         oracle_id=_identifier(data["oracle_id"], "oracle.oracle_id"),
@@ -773,28 +777,68 @@ def run_emptybench(
     oracle: EmptyBenchOracle,
     context: TrustedProfileContext,
     *,
+    expected_oracle_digest: str,
     case_ids: Iterable[str] | None = None,
 ) -> EmptyBenchReport:
-    """Score a parsed corpus against its separately parsed decision oracle."""
+    """Score reparsed artifacts against a separately retained oracle digest."""
 
-    if not isinstance(corpus, EmptyBenchCorpus):
+    if type(corpus) is not EmptyBenchCorpus:
         raise ModelValidationError("EmptyBench requires an EmptyBenchCorpus")
-    if not isinstance(oracle, EmptyBenchOracle):
+    if type(oracle) is not EmptyBenchOracle:
         raise ModelValidationError("EmptyBench requires an EmptyBenchOracle")
-    if not isinstance(context, TrustedProfileContext):
+    if type(context) is not TrustedProfileContext:
         raise ModelValidationError(
             "EmptyBench requires an application-controlled TrustedProfileContext"
         )
-    if (
-        oracle.benchmark_id != corpus.benchmark_id
-        or oracle.benchmark_version != corpus.benchmark_version
-        or oracle.corpus_schema != corpus.corpus_schema
-        or oracle.corpus_digest != corpus.corpus_digest
-    ):
-        raise ModelValidationError("EmptyBench oracle is not bound to the supplied corpus")
+
+    # Frozen dataclasses are not a deep trust boundary in Python: callers can
+    # replace instances or mutate nested values. Re-enter the same strict JSON
+    # boundary used by the CLI, and require the custody input again at the point
+    # of scoring. Never trust that an object was parsed safely earlier.
+    try:
+        if type(corpus.cases) is not tuple or any(
+            type(case) is not EmptyBenchCase for case in corpus.cases
+        ):
+            raise ModelValidationError(
+                "EmptyBench corpus cases must be exact parsed case values"
+            )
+        supplied_expanded_cases = [
+            EmptyBenchCase.from_dict(EmptyBenchCase.to_dict(case)).to_dict()
+            for case in corpus.cases
+        ]
+        corpus = parse_corpus(EmptyBenchCorpus.to_dict(corpus))
+        reparsed_expanded_cases = [case.to_dict() for case in corpus.cases]
+        if not compare_digest(
+            canonical_json_bytes(supplied_expanded_cases),
+            canonical_json_bytes(reparsed_expanded_cases),
+        ):
+            raise ModelValidationError(
+                "EmptyBench expanded cases do not match the bound corpus definitions"
+            )
+        oracle = parse_oracle(
+            EmptyBenchOracle.to_dict(oracle),
+            corpus,
+            expected_digest=expected_oracle_digest,
+        )
+        context = TrustedProfileContext.from_dict(
+            TrustedProfileContext.to_dict(context)
+        )
+    except (AttributeError, KeyError, TypeError, ValueError) as exc:
+        if isinstance(exc, ModelValidationError):
+            raise
+        raise ModelValidationError(
+            "EmptyBench requires intact corpus and oracle artifacts"
+        ) from exc
 
     cases_by_id = {case.case_id: case for case in corpus.cases}
-    selected_ids = tuple(cases_by_id) if case_ids is None else tuple(case_ids)
+    selected_ids = (
+        tuple(cases_by_id)
+        if case_ids is None
+        else tuple(
+            _identifier(case_id, f"case_ids[{index}]")
+            for index, case_id in enumerate(case_ids)
+        )
+    )
     if not selected_ids:
         raise ModelValidationError("EmptyBench selection must contain at least one case")
     if len(set(selected_ids)) != len(selected_ids):
@@ -910,7 +954,13 @@ def run_seed_emptybench(*, all_cases: bool = False) -> EmptyBenchReport:
     selected = None
     if not all_cases:
         selected = tuple(case.case_id for case in corpus.cases if case.pair_id == "pagination")
-    return run_emptybench(corpus, oracle, seed_profile_context(), case_ids=selected)
+    return run_emptybench(
+        corpus,
+        oracle,
+        seed_profile_context(),
+        expected_oracle_digest=SEED_ORACLE_DIGEST,
+        case_ids=selected,
+    )
 
 
 def seed_cases() -> tuple[EmptyBenchCase, ...]:
