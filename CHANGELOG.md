@@ -131,6 +131,11 @@ binding remain open.
   `./scripts/setup.sh` before invoking `./scripts/check.sh`, which requires it
   in order to compare the source tree with the installed package. The
   comparison itself is unchanged.
+- The hero section now clips its decorative radial pseudo-element. `.hero::after`
+  is 520px wide at `right: -120px`, which made the page body scroll
+  horizontally on a narrow viewport: at 375px the document scroll width was
+  495px. Measured in a real browser against the deployed bytes, the document
+  scroll width now equals the client width.
 
 ### Boundaries
 

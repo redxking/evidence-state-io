@@ -656,3 +656,33 @@ reach their declared outcomes in the tested environment. It does not establish
 CI success at any commit, remote publication, Pages availability, Wiki
 completeness, benchmark custody, independent adjudication, external
 reproduction, or production readiness. Those remain separately observed states.
+
+### Deployed-demonstration review (2026-08-22, `8ee09e1`)
+
+The published Pages site was exercised in a real browser engine rather than
+inspected as source. All nine deployed assets were fetched unauthenticated from
+`https://redxking.github.io/evidence-state-io/` and their SHA-256 digests
+matched, byte for byte, a site built from an independent clean clone of the
+remote — so the artifacts under test were the deployed artifacts.
+
+Observed across the seven published scenarios: `valid` produced
+`PERMIT_SCOPED_NEGATIVE` with `ABSENT_WITHIN_SCOPE`; `incomplete`, `stale`,
+`ambiguous`, and `conflicting` produced `REJECT_NEGATIVE` with `PARTIAL`,
+`ABSENT_WITHIN_SCOPE`, `NOT_OBSERVED`, and `CONTRADICTORY` respectively;
+`tampered` produced `REJECT_UNVERIFIED_INPUT` and `invalid` produced
+`REJECT_INVALID_INPUT`, keeping input rejection distinct from a gate rejection.
+No console error, page error, or failed request was recorded, and no internal
+anchor was broken. The run control is reachable by keyboard alone and activates
+with Enter.
+
+One defect was found. At a 375px viewport the document scroll width was 495px,
+so the page body scrolled horizontally on a phone. The cause was the decorative
+`.hero::after` radial, 520px wide at `right: -120px`, which extended past the
+hero without being clipped. `.hero` now sets `overflow: clip`; the re-measured
+document scroll width equals the client width, and every scenario, the keyboard
+path, and the clean console were re-confirmed afterwards.
+
+This establishes deployed-artifact behaviour in one browser engine at two
+viewports. It does not establish cross-browser behaviour, an accessibility
+audit, assistive-technology testing, or that any displayed conclusion is true
+of any real system.
