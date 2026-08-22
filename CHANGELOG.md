@@ -119,6 +119,19 @@ binding remain open.
   that preserves the ordered reason codes and never establishes the positive
   opposite claim.
 
+### Fixed
+
+- `ProjectController.reconcile` no longer writes the tracked control ledgers
+  before a bounded verification command runs. Reconciled state and the
+  `reconciled` progress event are buffered and flushed after the command has
+  observed the worktree, so a task whose custody precondition is a clean tree
+  can actually pass. The `dirty` value bound into acceptance evidence is still
+  sampled before that write.
+- The CI `quality` job now provisions the repository-local environment with
+  `./scripts/setup.sh` before invoking `./scripts/check.sh`, which requires it
+  in order to compare the source tree with the installed package. The
+  comparison itself is unchanged.
+
 ### Boundaries
 
 - Initial results are local and synthetic unless explicitly recorded otherwise.

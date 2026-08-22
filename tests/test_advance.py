@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import io
 import json
 import subprocess
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from copy import deepcopy
 from pathlib import Path
 
@@ -162,6 +164,79 @@ class AdvanceTests(unittest.TestCase):
         criterion = controller.acceptance["criteria"][0]
         self.assertEqual(criterion["status"], "PASS")
         self.assertFalse(criterion["evidence"]["dirty"])
+
+    def test_reconcile_does_not_dirty_the_tree_before_a_clean_tree_verification(self) -> None:
+        """Reconciliation output must not invalidate a clean-tree precondition.
+
+        The controller writes the tracked control ledgers.  If it persisted
+        them before running a bounded verification command that requires a
+        clean worktree, that command could never pass.
+        """
+        self.tasks["tasks"][0].update(
+            {
+                "execution": {
+                    "mode": "verify",
+                    "commands": [["git", "diff-index", "--quiet", "HEAD", "--"]],
+                },
+                "pass_criteria": ["A-1"],
+            }
+        )
+        self._write_ledgers()
+        subprocess.run(["git", "add", "project", "src"], cwd=self.repo, check=True)
+        subprocess.run(
+            ["git", "commit", "-m", "verification task"],
+            cwd=self.repo,
+            check=True,
+            capture_output=True,
+        )
+        with redirect_stdout(io.StringIO()):
+            exit_code = main(
+                [
+                    "--repo",
+                    str(self.repo),
+                    "--reconcile",
+                    "--until-blocked",
+                    "--max-iterations",
+                    "1",
+                ]
+            )
+        self.assertEqual(exit_code, 0)
+        acceptance = json.loads(
+            (self.repo / "project" / "acceptance.json").read_text(encoding="utf-8")
+        )
+        criterion = acceptance["criteria"][0]
+        self.assertEqual(criterion["status"], "PASS")
+        self.assertFalse(criterion["evidence"]["dirty"])
+        events = [
+            json.loads(line)
+            for line in (self.repo / "project" / "progress.jsonl")
+            .read_text(encoding="utf-8")
+            .splitlines()
+            if line.strip()
+        ]
+        self.assertEqual(
+            [event["event"] for event in events][-2:],
+            ["reconciled", "task_verified"],
+        )
+
+    def test_deferred_reconciliation_is_persisted_when_no_task_runs(self) -> None:
+        with redirect_stdout(io.StringIO()):
+            exit_code = main(
+                [
+                    "--repo",
+                    str(self.repo),
+                    "--reconcile",
+                    "--until-blocked",
+                    "--max-iterations",
+                    "1",
+                ]
+            )
+        self.assertEqual(exit_code, 3)
+        state = json.loads((self.repo / "project" / "state.json").read_text(encoding="utf-8"))
+        self.assertEqual(state["repository"]["local"]["branch"], "main")
+        self.assertFalse(state["repository"]["local"]["dirty"])
+        events = (self.repo / "project" / "progress.jsonl").read_text(encoding="utf-8")
+        self.assertIn('"event":"reconciled"', events)
 
 
 if __name__ == "__main__":

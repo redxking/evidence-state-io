@@ -114,6 +114,47 @@ configuration or evidence, establish independent custody or adjudication,
 demonstrate market demand, authorize deployment, or establish production
 readiness.
 
+## MVP publication gate (2026-08-22)
+
+The machine-readable MVP acceptance ledger in `project/acceptance.json` is the
+authoritative record for the 27 publication criteria. The narrative record above
+describes checkpoint `38f390f` and is retained as history; it is not a claim
+about the current candidate.
+
+Observed at implementation checkpoint
+`cf03ffd032620afe244d5410dd84cfb10f46ce4f` on a clean worktree:
+
+- `./scripts/setup.sh` refreshed the repository-local package snapshot and
+  changed no tracked content.
+- `./scripts/acceptance.sh` completed with exit status `0`.
+- The fresh isolated Python 3.11 environment passed `397` tests; `ruff check`,
+  `ruff format --check`, and `mypy` reported no findings.
+- Branch coverage over the frozen deterministic core was `90%` against the
+  `--fail-under=90` boundary.
+- Python 3.11.16, 3.12.14, and 3.13.0 each passed `397/397` source tests, and
+  the isolated wheel installation passed `397/397`.
+- The dashboard lossless/safe-render regression and the browser-demo parity and
+  fail-closed regression passed.
+- `scripts/public_release_gate.py` returned `PASS` with no findings across
+  `165` tracked files.
+- EmptyBench reported `24/24` cases passed, `12/12` matched pairs
+  discriminated, zero unsafe permits, and zero false rejections.
+
+Two defects were then found by running the documented continuation and CI
+entry points rather than by reading them: the controller's reconcile step
+invalidated the clean-worktree precondition of its own verification command,
+and the CI `quality` job invoked `scripts/check.sh` without the
+repository-local environment that script requires. Both are recorded with their
+reproduction and remediation in `docs/REVIEW_LOG.md`. The successor commit must
+be verified in its own right; exact hash-bound evidence for it is written to
+`project/acceptance.json` and `project/progress.jsonl` by the bounded
+controller.
+
+This records a local gate result only. It does not establish remote
+publication, CI success, Pages availability, Wiki completeness, benchmark
+custody, independent adjudication, external reproduction, or production
+readiness.
+
 ## Next evidence gates
 
 Local package acceptance is complete. Advancement beyond it requires distinct,

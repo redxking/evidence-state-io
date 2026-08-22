@@ -580,3 +580,79 @@ final custody: the successor implementation must be committed, installed, and
 rerun across every supported runtime before local acceptance is recorded. The
 seed remains implementation-owned synthetic evidence, not independent
 adjudication, a frozen campaign, or external reproduction.
+
+## MVP continuation and publication-gate review (2026-08-22)
+
+Scope: the bounded continuation controller and the CI definition, reviewed
+against implementation checkpoint `cf03ffd`. This review was triggered by
+running the documented entry points rather than by reading them.
+
+### Established before the review
+
+`./scripts/setup.sh` followed by `./scripts/acceptance.sh` completed with exit
+status `0` on a clean worktree at `cf03ffd`. The stale repository-local package
+snapshot reported in the previous handoff was caused by an out-of-date `.venv`,
+not by a source defect; reinstalling reproduced source/installed equality
+without weakening `scripts/check.sh`.
+
+### Defect 1 — reconciliation invalidated its own verification precondition
+
+`python -m evidence_state_io.advance --repo . --reconcile --remote
+--until-blocked --max-iterations 1` failed immediately with
+`acceptance: the acceptance worktree must be clean`.
+
+`ProjectController.reconcile` persisted the four tracked control records and
+appended a `reconciled` progress event *before* `run_task` executed
+`./scripts/acceptance.sh`. That gate requires a clean worktree as its custody
+precondition, so the controller could never verify `MVP-TASK-001` in its own
+documented reconcile mode. The failure is preserved in `project/progress.jsonl`
+as a `verification_failed` event.
+
+The comment already present in `run_task` states the intended invariant. The
+defect was that `reconcile` did not honour it.
+
+### Defect 2 — the CI repository-check step could not pass
+
+`.github/workflows/ci.yml` ran `./scripts/check.sh` in the `quality` job, but
+that script requires a repository-local `.venv` in order to compare the source
+tree against the installed package. A hosted runner installs the project into
+the job interpreter and never creates `.venv`. Removing `.venv` locally and
+rerunning `./scripts/check.sh` reproduced the exact failure
+(`check: repository-local environment not found`, exit `1`), so the step could
+not have passed at any commit.
+
+### Remediation
+
+- `reconcile` accepts `persist`. When a bounded verification task may run in the
+  same invocation, the reconciled ledgers and the `reconciled` event are
+  buffered and flushed only after the verification command has observed the
+  worktree, preserving chronological order in `project/progress.jsonl`.
+- The `dirty` value bound into acceptance evidence is still sampled before the
+  buffered write, so the recorded custody state describes the tree the command
+  actually saw.
+- `main` flushes any buffered reconciliation even when no bounded task runs.
+- CI provisions the repository-local environment with `./scripts/setup.sh`
+  before invoking `./scripts/check.sh`, and invokes it with `env -u PYTHONPATH`
+  as the acceptance gate does. The source/installed comparison itself is
+  unchanged.
+
+Neither change alters a gateway decision path, a schema, a policy, an evaluator,
+a canonicalization rule, or a claim boundary. `advance.py` remains outside the
+deterministic core and outside its coverage boundary.
+
+### Regressions added
+
+- `test_reconcile_does_not_dirty_the_tree_before_a_clean_tree_verification`
+  drives `main` end to end and asserts the criterion reaches `PASS` with
+  `evidence.dirty == false` and the progress log ordered
+  `reconciled` then `task_verified`.
+- `test_deferred_reconciliation_is_persisted_when_no_task_runs` asserts the
+  buffered state is still written when the next task needs external action.
+
+### What this establishes and does not establish
+
+This establishes that the continuation controller and the CI definition can
+reach their declared outcomes in the tested environment. It does not establish
+CI success at any commit, remote publication, Pages availability, Wiki
+completeness, benchmark custody, independent adjudication, external
+reproduction, or production readiness. Those remain separately observed states.

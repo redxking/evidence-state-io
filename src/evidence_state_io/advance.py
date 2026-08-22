@@ -200,6 +200,30 @@ class ProjectController:
         self.tasks = _read_json(self.tasks_path)
         self.acceptance = _read_json(self.acceptance_path)
         _validate_ledgers(self.state, self.tasks, self.acceptance)
+        self._deferred_events: list[dict[str, Any]] = []
+        self._deferred_persist = False
+
+    def defer(self, event: dict[str, Any]) -> None:
+        """Hold a ledger write until a clean-tree verification command has run.
+
+        The tracked control records are excluded from watched-content
+        fingerprints, but writing them still dirties the worktree.  A bounded
+        verification task may require a clean tree as its custody
+        precondition, so reconciliation output is buffered until after the
+        command has been executed.
+        """
+        self._deferred_persist = True
+        self._deferred_events.append(event)
+
+    def flush_deferred(self) -> None:
+        """Persist any buffered reconciliation output, oldest event first."""
+        if not self._deferred_persist:
+            return
+        self._deferred_persist = False
+        events, self._deferred_events = self._deferred_events, []
+        self.save()
+        for event in events:
+            _append_event(self.progress_path, event)
 
     def save(self) -> None:
         _validate_ledgers(self.state, self.tasks, self.acceptance)
@@ -207,7 +231,7 @@ class ProjectController:
         _atomic_write_json(self.tasks_path, self.tasks)
         _atomic_write_json(self.acceptance_path, self.acceptance)
 
-    def reconcile(self, *, inspect_remote: bool = False) -> dict[str, Any]:
+    def reconcile(self, *, inspect_remote: bool = False, persist: bool = True) -> dict[str, Any]:
         now = _utc_now()
         head = _git(self.repo, "rev-parse", "HEAD").stdout.strip()
         branch = _git(self.repo, "branch", "--show-current").stdout.strip()
@@ -263,7 +287,6 @@ class ProjectController:
             if all(row["status"] == "PASS" for row in self.acceptance["criteria"])
             else "MVP_NOT_ACCEPTED"
         )
-        self.save()
         event = {
             "schema": "esio-progress-event/1.0",
             "at": now,
@@ -273,7 +296,11 @@ class ProjectController:
             "remote_commit": remote_commit,
             "stale_criteria": stale,
         }
-        _append_event(self.progress_path, event)
+        if persist:
+            self.save()
+            _append_event(self.progress_path, event)
+        else:
+            self.defer(event)
         return event
 
     def next_task(self) -> dict[str, Any] | None:
@@ -336,6 +363,7 @@ class ProjectController:
                 }
             )
             if result.returncode != 0:
+                self.flush_deferred()
                 task["status"] = "pending"
                 task["last_failure"] = {
                     "at": _utc_now(),
@@ -357,6 +385,7 @@ class ProjectController:
 
         head = _git(self.repo, "rev-parse", "HEAD").stdout.strip()
         dirty = bool(_git(self.repo, "status", "--porcelain").stdout)
+        self.flush_deferred()
         now = _utc_now()
         for identifier in task.get("pass_criteria", []):
             criterion = self._criterion(identifier)
@@ -475,7 +504,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
         with ProjectLock(controller.repo):
             if arguments.reconcile or arguments.until_blocked:
-                controller.reconcile(inspect_remote=arguments.remote)
+                controller.reconcile(
+                    inspect_remote=arguments.remote,
+                    persist=not arguments.until_blocked,
+                )
             results: list[dict[str, Any]] = []
             if arguments.until_blocked:
                 for _ in range(arguments.max_iterations):
@@ -486,6 +518,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     results.append(result)
                     if result["status"] != "verified":
                         break
+            controller.flush_deferred()
             pushed = None
             if arguments.commit_and_push:
                 pushed = controller.commit_and_push_state()

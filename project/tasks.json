@@ -25,11 +25,21 @@
       "dependencies": [],
       "execution": {
         "commands": [
-          ["./scripts/acceptance.sh"]
+          [
+            "./scripts/acceptance.sh"
+          ]
         ],
         "mode": "verify"
       },
       "id": "MVP-TASK-001",
+      "last_failure": {
+        "at": "2026-08-22T15:21:54Z",
+        "command": [
+          "./scripts/acceptance.sh"
+        ],
+        "output_tail": "acceptance: the acceptance worktree must be clean; use ESIO_ALLOW_DIRTY=1 only for development\n",
+        "returncode": 1
+      },
       "next_action": "Run the complete local acceptance gate and preserve its evidence.",
       "pass_criteria": [
         "MVP-ACC-001",
@@ -56,9 +66,17 @@
       "title": "Verify the complete local MVP gate"
     },
     {
-      "acceptance": ["MVP-ACC-018", "MVP-ACC-019", "MVP-ACC-020"],
-      "dependencies": ["MVP-TASK-001"],
-      "execution": {"mode": "external"},
+      "acceptance": [
+        "MVP-ACC-018",
+        "MVP-ACC-019",
+        "MVP-ACC-020"
+      ],
+      "dependencies": [
+        "MVP-TASK-001"
+      ],
+      "execution": {
+        "mode": "external"
+      },
       "id": "MVP-TASK-002",
       "next_action": "Push the coherent candidate, configure the remote, and verify CI at the exact commit.",
       "priority": 2,
@@ -66,9 +84,17 @@
       "title": "Publish and verify the accepted candidate"
     },
     {
-      "acceptance": ["MVP-ACC-021", "MVP-ACC-022", "MVP-ACC-023"],
-      "dependencies": ["MVP-TASK-002"],
-      "execution": {"mode": "external"},
+      "acceptance": [
+        "MVP-ACC-021",
+        "MVP-ACC-022",
+        "MVP-ACC-023"
+      ],
+      "dependencies": [
+        "MVP-TASK-002"
+      ],
+      "execution": {
+        "mode": "external"
+      },
       "id": "MVP-TASK-003",
       "next_action": "Deploy Pages, exercise the live browser demo, and publish and inspect every required Wiki page.",
       "priority": 3,
@@ -76,9 +102,15 @@
       "title": "Verify public Pages, demo, and Wiki"
     },
     {
-      "acceptance": ["MVP-ACC-024"],
-      "dependencies": ["MVP-TASK-002"],
-      "execution": {"mode": "external"},
+      "acceptance": [
+        "MVP-ACC-024"
+      ],
+      "dependencies": [
+        "MVP-TASK-002"
+      ],
+      "execution": {
+        "mode": "external"
+      },
       "id": "MVP-TASK-004",
       "next_action": "Populate and verify repository governance, security, community, and project-management surfaces.",
       "priority": 4,
@@ -86,9 +118,18 @@
       "title": "Complete professional GitHub configuration"
     },
     {
-      "acceptance": ["MVP-ACC-016", "MVP-ACC-025", "MVP-ACC-027"],
-      "dependencies": ["MVP-TASK-003", "MVP-TASK-004"],
-      "execution": {"mode": "external"},
+      "acceptance": [
+        "MVP-ACC-016",
+        "MVP-ACC-025",
+        "MVP-ACC-027"
+      ],
+      "dependencies": [
+        "MVP-TASK-003",
+        "MVP-TASK-004"
+      ],
+      "execution": {
+        "mode": "external"
+      },
       "id": "MVP-TASK-005",
       "next_action": "Reproduce from a clean remote clone, bind final documentation and manifests, and create the exact tagged release.",
       "priority": 5,

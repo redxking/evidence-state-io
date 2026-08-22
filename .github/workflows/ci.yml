@@ -47,11 +47,14 @@ jobs:
           coverage run --branch -m pytest -p no:cacheprovider -q
           coverage report --fail-under=90
 
+      - name: Provision the repository-local environment required by check.sh
+        run: ./scripts/setup.sh
+
       - name: Verify browser-demo parity and repository checks
         run: |
           python scripts/build_site.py --output .site-build
           node tests/test_site_demo.js
-          ./scripts/check.sh
+          env -u PYTHONPATH ./scripts/check.sh
 
       - name: Build distributions
         run: python -m build
