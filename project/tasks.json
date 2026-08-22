@@ -62,8 +62,10 @@
         "MVP-ACC-026"
       ],
       "priority": 1,
-      "status": "pending",
-      "title": "Verify the complete local MVP gate"
+      "status": "verified",
+      "title": "Verify the complete local MVP gate",
+      "verified_at": "2026-08-22T15:36:39Z",
+      "verified_commit": "45ce0b249a8a0ba565d4e80e2f1992cdc92231da"
     },
     {
       "acceptance": [

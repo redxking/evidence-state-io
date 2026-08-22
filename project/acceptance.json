@@ -1,8 +1,23 @@
 {
   "criteria": [
     {
+      "evidence": {
+        "at": "2026-08-22T15:36:39Z",
+        "commit": "45ce0b249a8a0ba565d4e80e2f1992cdc92231da",
+        "dirty": false,
+        "fingerprint": "sha256:42faa7360c196e298fed146342e575874a6d59a8e419466f0e4254b6ae96bd99",
+        "output_digests": [
+          "sha256:33a419c2fe4a01ccddc5dd056a15a56d77103c0db84e95005c27bafc01b1d082"
+        ],
+        "procedure": [
+          [
+            "./scripts/acceptance.sh"
+          ]
+        ],
+        "result": "PASS"
+      },
       "id": "MVP-ACC-001",
-      "status": "UNVERIFIED",
+      "status": "PASS",
       "title": "Complete product specification",
       "watched_paths": [
         "docs/PRD.md",
@@ -10,8 +25,23 @@
       ]
     },
     {
+      "evidence": {
+        "at": "2026-08-22T15:36:39Z",
+        "commit": "45ce0b249a8a0ba565d4e80e2f1992cdc92231da",
+        "dirty": false,
+        "fingerprint": "sha256:1ceade17f621329f85e726c8570f372bd1b435572737b8f46174af090329c4fc",
+        "output_digests": [
+          "sha256:33a419c2fe4a01ccddc5dd056a15a56d77103c0db84e95005c27bafc01b1d082"
+        ],
+        "procedure": [
+          [
+            "./scripts/acceptance.sh"
+          ]
+        ],
+        "result": "PASS"
+      },
       "id": "MVP-ACC-002",
-      "status": "UNVERIFIED",
+      "status": "PASS",
       "title": "Documented architecture and versioned ADRs",
       "watched_paths": [
         "docs/ARCHITECTURE.md",
@@ -19,8 +49,23 @@
       ]
     },
     {
+      "evidence": {
+        "at": "2026-08-22T15:36:39Z",
+        "commit": "45ce0b249a8a0ba565d4e80e2f1992cdc92231da",
+        "dirty": false,
+        "fingerprint": "sha256:7f1d114630494782cecb7411d73afec8f89e598867a8d9bfdc881cc19ecfdd22",
+        "output_digests": [
+          "sha256:33a419c2fe4a01ccddc5dd056a15a56d77103c0db84e95005c27bafc01b1d082"
+        ],
+        "procedure": [
+          [
+            "./scripts/acceptance.sh"
+          ]
+        ],
+        "result": "PASS"
+      },
       "id": "MVP-ACC-003",
-      "status": "UNVERIFIED",
+      "status": "PASS",
       "title": "Phased roadmap and traceable task system",
       "watched_paths": [
         "TASKS.md",
@@ -30,8 +75,23 @@
       ]
     },
     {
+      "evidence": {
+        "at": "2026-08-22T15:36:39Z",
+        "commit": "45ce0b249a8a0ba565d4e80e2f1992cdc92231da",
+        "dirty": false,
+        "fingerprint": "sha256:446235343f50c8ea3fd78b5fcbbd2da7623f84031be051fe08386393c36d1f95",
+        "output_digests": [
+          "sha256:33a419c2fe4a01ccddc5dd056a15a56d77103c0db84e95005c27bafc01b1d082"
+        ],
+        "procedure": [
+          [
+            "./scripts/acceptance.sh"
+          ]
+        ],
+        "result": "PASS"
+      },
       "id": "MVP-ACC-004",
-      "status": "UNVERIFIED",
+      "status": "PASS",
       "title": "Working deterministic fail-closed Python API and CLI",
       "watched_paths": [
         "src/**",
@@ -39,8 +99,23 @@
       ]
     },
     {
+      "evidence": {
+        "at": "2026-08-22T15:36:39Z",
+        "commit": "45ce0b249a8a0ba565d4e80e2f1992cdc92231da",
+        "dirty": false,
+        "fingerprint": "sha256:7ed45a9d0cdfb02c1ddc92aee3ca6cfcdd012f8193ec9d4eacf166b63696e79c",
+        "output_digests": [
+          "sha256:33a419c2fe4a01ccddc5dd056a15a56d77103c0db84e95005c27bafc01b1d082"
+        ],
+        "procedure": [
+          [
+            "./scripts/acceptance.sh"
+          ]
+        ],
+        "result": "PASS"
+      },
       "id": "MVP-ACC-005",
-      "status": "UNVERIFIED",
+      "status": "PASS",
       "title": "Versioned schemas fixtures examples and compatibility rules",
       "watched_paths": [
         "src/**",
@@ -50,8 +125,23 @@
       ]
     },
     {
+      "evidence": {
+        "at": "2026-08-22T15:36:39Z",
+        "commit": "45ce0b249a8a0ba565d4e80e2f1992cdc92231da",
+        "dirty": false,
+        "fingerprint": "sha256:d113bafeeac442e9e5568a5358e25dc15bfdffdd64095e7d73289cf672294306",
+        "output_digests": [
+          "sha256:33a419c2fe4a01ccddc5dd056a15a56d77103c0db84e95005c27bafc01b1d082"
+        ],
+        "procedure": [
+          [
+            "./scripts/acceptance.sh"
+          ]
+        ],
+        "result": "PASS"
+      },
       "id": "MVP-ACC-006",
-      "status": "UNVERIFIED",
+      "status": "PASS",
       "title": "Reproducible benchmark and adversarial scaffold",
       "watched_paths": [
         "benchmarks/**",
@@ -61,8 +151,23 @@
       ]
     },
     {
+      "evidence": {
+        "at": "2026-08-22T15:36:39Z",
+        "commit": "45ce0b249a8a0ba565d4e80e2f1992cdc92231da",
+        "dirty": false,
+        "fingerprint": "sha256:3aa37d6e87d2b3726d1413f9d7393807151a964129e46b8430a90477c429c03c",
+        "output_digests": [
+          "sha256:33a419c2fe4a01ccddc5dd056a15a56d77103c0db84e95005c27bafc01b1d082"
+        ],
+        "procedure": [
+          [
+            "./scripts/acceptance.sh"
+          ]
+        ],
+        "result": "PASS"
+      },
       "id": "MVP-ACC-007",
-      "status": "UNVERIFIED",
+      "status": "PASS",
       "title": "Comprehensive automated tests and branch coverage",
       "watched_paths": [
         "src/**",
@@ -72,8 +177,23 @@
       ]
     },
     {
+      "evidence": {
+        "at": "2026-08-22T15:36:39Z",
+        "commit": "45ce0b249a8a0ba565d4e80e2f1992cdc92231da",
+        "dirty": false,
+        "fingerprint": "sha256:ba3343c05247123539d515943bddd22ca3007d6f6237ec389ccd47f5e706c731",
+        "output_digests": [
+          "sha256:33a419c2fe4a01ccddc5dd056a15a56d77103c0db84e95005c27bafc01b1d082"
+        ],
+        "procedure": [
+          [
+            "./scripts/acceptance.sh"
+          ]
+        ],
+        "result": "PASS"
+      },
       "id": "MVP-ACC-008",
-      "status": "UNVERIFIED",
+      "status": "PASS",
       "title": "Complete developer operator security integration and audience documentation",
       "watched_paths": [
         "README.md",
@@ -86,8 +206,23 @@
       ]
     },
     {
+      "evidence": {
+        "at": "2026-08-22T15:36:39Z",
+        "commit": "45ce0b249a8a0ba565d4e80e2f1992cdc92231da",
+        "dirty": false,
+        "fingerprint": "sha256:5c77b93a3b148c3733f6bc22d66b4a28cd36cf1e1321859baebd66c690077323",
+        "output_digests": [
+          "sha256:33a419c2fe4a01ccddc5dd056a15a56d77103c0db84e95005c27bafc01b1d082"
+        ],
+        "procedure": [
+          [
+            "./scripts/acceptance.sh"
+          ]
+        ],
+        "result": "PASS"
+      },
       "id": "MVP-ACC-009",
-      "status": "UNVERIFIED",
+      "status": "PASS",
       "title": "Fresh isolated installation and end-to-end API and CLI",
       "watched_paths": [
         "src/**",
@@ -98,8 +233,23 @@
       ]
     },
     {
+      "evidence": {
+        "at": "2026-08-22T15:36:39Z",
+        "commit": "45ce0b249a8a0ba565d4e80e2f1992cdc92231da",
+        "dirty": false,
+        "fingerprint": "sha256:9caf0bd3b507b885ff7ea51a6b2682cfdd0745cd485a1155f6ee5db3c2a8ed2d",
+        "output_digests": [
+          "sha256:33a419c2fe4a01ccddc5dd056a15a56d77103c0db84e95005c27bafc01b1d082"
+        ],
+        "procedure": [
+          [
+            "./scripts/acceptance.sh"
+          ]
+        ],
+        "result": "PASS"
+      },
       "id": "MVP-ACC-010",
-      "status": "UNVERIFIED",
+      "status": "PASS",
       "title": "One hundred repetitions of every golden fixture are byte-identical",
       "watched_paths": [
         "src/**",
@@ -109,8 +259,23 @@
       ]
     },
     {
+      "evidence": {
+        "at": "2026-08-22T15:36:39Z",
+        "commit": "45ce0b249a8a0ba565d4e80e2f1992cdc92231da",
+        "dirty": false,
+        "fingerprint": "sha256:bd9192e1ff9c5a24a9547c30eccb0803bd6d0128234d8fbdef9395e72a27fd79",
+        "output_digests": [
+          "sha256:33a419c2fe4a01ccddc5dd056a15a56d77103c0db84e95005c27bafc01b1d082"
+        ],
+        "procedure": [
+          [
+            "./scripts/acceptance.sh"
+          ]
+        ],
+        "result": "PASS"
+      },
       "id": "MVP-ACC-011",
-      "status": "UNVERIFIED",
+      "status": "PASS",
       "title": "Every documented fail-closed reason has negative evidence",
       "watched_paths": [
         "src/**",
@@ -119,8 +284,23 @@
       ]
     },
     {
+      "evidence": {
+        "at": "2026-08-22T15:36:39Z",
+        "commit": "45ce0b249a8a0ba565d4e80e2f1992cdc92231da",
+        "dirty": false,
+        "fingerprint": "sha256:f5c83dc1de09a3468405b47da84fea0c920d9a0d2e4d5580e1c140535b0f64c7",
+        "output_digests": [
+          "sha256:33a419c2fe4a01ccddc5dd056a15a56d77103c0db84e95005c27bafc01b1d082"
+        ],
+        "procedure": [
+          [
+            "./scripts/acceptance.sh"
+          ]
+        ],
+        "result": "PASS"
+      },
       "id": "MVP-ACC-012",
-      "status": "UNVERIFIED",
+      "status": "PASS",
       "title": "Tamper replay and idempotency contracts pass",
       "watched_paths": [
         "src/**",
@@ -130,8 +310,23 @@
       ]
     },
     {
+      "evidence": {
+        "at": "2026-08-22T15:36:39Z",
+        "commit": "45ce0b249a8a0ba565d4e80e2f1992cdc92231da",
+        "dirty": false,
+        "fingerprint": "sha256:1fcd142ae6d3b5134dd6e1d3f6b5c689542eb3309807d8498c1c2e357eb06bf3",
+        "output_digests": [
+          "sha256:33a419c2fe4a01ccddc5dd056a15a56d77103c0db84e95005c27bafc01b1d082"
+        ],
+        "procedure": [
+          [
+            "./scripts/acceptance.sh"
+          ]
+        ],
+        "result": "PASS"
+      },
       "id": "MVP-ACC-013",
-      "status": "UNVERIFIED",
+      "status": "PASS",
       "title": "Offline benchmark emits human and machine readable correctness-first results",
       "watched_paths": [
         "src/evidence_state_io/emptybench.py",
@@ -141,8 +336,23 @@
       ]
     },
     {
+      "evidence": {
+        "at": "2026-08-22T15:36:39Z",
+        "commit": "45ce0b249a8a0ba565d4e80e2f1992cdc92231da",
+        "dirty": false,
+        "fingerprint": "sha256:736cf99ee4a1dd05917cde12409ebfd2130e0a70e346fbb037d533926a69fa9c",
+        "output_digests": [
+          "sha256:33a419c2fe4a01ccddc5dd056a15a56d77103c0db84e95005c27bafc01b1d082"
+        ],
+        "procedure": [
+          [
+            "./scripts/acceptance.sh"
+          ]
+        ],
+        "result": "PASS"
+      },
       "id": "MVP-ACC-014",
-      "status": "UNVERIFIED",
+      "status": "PASS",
       "title": "Unit schema contract integration property adversarial packaging and clean-start gates pass",
       "watched_paths": [
         "src/**",
@@ -153,8 +363,23 @@
       ]
     },
     {
+      "evidence": {
+        "at": "2026-08-22T15:36:39Z",
+        "commit": "45ce0b249a8a0ba565d4e80e2f1992cdc92231da",
+        "dirty": false,
+        "fingerprint": "sha256:d466d733c1d34014e2ffa25739ab5a52d1fc14ed89ed22bbe8332392eae78c69",
+        "output_digests": [
+          "sha256:33a419c2fe4a01ccddc5dd056a15a56d77103c0db84e95005c27bafc01b1d082"
+        ],
+        "procedure": [
+          [
+            "./scripts/acceptance.sh"
+          ]
+        ],
+        "result": "PASS"
+      },
       "id": "MVP-ACC-015",
-      "status": "UNVERIFIED",
+      "status": "PASS",
       "title": "No unresolved MVP critical or high defect",
       "watched_paths": [
         "src/**",
@@ -165,8 +390,23 @@
       ]
     },
     {
+      "evidence": {
+        "at": "2026-08-22T15:36:39Z",
+        "commit": "45ce0b249a8a0ba565d4e80e2f1992cdc92231da",
+        "dirty": false,
+        "fingerprint": "sha256:f812f0f3303e0a6711ae82dfe85bed15fddb557a4e88af9a079e103c54c6b06f",
+        "output_digests": [
+          "sha256:33a419c2fe4a01ccddc5dd056a15a56d77103c0db84e95005c27bafc01b1d082"
+        ],
+        "procedure": [
+          [
+            "./scripts/acceptance.sh"
+          ]
+        ],
+        "result": "PASS"
+      },
       "id": "MVP-ACC-016",
-      "status": "UNVERIFIED",
+      "status": "PASS",
       "title": "Documentation matches observed behavior",
       "watched_paths": [
         "README.md",
@@ -178,8 +418,23 @@
       ]
     },
     {
+      "evidence": {
+        "at": "2026-08-22T15:36:39Z",
+        "commit": "45ce0b249a8a0ba565d4e80e2f1992cdc92231da",
+        "dirty": false,
+        "fingerprint": "sha256:e3149b716119df98184d3617b0bf29848f7d0a1caa1a6d90db96acc0b813cdc4",
+        "output_digests": [
+          "sha256:33a419c2fe4a01ccddc5dd056a15a56d77103c0db84e95005c27bafc01b1d082"
+        ],
+        "procedure": [
+          [
+            "./scripts/acceptance.sh"
+          ]
+        ],
+        "result": "PASS"
+      },
       "id": "MVP-ACC-017",
-      "status": "UNVERIFIED",
+      "status": "PASS",
       "title": "Public release gate and Apache-2.0 licensing pass",
       "watched_paths": [
         "LICENSE",
@@ -272,8 +527,23 @@
       ]
     },
     {
+      "evidence": {
+        "at": "2026-08-22T15:36:39Z",
+        "commit": "45ce0b249a8a0ba565d4e80e2f1992cdc92231da",
+        "dirty": false,
+        "fingerprint": "sha256:ddae97c5633166f525479c744a62d59af7e553e9dafb825edbe4e3b272e5b59d",
+        "output_digests": [
+          "sha256:33a419c2fe4a01ccddc5dd056a15a56d77103c0db84e95005c27bafc01b1d082"
+        ],
+        "procedure": [
+          [
+            "./scripts/acceptance.sh"
+          ]
+        ],
+        "result": "PASS"
+      },
       "id": "MVP-ACC-026",
-      "status": "UNVERIFIED",
+      "status": "PASS",
       "title": "Bounded repository-local and scheduled continuation mechanisms are verified",
       "watched_paths": [
         "src/evidence_state_io/advance.py",

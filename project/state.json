@@ -6,18 +6,18 @@
   "repository": {
     "local": {
       "branch": "main",
-      "commit": "cf03ffd032620afe244d5410dd84cfb10f46ce4f",
+      "commit": "45ce0b249a8a0ba565d4e80e2f1992cdc92231da",
       "dirty": false
     },
     "remote": {
       "default_branch": "main",
       "name": "origin",
-      "observed_at": "2026-08-22T15:21:54Z",
+      "observed_at": "2026-08-22T15:31:51Z",
       "reachable": false,
       "url": "https://github.com/redxking/evidence-state-io"
     }
   },
   "schema": "esio-project-state/1.0",
   "task_ledger": "project/tasks.json",
-  "updated_at": "2026-08-22T15:21:54Z"
+  "updated_at": "2026-08-22T15:36:39Z"
 }
