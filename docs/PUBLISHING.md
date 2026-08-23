@@ -39,9 +39,34 @@ changing only the environment:
 |---|---|
 | Environment name | `pypi` |
 
-Nothing else is required. GitHub environments named `testpypi` and `pypi` are
-created on first use; adding a required reviewer to the `pypi` environment is
-optional and makes the irreversible step a manual approval.
+### 3. Turn index publication on
+
+```bash
+gh variable set PUBLISH_TO_INDEX --body true
+```
+
+Index publication is opt-in, so a release can ship its GitHub artifacts before
+the publishers exist without failing a step that was never going to succeed.
+Until this variable is `true`, a tag produces a GitHub release and nothing is
+sent to any index.
+
+GitHub environments named `testpypi` and `pypi` are created on first use.
+Adding a required reviewer to the `pypi` environment is optional and makes the
+irreversible step a manual approval.
+
+## Installing before a release reaches an index
+
+A GitHub release is already a distribution channel. Every tagged release
+carries a wheel and an sdist that pip installs directly:
+
+```bash
+pip install https://github.com/redxking/evidence-state-io/releases/download/v0.7.0/evidence_state_io-0.7.0-py3-none-any.whl
+```
+
+The artifacts are checksummed in `SHA256SUMS` and carry build provenance
+attestations, so this path is verifiable in the same way an index install is.
+It is less convenient than `pip install evidence-state-io`, and that is the only
+respect in which it is worse.
 
 ## What a release does
 

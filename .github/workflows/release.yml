@@ -142,6 +142,11 @@ jobs:
   publish-testpypi:
     name: Publish to TestPyPI
     needs: build-test
+    # Index publication is opt-in via a repository variable, so a release can
+    # ship its GitHub artifacts before the trusted publishers are registered
+    # and without a red X for a step that was never going to succeed. Set
+    # PUBLISH_TO_INDEX to "true" once both pending publishers exist.
+    if: vars.PUBLISH_TO_INDEX == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # Trusted publishing: an OIDC identity minted for this job, scoped to this
@@ -173,6 +178,7 @@ jobs:
   verify-testpypi:
     name: Install from TestPyPI and verify
     needs: publish-testpypi
+    if: vars.PUBLISH_TO_INDEX == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -250,6 +256,7 @@ jobs:
     # Only after the same artifacts were installed from an index and verified.
     # A PyPI version can never be replaced, so the irreversible step goes last.
     needs: [release, verify-testpypi]
+    if: vars.PUBLISH_TO_INDEX == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment:
