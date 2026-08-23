@@ -119,6 +119,33 @@ owners and issuers, adapter identity, source clocks, index watermarks,
 late-arrival/reopen bounds, and ingestion completeness are still assertions,
 not authenticated or empirically validated facts.
 
+## Use it from an agent
+
+The gate is reachable over MCP, so an agent can route a negative claim through
+it without any code change. The server is stdio, has no dependencies, opens no
+sockets, and reads no clock.
+
+```jsonc
+// In your MCP client's server configuration
+{
+  "mcpServers": {
+    "evidence-state": { "command": "evidence-state-mcp" }
+  }
+}
+```
+
+It exposes three tools:
+
+| Tool | What it is for |
+|---|---|
+| `describe_evidence_requirements` | What an envelope must carry for a negative claim to be assessable at all, and what a permit does and does not establish. Call this first. |
+| `assess_negative_claim` | Decide whether declared evidence supports the claim. Returns a qualified claim naming the scope it is conditional on, or ordered reason codes. |
+| `explain_rejection` | Turn a rejection into the conditions that would have to become true, each classified, and on a composed claim attributed to the source that fell short. |
+
+The conditions in a remedy describe the world and the evidence. They never name
+a field to edit, and editing a request to obtain a permit is fabrication rather
+than remediation.
+
 ## Product direction
 
 The project builds toward three connected products:
@@ -130,6 +157,9 @@ The project builds toward three connected products:
 The first vertical profile is cyber investigation and threat hunting. The underlying contract is intended to remain domain-neutral.
 
 ## Start here
+
+New here? [QUICKSTART.md](QUICKSTART.md) — five minutes from install to a real
+negative claim about a real system.
 
 1. Read [HANDOFF.md](HANDOFF.md).
 2. Read [PROJECT_STATUS.md](PROJECT_STATUS.md) and [TASKS.md](TASKS.md); finish the active acceptance/custody item before taking another feature.

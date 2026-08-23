@@ -138,4 +138,94 @@ if any(summary.get(key) != value for key, value in expected.items()):
 print(json.dumps({"emptybench_composed": expected, "status": "PASS"}, sort_keys=True))
 PY
 
+# The MCP server is a transport, and the property it must not break is the
+# one the project rests on: the same input produces the same decision, and
+# the decision is the library's.  Replay a fixed frame sequence through the
+# installed server from inside and outside a checkout, then check the
+# assessment against a decision computed directly from the library.
+"${WHEEL_VENV}/bin/python" - > "${ACCEPTANCE_TEMP}/mcp-frames.jsonl" <<'PY'
+import json
+
+from evidence_state_io.emptybench import seed_case_dicts, seed_profile_context
+
+context = seed_profile_context().to_dict()
+request = seed_case_dicts()[0]["request"]
+frames = [
+    {"jsonrpc": "2.0", "id": 1, "method": "server/discover"},
+    {"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
+    {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "tools/call",
+        "params": {"name": "describe_evidence_requirements", "arguments": {}},
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 4,
+        "method": "tools/call",
+        "params": {
+            "name": "assess_negative_claim",
+            "arguments": {
+                "request": request,
+                "registry_snapshot": context["registry_snapshot"],
+                "trust_selection": context["trust_selection"],
+            },
+        },
+    },
+]
+for frame in frames:
+    print(json.dumps(frame, sort_keys=True))
+PY
+
+( cd "${ISOLATED}"
+  env -u PYTHONPATH "${WHEEL_VENV}/bin/evidence-state-mcp" < "${ACCEPTANCE_TEMP}/mcp-frames.jsonl"
+) > "${ACCEPTANCE_TEMP}/mcp-isolated.jsonl"
+env -u PYTHONPATH "${WHEEL_VENV}/bin/evidence-state-mcp" < "${ACCEPTANCE_TEMP}/mcp-frames.jsonl" \
+  > "${ACCEPTANCE_TEMP}/mcp-from-repo.jsonl"
+cmp -s "${ACCEPTANCE_TEMP}/mcp-isolated.jsonl" "${ACCEPTANCE_TEMP}/mcp-from-repo.jsonl" \
+  || fail "installed MCP server output depends on the working directory"
+
+"${FRESH_VENV}/bin/python" - "${ACCEPTANCE_TEMP}/mcp-isolated.jsonl" <<'PY'
+import json
+import sys
+
+from evidence_state_io.emptybench import seed_case_dicts, seed_profile_context
+from evidence_state_io.gate import NegativeClaimRequest, evaluate_negative_claim
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    responses = {
+        json.loads(line)["id"]: json.loads(line) for line in handle if line.strip()
+    }
+
+if sorted(responses) != [1, 2, 3, 4]:
+    raise SystemExit(f"MCP server did not answer every request: {sorted(responses)}")
+
+discover = responses[1]["result"]
+if not discover["protocolVersions"] or "tools" not in discover["capabilities"]:
+    raise SystemExit("MCP server advertised no protocol version or no tools capability")
+
+listed = [tool["name"] for tool in responses[2]["result"]["tools"]]
+expected_tools = ["assess_negative_claim", "explain_rejection", "describe_evidence_requirements"]
+if listed != expected_tools:
+    raise SystemExit(f"unexpected MCP tool list: {listed}")
+
+for identifier in (3, 4):
+    if responses[identifier]["result"]["isError"]:
+        raise SystemExit(f"MCP tool call {identifier} returned an error")
+
+served = responses[4]["result"]["structuredContent"]
+expected = evaluate_negative_claim(
+    NegativeClaimRequest.from_dict(seed_case_dicts()[0]["request"]),
+    seed_profile_context(),
+).to_dict()
+if served != expected:
+    raise SystemExit("MCP server decision differs from the library decision")
+if served["decision"] != "PERMIT_SCOPED_NEGATIVE":
+    raise SystemExit(f"unexpected seed decision through MCP: {served['decision']}")
+
+if json.loads(responses[4]["result"]["content"][0]["text"]) != served:
+    raise SystemExit("MCP text content differs from its structured content")
+
+print(json.dumps({"mcp_server": {"tools": expected_tools, "decision_matches_library": True}, "status": "PASS"}, sort_keys=True))
+PY
 printf 'MVP local acceptance gate passed at %s.\n' "$(git rev-parse HEAD)"

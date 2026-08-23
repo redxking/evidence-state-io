@@ -1,5 +1,6 @@
 """Evidence-State I/O public API."""
 
+from .builder import EvidenceBuilder, SourceReading
 from .canonical import (
     CANONICALIZATION_PROFILE,
     DIGEST_ALGORITHM,
@@ -182,6 +183,7 @@ __all__ = [
     "RemedyClass",
     "RemedyItem",
     "SourceContribution",
+    "SourceReading",
     "CoverageProfileReference",
     "CoverageAssessment",
     "CoverageComponent",
@@ -197,6 +199,7 @@ __all__ = [
     "EmptyBenchOracleRule",
     "EmptyBenchOutcome",
     "EmptyBenchReport",
+    "EvidenceBuilder",
     "EvidenceCertificate",
     "EvidenceCertificatePayload",
     "EvidenceOrigin",

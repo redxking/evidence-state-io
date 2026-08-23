@@ -70,6 +70,18 @@ authorizes production use.
 - Run the core library, CLI, demo, and tests on Python 3.11, 3.12, or 3.13 on a laptop without
   Docker or external services.
 
+### Integration surface
+
+`evidence_state_io.mcp_server` is a stdio MCP server over the same pure
+evaluator the CLI and library use. It adds no evaluation logic: the acceptance
+gate replays a fixed frame sequence through the installed server and requires
+the served decision to equal one computed directly from the library, so the
+transport cannot become a second evaluator.
+
+It has no SDK dependency, in keeping with the package's zero-runtime-dependency
+property, and answers both the pre-`2026-07-28` `initialize` handshake and the
+stateless `server/discover` path that replaced it.
+
 ## Non-goals for P0
 
 - Proving universal or metaphysical absence.

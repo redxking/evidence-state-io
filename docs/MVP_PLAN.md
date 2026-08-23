@@ -232,13 +232,26 @@ outside the repository, unless the owner authorizes those separately.
 
 | Order | Item | Authorization | State |
 |---|---|---|---|
-| 1 | 1.1 MCP server | none needed | in progress |
-| 2 | 1.2 Envelope builder | none needed | queued |
-| 3 | 1.3 Adapter contract + recorded adapter | none needed | queued |
-| 4 | 4 Live public read-only GitHub adapter | granted 2026-08-22 | queued |
-| 5 | 1.4 Quickstart | none needed | queued |
-| 6 | 2 TestPyPI, verify, then PyPI | granted 2026-08-22 | queued |
+| 1 | 1.1 MCP server | none needed | **done** |
+| 2 | 1.2 Envelope builder | none needed | **done** |
+| 3 | 1.3 Adapter contract + recorded adapter | none needed | **done** |
+| 4 | 4 Live public read-only GitHub adapter | granted 2026-08-22 | **done** |
+| 5 | 1.4 Quickstart | none needed | **done** |
+| 6 | 2 TestPyPI, verify, then PyPI | granted 2026-08-22 | next |
 | 7 | 3 Preregister, then run the campaign | granted 2026-08-22 | queued |
+
+### What the first live reading established, 2026-08-23
+
+The first call to a real system returned zero results cleanly, and the claim
+was still refused. Three of the four reasons are the caller's to fix: supply a
+governed profile, supply a registry snapshot, declare a validity boundary. The
+fourth is not fixable by any caller — GitHub publishes no index watermark — and
+that is the honest finding. A negative claim about GitHub search cannot reach
+the P0 safety floor, and the system says precisely why instead of quietly
+permitting it.
+
+The recorded response is committed under `examples/recorded/`, so the finding is
+reproducible without network access.
 
 The live adapter follows the recorded one immediately because it is the same
 contract with a different transport, and building the recorded one first means

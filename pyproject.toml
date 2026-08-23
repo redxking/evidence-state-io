@@ -32,6 +32,7 @@ dev = [
 
 [project.scripts]
 evidence-state = "evidence_state_io.cli:main"
+evidence-state-mcp = "evidence_state_io.mcp_server:main"
 
 [tool.setuptools]
 package-dir = { "" = "src" }

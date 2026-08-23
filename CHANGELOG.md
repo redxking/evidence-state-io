@@ -65,6 +65,78 @@ All notable project changes should be recorded here. Dates use ISO 8601.
   from the package root. The remedy surface was reachable only by module path
   before, which made a headline capability effectively private.
 
+- **`EvidenceBuilder`, a producer-side API.** Authoring an envelope by hand is
+  about a hundred lines of JSON, and the hardest part of adoption should not be
+  describing what you already did. The builder assembles one from the facts a
+  source reported.
+- No completeness fact has a default. `pagination_complete`,
+  `partitions_complete`, `timed_out`, `interrupted`, and `permission_limited`
+  are all required, so a caller who has not thought about them cannot inherit
+  the optimistic answer. A builder whose defaults were all `True` would
+  manufacture exactly the coverage this project exists to refuse.
+- The caller does not declare the evidence state; it is derived. A source that
+  saw a match reports presence whatever else went wrong; a source whose run
+  faulted reports nothing about absence, because an enumeration that broke
+  partway is not a search that finished and found nothing; only a complete,
+  unfaulted enumeration reaches in-scope absence. The gate still checks the
+  result.
+- Composed envelopes take the aggregate coverage from the strongest single
+  source, never a sum, so a builder-produced envelope cannot be rejected for
+  overstating what its sources jointly guarantee.
+
+- **A read-only adapter contract, and an adapter over GitHub's public search.**
+  The contract's whole subject is incompleteness: enumeration state, execution
+  faults, the denominator, and index state. An adapter that cannot determine one
+  of them must say so rather than guess.
+- The GitHub adapter reports what the API will not tell you. Its 1000-result cap
+  means draining pagination is not completing enumeration, and the two are
+  reported separately. `incomplete_results` means GitHub's own search timed out,
+  and the result list looks exactly like a complete one. Rate limiting stops a
+  run early with an equally ordinary-looking list. Each becomes a coverage fact
+  instead of an empty result.
+- **The adapter reports no index time, because GitHub publishes none.** Under
+  the P0 safety floor a negative claim about GitHub search is therefore refused,
+  and the remedy says exactly why. That is the correct outcome: nothing can
+  distinguish "the index does not contain it" from "it does not exist", and an
+  adapter that invented a timestamp would fabricate the single fact separating
+  those two statements.
+- Transport is separated from interpretation, so a recorded response from disk
+  and a live HTTPS call produce the same reading. `examples/recorded/` holds a
+  real GitHub response, frozen.
+- The live transport is the only module that opens a connection and is never
+  imported by the core; a test asserts that importing the package does not
+  import `urllib.request`. It issues `GET` only, verifies certificates with no
+  option to disable that, and reads a token only when the caller opts in, never
+  logging, storing, or recording it. Each of those is verified by a test rather
+  than assumed.
+
+- **`QUICKSTART.md` and `examples/quickstart.py`.** Five minutes from install to
+  a real negative claim about a real system, ending where it should: with a
+  refusal the reader understands.
+
+- **`evidence-state-mcp`, an MCP stdio server.** The product's own
+  description — a deterministic runtime between agents and tools — is an MCP
+  server's job description, and until now there was no way for an agent to
+  reach the gate at all. Three tools: `assess_negative_claim`,
+  `explain_rejection`, and `describe_evidence_requirements`, which tells a
+  caller what evidence a claim needs before it has gathered any.
+- The server has no SDK dependency. The package has no runtime dependencies and
+  that is deliberate: a deterministic evaluator that pulls in a transitive tree
+  is harder to audit and easier to break. A tools-only stdio server is a small
+  JSON-RPC surface, so it is implemented directly.
+- Two protocol generations are served from one implementation. Revision
+  `2026-07-28` removed the `initialize` handshake, made every request carry its
+  own protocol version, and requires `server/discover`; earlier revisions
+  require `initialize`. Both are answered, because a server that spoke only the
+  newest revision would be unreachable from most clients in use.
+- The transport does not become a second evaluator. `evaluated_at` stays a
+  required input, so the server never reads a clock; a rejection is a normal
+  result rather than a transport error, because a refusal is the product
+  working; and the acceptance gate replays a fixed frame sequence through the
+  installed server from inside and outside a checkout, requires byte-identical
+  output, and checks the served decision against one computed directly from the
+  library.
+
 - **`EmptyBench-P1-composed`, a benchmark for the composed path.** Unit tests
   pin the composition rules; they cannot measure whether the gate
   *discriminates*. Six pairs do: disagreement, per-source coverage, the composed
