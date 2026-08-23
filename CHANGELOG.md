@@ -4,6 +4,8 @@ All notable project changes should be recorded here. Dates use ISO 8601.
 
 ## Unreleased
 
+## 0.7.0 - 2026-08-23
+
 ### Added
 
 - `esio-multi-source-composition/1.0-candidate.1` and

@@ -77,6 +77,43 @@ Compare against `SHA256SUMS` on the corresponding GitHub release. The release
 also carries PEP 740 attestations produced during publication and a build
 provenance attestation, both verifiable with `gh attestation verify`.
 
+## Rolling back a release
+
+A PyPI version can never be replaced, deleted, and reused. Rollback is therefore
+not "undo"; it is two steps.
+
+1. **Yank the bad version.** On the project's PyPI page, mark the release
+   yanked with a reason. A yanked version stays downloadable for anyone who
+   pinned it exactly, so existing lockfiles do not break, but no new resolution
+   will select it. This is the right tool for "this version is wrong", and it is
+   reversible.
+2. **Publish the fix as a new patch version.** Tag it; the same pipeline runs,
+   including the install-from-the-index verification that should have caught the
+   defect.
+
+Deleting a release is almost never correct: it breaks every environment that
+pinned it and it erases the record of what was published. `v0.6.0` was handled
+this way — it remains published and immutable, its release notes carry a warning
+banner, and `v0.6.1` supersedes it. The failure is in public history where it
+belongs.
+
+If a release is found to be wrong *before* PyPI publication, the pipeline has
+already stopped: the TestPyPI install-and-verify step runs first, and PyPI is
+never reached.
+
+## Health check
+
+There is no service to monitor. The equivalent checks are:
+
+```bash
+evidence-state demo --all                      # 12 of 12 pairs discriminated
+evidence-state demo --benchmark composed --all # 6 of 6
+printf '{"jsonrpc":"2.0","id":1,"method":"tools/list"}\n' | evidence-state-mcp
+```
+
+Any of them failing on a fresh install is a release defect, and each runs in
+CI on every push and in the release pipeline against the published artifact.
+
 ## What publication does not establish
 
 A package on PyPI is a distribution channel, not evidence. It does not establish
