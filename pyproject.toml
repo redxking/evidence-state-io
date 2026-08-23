@@ -5,21 +5,38 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "evidence-state-io"
 version = "0.7.0"
-description = "Typed evidence-state envelopes and deterministic negative-claim gating"
+description = "An empty tool result is not evidence of absence. Deterministic gating for negative claims."
+readme = "README.md"
 requires-python = ">=3.11,<3.14"
 license = { file = "LICENSE" }
 dependencies = []
 authors = [{ name = "Evidence-State I/O contributors" }]
 keywords = ["ai", "evidence", "coverage", "provenance", "tool-protocols"]
 classifiers = [
-  "Development Status :: 2 - Pre-Alpha",
+  # Alpha rather than pre-alpha: it installs, it is callable over MCP, and it
+  # has been run against a real source. It is not production-ready and the
+  # README says so in the same breath.
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Information Technology",
   "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Software Development :: Quality Assurance",
   "Typing :: Typed",
 ]
+
+[project.urls]
+Homepage = "https://redxking.github.io/evidence-state-io/"
+Repository = "https://github.com/redxking/evidence-state-io"
+Quickstart = "https://github.com/redxking/evidence-state-io/blob/main/QUICKSTART.md"
+Documentation = "https://github.com/redxking/evidence-state-io/wiki"
+Changelog = "https://github.com/redxking/evidence-state-io/blob/main/CHANGELOG.md"
+Issues = "https://github.com/redxking/evidence-state-io/issues"
 
 [project.optional-dependencies]
 dev = [

@@ -13,12 +13,13 @@ The project defines a machine-readable evidence envelope, a deterministic negati
 
 ## Current status
 
-**Stage:** pre-alpha research prototype and implementation handoff; schema `1.0` candidate
+**Stage:** alpha; installable, callable over MCP, and exercised against a real source; schema `1.0` frozen in behaviour, `1.1` additive and unfrozen
 **Intended use:** local research, synthetic evaluation, adapter development, and design-partner discovery
 **Not established:** production readiness, operational effectiveness, legal sufficiency, universal query completeness, market demand, protocol adoption, or independent validation
 
-The active package is `0.6.0`. It accepts only the unfrozen schema `1.0`
-candidate and the explicit `esio-p0-safety-floor/1.0-candidate.4` policy. The
+The active package is `0.7.0`. It accepts the schema `1.0` candidate, the
+additive schema `1.1` for multi-source composition, and the explicit
+`esio-p0-safety-floor/1.0-candidate.4` policy. The
 corresponding evaluator is `esio-evaluator-1.0-candidate.5`; the profile,
 registry-snapshot, trust-selection, evaluation-input, and certificate
 contracts are each `1.0-candidate.2`. A complete identifier table is below.

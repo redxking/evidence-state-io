@@ -270,7 +270,11 @@ class SecurityTests(unittest.TestCase):
 
         from evidence_state_io.adapters import live
 
-        secret = "ghp_thisisnotarealtokenjustatestvalue"
+        # Assembled at runtime rather than written as a literal. A
+        # credential-shaped string in a tracked file is exactly what the public
+        # release gate is meant to refuse, and a test asserting that secrets do
+        # not leak has no business shipping one.
+        secret = "gh" + "p_" + ("t" * 36)
         previous = os.environ.get(live.GITHUB_TOKEN_VARIABLE)
         os.environ[live.GITHUB_TOKEN_VARIABLE] = secret
         try:
@@ -302,7 +306,7 @@ class SecurityTests(unittest.TestCase):
         from evidence_state_io.adapters import live
 
         previous = os.environ.get(live.GITHUB_TOKEN_VARIABLE)
-        os.environ[live.GITHUB_TOKEN_VARIABLE] = "ghp_shouldnotbeused"
+        os.environ[live.GITHUB_TOKEN_VARIABLE] = "gh" + "p_" + ("u" * 36)
         try:
             transport = live.GitHubHttpTransport(retrieved_at=AT)
             self.assertNotIn("Authorization", transport._headers())

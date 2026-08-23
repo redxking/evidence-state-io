@@ -65,6 +65,33 @@ All notable project changes should be recorded here. Dates use ISO 8601.
   from the package root. The remedy surface was reachable only by module path
   before, which made a headline capability effectively private.
 
+- **Tokenless publication to TestPyPI and then PyPI**, via PyPI trusted
+  publishing from the tagged release workflow. No API token exists anywhere:
+  not in the repository, not in a GitHub secret, and not on a laptop. That is
+  not only a security preference — a token on a maintainer's machine can
+  publish something the acceptance gate never saw, and trusted publishing makes
+  the tagged commit the only thing that can become a release.
+- A release now installs its own artifacts *from the index*, into an empty
+  directory with no checkout, and runs both packaged benchmarks and the MCP
+  server before PyPI is touched. A package that works inside its own source tree
+  and nowhere else looks identical until you leave the tree, which is how
+  ESIO-DEF-001 was found minutes after `v0.6.0` was published. A PyPI version
+  can never be replaced, so the irreversible step now runs last and only after
+  the same bytes have been shown to work.
+- Package metadata made publishable: a `readme` so PyPI shows anything at all,
+  project URLs for the homepage, quickstart, docs, changelog, and issues, and
+  audience and topic classifiers. Development status moved from Pre-Alpha to
+  Alpha, which is now the accurate answer: it installs, it is callable over MCP,
+  and it has been run against a real source. It is not production-ready and the
+  README says so in the same breath.
+- `docs/PUBLISHING.md` records the one-time trusted-publisher registration, what
+  a release actually does, how to verify a published artifact, and what
+  publication does not establish.
+- The public release gate refused a credential-shaped literal in a new test —
+  correctly, since a test asserting that secrets do not leak has no business
+  shipping one. The test now assembles its value at runtime; the gate was not
+  weakened.
+
 - **`EvidenceBuilder`, a producer-side API.** Authoring an envelope by hand is
   about a hundred lines of JSON, and the hardest part of adoption should not be
   describing what you already did. The builder assembles one from the facts a

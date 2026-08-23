@@ -158,8 +158,14 @@ Publication happens after Phase 1 completes. Publishing a package whose only
 interface is hand-authored JSON would spend the one first impression the name
 gets on the version least worth installing.
 
-Registry tokens stay in the owner's environment. I will prepare the artifacts
-and the exact command; the owner runs the step that presents the credential.
+There are no registry tokens. Publication uses PyPI trusted publishing, so
+each publish job receives a short-lived OIDC identity scoped to this repository,
+this workflow file, and a named environment. Nothing holds a publishing
+credential, and the tagged commit is the only thing that can become a release.
+
+The pipeline is built and committed. What remains is a web-UI step only the
+owner can perform: registering a pending trusted publisher on TestPyPI and on
+PyPI. `docs/PUBLISHING.md` has the exact fields.
 
 ## Phase 3 — Make it credible (authorized)
 
@@ -237,7 +243,7 @@ outside the repository, unless the owner authorizes those separately.
 | 3 | 1.3 Adapter contract + recorded adapter | none needed | **done** |
 | 4 | 4 Live public read-only GitHub adapter | granted 2026-08-22 | **done** |
 | 5 | 1.4 Quickstart | none needed | **done** |
-| 6 | 2 TestPyPI, verify, then PyPI | granted 2026-08-22 | next |
+| 6 | 2 TestPyPI, verify, then PyPI | granted 2026-08-22 | **built, awaiting owner registration** |
 | 7 | 3 Preregister, then run the campaign | granted 2026-08-22 | queued |
 
 ### What the first live reading established, 2026-08-23
