@@ -123,7 +123,7 @@ not authenticated or empirically validated facts.
 
 The project builds toward three connected products:
 
-1. **EmptyBench** — matched test cases that hold the visible observations constant while varying whether the observation scope is complete.
+1. **EmptyBench** — matched test cases that hold the visible observations constant while varying whether the observation scope is complete. Two benchmarks ship in the package: `EmptyBench-P0-seed` for single-source evidence sufficiency, and `EmptyBench-P1-composed` for multi-source composition. Run them with `evidence-state demo --all` and `evidence-state demo --benchmark composed --all`.
 2. **Evidence-State Gateway** — a deterministic runtime between agents and tools that qualifies or blocks unsupported negative conclusions.
 3. **Coverage Registry** — enterprise source profiles describing ownership, population, retention, freshness, blind intervals, permissions, and detection assumptions.
 

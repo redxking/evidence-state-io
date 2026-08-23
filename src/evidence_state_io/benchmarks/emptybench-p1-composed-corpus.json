@@ -1,0 +1,384 @@
+{
+ "corpus_schema": "esio-emptybench-corpus/1.0-candidate.1",
+ "benchmark_id": "EmptyBench-P1-composed",
+ "benchmark_version": "1.0-candidate.1",
+ "canonicalization_profile": "esio-canonical-json-0.1",
+ "digest_algorithm": "sha256",
+ "base_request": {
+  "envelope": {
+   "schema_version": "1.1",
+   "state": "ABSENT_WITHIN_SCOPE",
+   "query": {
+    "target": "GitHub repository search",
+    "predicate": "topic:evidence-state language:Python",
+    "authorization_boundary": "public repositories visible to the adapter token",
+    "authorization_context_id": "public-search-adapter-context",
+    "time_start": "2026-08-21T00:00:00Z",
+    "time_end": "2026-08-21T12:00:00Z",
+    "exclusions": [
+     "deleted repositories",
+     "unindexed content"
+    ],
+    "source_requirements": [
+     {
+      "source_id": "github-public-repositories",
+      "role": "REQUIRED",
+      "system": "github-search",
+      "locator": "repositories/search",
+      "adapter_id": "github-search-adapter",
+      "adapter_version": "example-0.4",
+      "authorization_context_id": "public-search-adapter-context",
+      "accessible_population": "public-repositories-visible-to-adapter",
+      "detection_assumptions": [
+       "repository is indexed by the declared search endpoint"
+      ],
+      "finality_horizon": "2026-08-21T12:04:00Z",
+      "profile_ref": {
+       "registry_id": "example-coverage-registry",
+       "profile_id": "github-search-p0",
+       "profile_version": "1.0.0",
+       "profile_digest": "sha256:2f7fee3eb62e5c4dcd798eb475f6b6b2cbe21369a7530f78565c642a6d029a6f"
+      }
+     },
+     {
+      "source_id": "mirror-public-repositories",
+      "role": "REQUIRED",
+      "system": "mirror-search",
+      "locator": "repositories/search",
+      "adapter_id": "mirror-search-adapter",
+      "adapter_version": "example-0.4",
+      "authorization_context_id": "public-search-adapter-context",
+      "accessible_population": "public-repositories-visible-to-adapter",
+      "detection_assumptions": [
+       "repository is indexed by the declared search endpoint"
+      ],
+      "finality_horizon": "2026-08-21T12:05:00Z",
+      "profile_ref": {
+       "registry_id": "example-coverage-registry",
+       "profile_id": "mirror-search-p0",
+       "profile_version": "1.0.0",
+       "profile_digest": "sha256:84a8048667d1ad5261fd1dfac3851b263e3e2a538485bb3904043d213290afea"
+      }
+     }
+    ],
+    "composition": "CORROBORATION"
+   },
+   "coverage": {
+    "examined_units": 100,
+    "population_basis": "EXACT",
+    "population_units": 100,
+    "declared_lower_bound": null,
+    "pages_examined": 5,
+    "pages_expected": 5,
+    "pagination_complete": true,
+    "continuation_token_present": false,
+    "partitions_examined": 2,
+    "partitions_expected": 2,
+    "partitions_complete": true,
+    "timed_out": false,
+    "interrupted": false,
+    "permission_limited": false,
+    "query_errors": []
+   },
+   "coverage_query_fingerprint": "sha256:9f7343bc030ab79e26f47938489b4d120939074e25d405ae1fa6213476c202f9",
+   "matched_count": 0,
+   "observed_at": "2026-08-21T12:05:00Z",
+   "valid_until": "2026-08-21T13:00:00Z",
+   "source_observations": [
+    {
+     "source_id": "github-public-repositories",
+     "status": "OBSERVED",
+     "descriptor": {
+      "system": "github-search",
+      "locator": "repositories/search",
+      "adapter_id": "github-search-adapter",
+      "adapter_version": "example-0.4",
+      "index_as_of": "2026-08-21T12:04:00Z"
+     },
+     "authorization_context_id": "public-search-adapter-context",
+     "query_fingerprint": "sha256:9f7343bc030ab79e26f47938489b4d120939074e25d405ae1fa6213476c202f9",
+     "accessible_population": "public-repositories-visible-to-adapter",
+     "errors": [],
+     "coverage": {
+      "examined_units": 100,
+      "population_basis": "EXACT",
+      "population_units": 100,
+      "declared_lower_bound": null,
+      "pages_examined": 5,
+      "pages_expected": 5,
+      "pagination_complete": true,
+      "continuation_token_present": false,
+      "partitions_examined": 2,
+      "partitions_expected": 2,
+      "partitions_complete": true,
+      "timed_out": false,
+      "interrupted": false,
+      "permission_limited": false,
+      "query_errors": []
+     },
+     "state": "ABSENT_WITHIN_SCOPE",
+     "matched_count": 0,
+     "observed_at": "2026-08-21T12:04:00Z",
+     "valid_until": "2026-08-21T13:00:00Z"
+    },
+    {
+     "source_id": "mirror-public-repositories",
+     "status": "OBSERVED",
+     "descriptor": {
+      "system": "mirror-search",
+      "locator": "repositories/search",
+      "adapter_id": "mirror-search-adapter",
+      "adapter_version": "example-0.4",
+      "index_as_of": "2026-08-21T12:05:00Z"
+     },
+     "authorization_context_id": "public-search-adapter-context",
+     "query_fingerprint": "sha256:9f7343bc030ab79e26f47938489b4d120939074e25d405ae1fa6213476c202f9",
+     "accessible_population": "public-repositories-visible-to-adapter",
+     "errors": [],
+     "coverage": {
+      "examined_units": 100,
+      "population_basis": "EXACT",
+      "population_units": 100,
+      "declared_lower_bound": null,
+      "pages_examined": 5,
+      "pages_expected": 5,
+      "pagination_complete": true,
+      "continuation_token_present": false,
+      "partitions_examined": 2,
+      "partitions_expected": 2,
+      "partitions_complete": true,
+      "timed_out": false,
+      "interrupted": false,
+      "permission_limited": false,
+      "query_errors": []
+     },
+     "state": "ABSENT_WITHIN_SCOPE",
+     "matched_count": 0,
+     "observed_at": "2026-08-21T12:05:00Z",
+     "valid_until": "2026-08-21T13:00:00Z"
+    }
+   ],
+   "errors": [],
+   "notes": [
+    "Synthetic EmptyBench seed case; not an external observation."
+   ]
+  },
+  "subject": "repositories matching the query",
+  "mode": "SCOPED",
+  "evaluated_at": "2026-08-21T12:06:00Z",
+  "policy": {
+   "policy_id": "esio-p0-safety-floor",
+   "policy_version": "1.0-candidate.4",
+   "coverage": {
+    "minimum_lower_bound": 1.0,
+    "require_exact_population": false,
+    "require_complete_pagination": true,
+    "require_complete_partitions": true,
+    "reject_timeout": true,
+    "reject_interruption": true,
+    "reject_query_errors": true,
+    "allow_permission_limited_scope": true
+   },
+   "require_valid_until": true,
+   "max_observation_age_seconds": null,
+   "require_index_as_of": true,
+   "require_finality_horizon": true,
+   "max_index_age_seconds": null,
+   "reject_envelope_errors": true
+  }
+ },
+ "cases": [
+  {
+   "case_id": "dissent-corroborated",
+   "pair_id": "dissent",
+   "fault_class": "COMPOSITION_DISSENT",
+   "variant": "control",
+   "description": "Both required sources independently report in-scope absence.",
+   "mutations": []
+  },
+  {
+   "case_id": "dissent-fault",
+   "pair_id": "dissent",
+   "fault_class": "COMPOSITION_DISSENT",
+   "variant": "fault",
+   "description": "One required source reports an in-scope match while the other reports absence.",
+   "mutations": [
+    {
+     "pointer": "/envelope/source_observations/1/state",
+     "value": "PRESENT"
+    },
+    {
+     "pointer": "/envelope/source_observations/1/matched_count",
+     "value": 1
+    }
+   ]
+  },
+  {
+   "case_id": "source-coverage-corroborated",
+   "pair_id": "source-coverage",
+   "fault_class": "COMPOSITION_COVERAGE",
+   "variant": "control",
+   "description": "Every required source independently reaches the governed coverage floor.",
+   "mutations": []
+  },
+  {
+   "case_id": "source-coverage-fault",
+   "pair_id": "source-coverage",
+   "fault_class": "COMPOSITION_COVERAGE",
+   "variant": "fault",
+   "description": "One required source enumerated only part of the declared population.",
+   "mutations": [
+    {
+     "pointer": "/envelope/source_observations/1/coverage/examined_units",
+     "value": 60
+    },
+    {
+     "pointer": "/envelope/source_observations/1/coverage/pages_examined",
+     "value": 3
+    },
+    {
+     "pointer": "/envelope/source_observations/1/coverage/pagination_complete",
+     "value": false
+    }
+   ]
+  },
+  {
+   "case_id": "composed-floor-corroborated",
+   "pair_id": "composed-floor",
+   "fault_class": "COMPOSITION_FLOOR",
+   "variant": "control",
+   "description": "The composed floor equals the coverage each source independently reached.",
+   "mutations": []
+  },
+  {
+   "case_id": "composed-floor-fault",
+   "pair_id": "composed-floor",
+   "fault_class": "COMPOSITION_FLOOR",
+   "variant": "fault",
+   "description": "Two sources each covering 60% do not compose to the 100% the envelope declares.",
+   "mutations": [
+    {
+     "pointer": "/envelope/source_observations/0/coverage/examined_units",
+     "value": 60
+    },
+    {
+     "pointer": "/envelope/source_observations/0/coverage/pages_examined",
+     "value": 3
+    },
+    {
+     "pointer": "/envelope/source_observations/0/coverage/pagination_complete",
+     "value": false
+    },
+    {
+     "pointer": "/envelope/source_observations/1/coverage/examined_units",
+     "value": 60
+    },
+    {
+     "pointer": "/envelope/source_observations/1/coverage/pages_examined",
+     "value": 3
+    },
+    {
+     "pointer": "/envelope/source_observations/1/coverage/pagination_complete",
+     "value": false
+    }
+   ]
+  },
+  {
+   "case_id": "own-horizon-corroborated",
+   "pair_id": "own-horizon",
+   "fault_class": "COMPOSITION_FINALITY",
+   "variant": "control",
+   "description": "Every required source reached its own profile-derived finality horizon.",
+   "mutations": []
+  },
+  {
+   "case_id": "own-horizon-fault",
+   "pair_id": "own-horizon",
+   "fault_class": "COMPOSITION_FINALITY",
+   "variant": "fault",
+   "description": "One source reached the earliest horizon in the set but not its own later one.",
+   "mutations": [
+    {
+     "pointer": "/envelope/source_observations/1/descriptor/index_as_of",
+     "value": "2026-08-21T12:04:00Z"
+    }
+   ]
+  },
+  {
+   "case_id": "stalest-observation-corroborated",
+   "pair_id": "stalest-observation",
+   "fault_class": "COMPOSITION_FRESHNESS",
+   "variant": "control",
+   "description": "Both sources were read shortly before the envelope was sealed.",
+   "mutations": [
+    {
+     "pointer": "/policy/max_observation_age_seconds",
+     "value": 2400
+    },
+    {
+     "pointer": "/envelope/observed_at",
+     "value": "2026-08-21T12:50:00Z"
+    },
+    {
+     "pointer": "/evaluated_at",
+     "value": "2026-08-21T12:51:00Z"
+    },
+    {
+     "pointer": "/envelope/source_observations/0/observed_at",
+     "value": "2026-08-21T12:49:00Z"
+    },
+    {
+     "pointer": "/envelope/source_observations/1/observed_at",
+     "value": "2026-08-21T12:49:00Z"
+    }
+   ]
+  },
+  {
+   "case_id": "stalest-observation-fault",
+   "pair_id": "stalest-observation",
+   "fault_class": "COMPOSITION_FRESHNESS",
+   "variant": "fault",
+   "description": "A late-sealed envelope looks fresh while one source was read long before it.",
+   "mutations": [
+    {
+     "pointer": "/policy/max_observation_age_seconds",
+     "value": 2400
+    },
+    {
+     "pointer": "/envelope/observed_at",
+     "value": "2026-08-21T12:50:00Z"
+    },
+    {
+     "pointer": "/evaluated_at",
+     "value": "2026-08-21T12:51:00Z"
+    },
+    {
+     "pointer": "/envelope/source_observations/0/observed_at",
+     "value": "2026-08-21T12:49:00Z"
+    }
+   ]
+  },
+  {
+   "case_id": "earliest-validity-corroborated",
+   "pair_id": "earliest-validity",
+   "fault_class": "COMPOSITION_VALIDITY",
+   "variant": "control",
+   "description": "The envelope does not outlive any contributing source's declared boundary.",
+   "mutations": []
+  },
+  {
+   "case_id": "earliest-validity-fault",
+   "pair_id": "earliest-validity",
+   "fault_class": "COMPOSITION_VALIDITY",
+   "variant": "fault",
+   "description": "The envelope claims validity past the earliest boundary a source declared.",
+   "mutations": [
+    {
+     "pointer": "/envelope/source_observations/1/valid_until",
+     "value": "2026-08-21T12:30:00Z"
+    }
+   ]
+  }
+ ],
+ "corpus_digest": "sha256:bc66f5d74f89c4089c4c569e9d9056b27d0f69855b6fd6feb07c3dae525580a2"
+}

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from hmac import compare_digest
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
@@ -60,6 +60,19 @@ MAX_MUTATIONS_PER_CASE = 32
 MAX_JSON_POINTER_LENGTH = 512
 _SEED_CORPUS_FILE = "emptybench-p0-corpus.json"
 _SEED_ORACLE_FILE = "emptybench-p0-oracle.json"
+
+COMPOSED_BENCHMARK_ID = "EmptyBench-P1-composed"
+COMPOSED_BENCHMARK_VERSION = "1.0-candidate.1"
+COMPOSED_ORACLE_DIGEST = "sha256:42ffdc38a1f676ce92153ac144c47aa00e7d16eba948b2681e421ecea435bb83"
+_COMPOSED_CORPUS_FILE = "emptybench-p1-composed-corpus.json"
+_COMPOSED_ORACLE_FILE = "emptybench-p1-composed-oracle.json"
+
+#: The mirror source in the composed benchmark.  It is deliberately a
+#: different system with a *later* late-arrival bound, so a composed claim
+#: binds on a horizon the primary source never establishes and a benchmark
+#: that only ever exercised the primary source would be visibly wrong.
+COMPOSED_MIRROR_SOURCE_ID = "mirror-public-repositories"
+COMPOSED_MIRROR_PROFILE_ID = "mirror-search-p0"
 
 
 def _mapping(value: Any, path: str) -> Mapping[str, Any]:
@@ -881,7 +894,7 @@ def run_emptybench(
     )
 
 
-def _seed_artifact_directory() -> Path:
+def _seed_artifact_directory(*required: str) -> Path:
     """Return the packaged seed corpus and oracle directory.
 
     The artifacts ship inside the package and are resolved from the imported
@@ -892,8 +905,9 @@ def _seed_artifact_directory() -> Path:
     the corpus or the oracle.
     """
 
+    required = required or (_SEED_CORPUS_FILE, _SEED_ORACLE_FILE)
     directory = Path(__file__).resolve().parent / "benchmarks"
-    if (directory / _SEED_CORPUS_FILE).is_file() and (directory / _SEED_ORACLE_FILE).is_file():
+    if all((directory / name).is_file() for name in required):
         return directory
     raise ModelValidationError(
         "packaged seed EmptyBench artifacts are missing from the installed "
@@ -935,6 +949,42 @@ def seed_benchmark() -> tuple[EmptyBenchCorpus, EmptyBenchOracle]:
     return corpus, oracle
 
 
+def composed_benchmark() -> tuple[EmptyBenchCorpus, EmptyBenchOracle]:
+    """Return the packaged composed corpus and its separately stored oracle."""
+
+    directory = _seed_artifact_directory(_COMPOSED_CORPUS_FILE, _COMPOSED_ORACLE_FILE)
+    corpus = parse_corpus(_read_seed_json(directory / _COMPOSED_CORPUS_FILE))
+    oracle = parse_oracle(
+        _read_seed_json(directory / _COMPOSED_ORACLE_FILE),
+        corpus,
+        expected_digest=COMPOSED_ORACLE_DIGEST,
+    )
+    return corpus, oracle
+
+
+def run_composed_emptybench(*, all_cases: bool = True) -> EmptyBenchReport:
+    """Run the composed benchmark against the package-owned composed context.
+
+    Unlike the seed benchmark there is no single operator pair, because no one
+    composition fault stands for the others: coverage, finality, freshness,
+    validity, and disagreement fail in different ways and each pair
+    discriminates a different one. `all_cases=False` runs the disagreement pair,
+    which is the one a majority rule would get wrong.
+    """
+
+    corpus, oracle = composed_benchmark()
+    selected = None
+    if not all_cases:
+        selected = tuple(case.case_id for case in corpus.cases if case.pair_id == "dissent")
+    return run_emptybench(
+        corpus,
+        oracle,
+        composed_profile_context(),
+        expected_oracle_digest=COMPOSED_ORACLE_DIGEST,
+        case_ids=selected,
+    )
+
+
 def run_seed_emptybench(*, all_cases: bool = False) -> EmptyBenchReport:
     corpus, oracle = seed_benchmark()
     selected = None
@@ -959,6 +1009,77 @@ def seed_case_dicts() -> list[dict[str, Any]]:
 
 def demo_cases() -> tuple[EmptyBenchCase, ...]:
     return tuple(case for case in seed_cases() if case.pair_id == "pagination")
+
+
+def _composed_mirror_profile(primary: CoverageFinalityProfile) -> CoverageFinalityProfile:
+    """Return a second governed profile for the composed benchmark.
+
+    Same declared population and applicability as the primary, because that is
+    what corroboration means: both sources claim to observe the same declared
+    population.  A different system, adapter, and late-arrival bound, because a
+    second copy of the first source would corroborate nothing and would let a
+    benchmark pass while only ever exercising one horizon.
+    """
+
+    return replace(
+        primary,
+        profile_id=COMPOSED_MIRROR_PROFILE_ID,
+        source=replace(
+            primary.source,
+            source_id=COMPOSED_MIRROR_SOURCE_ID,
+            system="mirror-search",
+            adapter_id="mirror-search-adapter",
+        ),
+        finality=replace(primary.finality, late_arrival_bound_seconds=300),
+    )
+
+
+def composed_profile_context() -> TrustedProfileContext:
+    """Return the package-owned profile context for the composed benchmark.
+
+    Two governed profiles, one per required source, selected together by the
+    relying application.  Built in code for the same reason the seed context is:
+    an installed copy must produce byte-identical governance wherever it runs.
+    """
+
+    seed = seed_profile_context()
+    primary = seed.snapshot.records[0].profile
+    mirror = _composed_mirror_profile(primary)
+
+    def _record(profile: CoverageFinalityProfile) -> ProfileRegistryRecord:
+        return ProfileRegistryRecord(
+            profile=profile,
+            profile_digest=None,
+            status=ProfileRegistryStatus.ACTIVE,
+            revoked_at=None,
+            revocation_effective_at=None,
+            revocation_reason_code=None,
+        )
+
+    def _reference(profile: CoverageFinalityProfile) -> CoverageProfileReference:
+        return CoverageProfileReference(
+            registry_id=seed.snapshot.registry_id,
+            profile_id=profile.profile_id,
+            profile_version=profile.profile_version,
+            profile_digest=profile.profile_digest,
+        )
+
+    snapshot = replace(
+        seed.snapshot,
+        snapshot_id="composed-2026-08-21",
+        records=(_record(primary), _record(mirror)),
+        snapshot_digest=None,
+    )
+    assert snapshot.snapshot_digest is not None
+    trust = replace(
+        seed.trust_selection,
+        snapshot_id=snapshot.snapshot_id,
+        snapshot_digest=snapshot.snapshot_digest,
+        selected_profile_reference=_reference(primary),
+        additional_selected_profile_references=(_reference(mirror),),
+        trust_selection_digest=None,
+    )
+    return TrustedProfileContext(snapshot=snapshot, trust_selection=trust)
 
 
 def seed_profile_context() -> TrustedProfileContext:

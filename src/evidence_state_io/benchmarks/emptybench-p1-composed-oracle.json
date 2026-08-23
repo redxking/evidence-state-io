@@ -1,0 +1,115 @@
+{
+ "oracle_schema": "esio-emptybench-oracle/1.0-candidate.1",
+ "corpus_schema": "esio-emptybench-corpus/1.0-candidate.1",
+ "oracle_id": "EmptyBench-P1-composed-oracle",
+ "oracle_version": "1.0-candidate.1",
+ "benchmark_id": "EmptyBench-P1-composed",
+ "benchmark_version": "1.0-candidate.1",
+ "canonicalization_profile": "esio-canonical-json-0.1",
+ "digest_algorithm": "sha256",
+ "corpus_digest": "sha256:bc66f5d74f89c4089c4c569e9d9056b27d0f69855b6fd6feb07c3dae525580a2",
+ "rules": [
+  {
+   "rule_id": "PERMIT_COMPOSED_CONTROL",
+   "expected_allowed": true,
+   "expected_reasons": []
+  },
+  {
+   "rule_id": "REJECT_DISSENT",
+   "expected_allowed": false,
+   "expected_reasons": [
+    "COMPOSED_SOURCE_REPORTS_MATCHES",
+    "COMPOSED_SOURCE_NOT_ABSENT_WITHIN_SCOPE",
+    "COMPOSED_SOURCE_STATES_DISAGREE"
+   ]
+  },
+  {
+   "rule_id": "REJECT_SOURCE_COVERAGE",
+   "expected_allowed": false,
+   "expected_reasons": [
+    "COMPOSED_SOURCE_COVERAGE_NOT_MET"
+   ]
+  },
+  {
+   "rule_id": "REJECT_COMPOSED_FLOOR",
+   "expected_allowed": false,
+   "expected_reasons": [
+    "COMPOSED_SOURCE_COVERAGE_NOT_MET",
+    "COMPOSED_COVERAGE_OVERSTATED"
+   ]
+  },
+  {
+   "rule_id": "REJECT_OWN_HORIZON",
+   "expected_allowed": false,
+   "expected_reasons": [
+    "COMPOSED_SOURCE_INDEX_PRECEDES_OWN_HORIZON",
+    "INDEX_PRECEDES_FINALITY_HORIZON"
+   ]
+  },
+  {
+   "rule_id": "REJECT_STALEST_OBSERVATION",
+   "expected_allowed": false,
+   "expected_reasons": [
+    "OBSERVATION_TOO_OLD"
+   ]
+  },
+  {
+   "rule_id": "REJECT_EARLIEST_VALIDITY",
+   "expected_allowed": false,
+   "expected_reasons": [
+    "COMPOSED_VALIDITY_OVERSTATED"
+   ]
+  }
+ ],
+ "assignments": [
+  {
+   "case_id": "dissent-corroborated",
+   "rule_id": "PERMIT_COMPOSED_CONTROL"
+  },
+  {
+   "case_id": "dissent-fault",
+   "rule_id": "REJECT_DISSENT"
+  },
+  {
+   "case_id": "source-coverage-corroborated",
+   "rule_id": "PERMIT_COMPOSED_CONTROL"
+  },
+  {
+   "case_id": "source-coverage-fault",
+   "rule_id": "REJECT_SOURCE_COVERAGE"
+  },
+  {
+   "case_id": "composed-floor-corroborated",
+   "rule_id": "PERMIT_COMPOSED_CONTROL"
+  },
+  {
+   "case_id": "composed-floor-fault",
+   "rule_id": "REJECT_COMPOSED_FLOOR"
+  },
+  {
+   "case_id": "own-horizon-corroborated",
+   "rule_id": "PERMIT_COMPOSED_CONTROL"
+  },
+  {
+   "case_id": "own-horizon-fault",
+   "rule_id": "REJECT_OWN_HORIZON"
+  },
+  {
+   "case_id": "stalest-observation-corroborated",
+   "rule_id": "PERMIT_COMPOSED_CONTROL"
+  },
+  {
+   "case_id": "stalest-observation-fault",
+   "rule_id": "REJECT_STALEST_OBSERVATION"
+  },
+  {
+   "case_id": "earliest-validity-corroborated",
+   "rule_id": "PERMIT_COMPOSED_CONTROL"
+  },
+  {
+   "case_id": "earliest-validity-fault",
+   "rule_id": "REJECT_EARLIEST_VALIDITY"
+  }
+ ],
+ "oracle_digest": "sha256:42ffdc38a1f676ce92153ac144c47aa00e7d16eba948b2681e421ecea435bb83"
+}

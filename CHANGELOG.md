@@ -65,6 +65,28 @@ All notable project changes should be recorded here. Dates use ISO 8601.
   from the package root. The remedy surface was reachable only by module path
   before, which made a headline capability effectively private.
 
+- **`EmptyBench-P1-composed`, a benchmark for the composed path.** Unit tests
+  pin the composition rules; they cannot measure whether the gate
+  *discriminates*. Six pairs do: disagreement, per-source coverage, the composed
+  floor, each source's own horizon, the stalest contributing observation, and
+  the earliest source validity boundary. Every pair presents the same visible
+  result and the same evaluation time and differs in exactly one evidence fact,
+  so a pair that both permits or both rejects proves the gate is not reading the
+  evidence. 12 cases, 6 of 6 pairs discriminated, zero unsafe permits.
+- The expected outcome of every composed case is written by hand in
+  `scripts/generate_composed_benchmark.py`, which runs the gate and refuses to
+  write the artifacts when the gate disagrees. An oracle derived from whatever
+  the implementation happens to do agrees with it by construction and measures
+  nothing. A drift test regenerates the artifacts and fails if the packaged
+  copies differ, so that refusal cannot be bypassed by editing them.
+- The freshness pair is the sharpest form of the rule it tests: envelope,
+  evaluation time, and visible result are identical across the pair, and the
+  only difference is when one source actually looked.
+- `evidence-state demo --benchmark composed` runs it. The acceptance gate runs
+  it from the installed wheel outside a checkout, with decoy artifacts planted
+  beside the caller, and requires byte-identical output — the same isolation
+  requirement that caught ESIO-DEF-001.
+
 - **Source attribution on composed remedies**, moving the remedy contract to
   `esio-insufficiency-remedy/1.0-candidate.3`. `RemedyItem` carries
   `source_ids`. "Every corroborating source must reach its own finality

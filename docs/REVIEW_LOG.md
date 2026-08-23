@@ -1127,3 +1127,50 @@ the information existed and was being discarded. `RemedyItem` now carries
 `source_ids`, recovered from the composed assessment. This discloses nothing
 new: a source identifier is a declaration the request itself carries, not a
 governed threshold.
+
+## 2026-08-22 — A benchmark for the composed path
+
+Unit tests pin the composition rules. They cannot measure whether the gate
+discriminates, because a test that only ever asserts a rejection would pass
+against an evaluator that rejects everything. That is what EmptyBench pairs
+measure, and until now the composed path had none.
+
+`EmptyBench-P1-composed` ships in the package with six pairs, one per rule:
+disagreement, per-source coverage, the composed floor, each source's own
+finality horizon, the stalest contributing observation, and the earliest source
+validity boundary. Every pair presents the same visible result and the same
+evaluation time and differs in exactly one evidence fact. Twelve cases, six of
+six pairs discriminated, zero unsafe permits and zero false rejections.
+
+The freshness pair is worth naming. Its control and fault share the envelope
+observation time, the evaluation time, the policy, and the visible result; the
+only difference is that in the fault one source was read forty-six minutes
+before the envelope was sealed. An evaluator ageing from the envelope timestamp
+permits both and discriminates nothing.
+
+### Why the oracle is hand-written
+
+An oracle generated from the implementation agrees with the implementation by
+construction and measures nothing at all. The expected outcome of every case is
+written by hand in the generator, which then runs the gate and refuses to write
+any artifact when the gate disagrees. Every expectation matched on the first
+run, which is a real if modest independent confirmation: the rules were stated
+before the outcomes were observed.
+
+A drift test regenerates the artifacts and fails when the packaged copies
+differ, so the refusal cannot be bypassed by editing the artifacts directly.
+The acceptance gate runs the benchmark from the installed wheel, outside a
+checkout, with decoy artifact files planted beside the caller, and requires
+byte-identical output — the isolation requirement that caught ESIO-DEF-001.
+
+### What this establishes and does not establish
+
+It establishes that the gate distinguishes sufficient from insufficient
+multi-source evidence on twelve synthetic cases, and that no case reaches a
+permit it should not.
+
+It establishes nothing about real sources. Every case is synthetic, every
+profile is locally authored, and the corpus is small enough to be read in full,
+which is a property of a seed benchmark and not of a validated one. The
+benchmark cannot detect a self-consistent producer that fabricates several
+agreeing sources, because nothing in it authenticates any source's behaviour.

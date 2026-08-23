@@ -18,7 +18,13 @@ from .certificates import (
     verify_evidence_certificate,
 )
 from .coverage import CoveragePolicy, evaluate_coverage
-from .emptybench import parse_corpus, parse_oracle, run_emptybench, run_seed_emptybench
+from .emptybench import (
+    parse_corpus,
+    parse_oracle,
+    run_composed_emptybench,
+    run_emptybench,
+    run_seed_emptybench,
+)
 from .errors import (
     ModelValidationError,
     ValidationErrorCode,
@@ -359,7 +365,16 @@ def build_parser() -> argparse.ArgumentParser:
     demo.add_argument(
         "--all",
         action="store_true",
-        help="Run every built-in seed pair instead of the P0 operator pair",
+        help="Run every built-in pair instead of the operator pair",
+    )
+    demo.add_argument(
+        "--benchmark",
+        choices=("seed", "composed"),
+        default="seed",
+        help=(
+            "Built-in benchmark to run: the single-source P0 seed (default), "
+            "or the multi-source composed benchmark"
+        ),
     )
     demo.add_argument("--pretty", action="store_true", help="Pretty-print JSON")
 
@@ -491,7 +506,10 @@ def main(
             _write_json(artifact.to_dict(), output_stream, args.pretty)
             return 0
         if args.command == "demo":
-            demo_report = run_seed_emptybench(all_cases=args.all)
+            if args.benchmark == "composed":
+                demo_report = run_composed_emptybench(all_cases=args.all)
+            else:
+                demo_report = run_seed_emptybench(all_cases=args.all)
             _write_json(demo_report.to_dict(), output_stream, args.pretty)
             return 0 if demo_report.all_passed else 1
         if args.command == "emptybench":

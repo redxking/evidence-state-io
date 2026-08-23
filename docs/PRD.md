@@ -284,6 +284,8 @@ The repository shall include matched cases whose visible result is the same whil
 - Expected verdicts are assigned by a deterministic oracle independent of the model under evaluation.
 - The test suite fails if the gate permits a scoped negative for any disqualifying case or rejects the canonical covered-zero control.
 
+**Current candidate note:** A second packaged benchmark, `EmptyBench-P1-composed`, covers the multi-source path with one pair per composition rule: disagreement, per-source coverage, the composed floor, each source's own finality horizon, the stalest contributing observation, and the earliest source validity boundary. Its expected outcomes are written by hand and its generator refuses to write artifacts the gate disagrees with, so the oracle is a claim about what the gate should do rather than a transcript of what it does.
+
 #### ESIO-P0-011: Reproducibility and security baseline
 
 The P0 package shall run locally without network or model access and shall document security assumptions.

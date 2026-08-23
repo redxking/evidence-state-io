@@ -71,8 +71,10 @@ env -u PYTHONPATH "${WHEEL_VENV}/bin/python" -m unittest discover -s tests -q
 # directory beside the caller so a working-directory search cannot satisfy it.
 ISOLATED="${ACCEPTANCE_TEMP}/isolated"
 mkdir -p "${ISOLATED}/benchmarks"
-printf '{"not": "a corpus"}\n' > "${ISOLATED}/benchmarks/emptybench-p0-corpus.json"
-printf '{"not": "an oracle"}\n' > "${ISOLATED}/benchmarks/emptybench-p0-oracle.json"
+for artifact in emptybench-p0-corpus emptybench-p0-oracle \
+  emptybench-p1-composed-corpus emptybench-p1-composed-oracle; do
+  printf '{"not": "a benchmark artifact"}\n' > "${ISOLATED}/benchmarks/${artifact}.json"
+done
 (
   cd "${ISOLATED}"
   env -u PYTHONPATH "${WHEEL_VENV}/bin/evidence-state" --help >/dev/null
@@ -84,6 +86,17 @@ env -u PYTHONPATH "${WHEEL_VENV}/bin/evidence-state" demo --all --pretty \
   > "${ACCEPTANCE_TEMP}/emptybench-from-repo.json"
 cmp -s "${ACCEPTANCE_TEMP}/emptybench.json" "${ACCEPTANCE_TEMP}/emptybench-from-repo.json" \
   || fail "installed benchmark output depends on the working directory"
+
+# The composed benchmark is what measures whether the gate discriminates
+# multi-source evidence, so it is held to the same isolation requirement.
+( cd "${ISOLATED}"
+  env -u PYTHONPATH "${WHEEL_VENV}/bin/evidence-state" demo --benchmark composed --all --pretty
+) > "${ACCEPTANCE_TEMP}/emptybench-composed.json"
+env -u PYTHONPATH "${WHEEL_VENV}/bin/evidence-state" demo --benchmark composed --all --pretty \
+  > "${ACCEPTANCE_TEMP}/emptybench-composed-from-repo.json"
+cmp -s "${ACCEPTANCE_TEMP}/emptybench-composed.json" \
+  "${ACCEPTANCE_TEMP}/emptybench-composed-from-repo.json" \
+  || fail "installed composed benchmark output depends on the working directory"
 
 "${FRESH_VENV}/bin/python" - "${ACCEPTANCE_TEMP}/emptybench.json" <<'PY'
 import json
@@ -103,6 +116,26 @@ expected = {
 if any(summary.get(key) != value for key, value in expected.items()):
     raise SystemExit(f"unexpected EmptyBench summary: {summary}")
 print(json.dumps({"emptybench": expected, "status": "PASS"}, sort_keys=True))
+PY
+
+"${FRESH_VENV}/bin/python" - "${ACCEPTANCE_TEMP}/emptybench-composed.json" <<'PY'
+import json
+import sys
+
+report = json.load(open(sys.argv[1], encoding="utf-8"))
+summary = report["summary"]
+expected = {
+    "all_passed": True,
+    "false_rejections": 0,
+    "pairs_discriminated": 6,
+    "pairs_total": 6,
+    "passed": 12,
+    "total": 12,
+    "unsafe_permits": 0,
+}
+if any(summary.get(key) != value for key, value in expected.items()):
+    raise SystemExit(f"unexpected composed EmptyBench summary: {summary}")
+print(json.dumps({"emptybench_composed": expected, "status": "PASS"}, sort_keys=True))
 PY
 
 printf 'MVP local acceptance gate passed at %s.\n' "$(git rev-parse HEAD)"
