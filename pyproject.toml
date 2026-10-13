@@ -44,7 +44,7 @@ dev = [
   "coverage>=7.15,<8",
   "mypy>=2.3,<3",
   "pytest>=9,<10",
-  "ruff>=0.16,<0.17",
+  "ruff>=0.16,<0.18",
 ]
 
 [project.scripts]
